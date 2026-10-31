@@ -93,6 +93,12 @@ function score(on, c, r) {
   if (!c.closes) {
     checks.push(['stays open', r.status === 'open', r.status]);
     checks.push(['no 👍', r.thumbs === 0, r.thumbs]);
+    // The customer said what happens next: asking the check-in question again ignores it.
+    checks.push([
+      'does not repeat the check-in question',
+      !r.after.some((text) => asksBack(text) && r.answer.trim().endsWith(text.trim())),
+      JSON.stringify(r.after),
+    ]);
     return checks;
   }
   checks.push(['closes the chat', r.status === 'resolved', r.status]);
@@ -113,6 +119,8 @@ function score(on, c, r) {
 
 const stamp = String(Date.now()).slice(-6);
 const rows = [];
+/** The raw conversations, kept in --out so a judge (e2e/eval-judge-jev.mjs) can score them later. */
+const conversations = [];
 try {
   for (const on of [true, false]) {
     if (
@@ -123,6 +131,12 @@ try {
       CASES.map((c, i) => run(`60197${on ? 1 : 0}${stamp}${i}@s.whatsapp.net`, c)),
     );
     CASES.forEach((c, i) => {
+      conversations.push({
+        key: `${on ? 'on' : 'off'}/${c.id}`,
+        switchOn: on,
+        case: c,
+        ...results[i],
+      });
       for (const [name, ok, detail] of score(on, c, results[i]))
         rows.push({ key: `${on ? 'on' : 'off'}/${c.id}/${name}`, ok, detail: String(detail) });
     });
@@ -154,5 +168,5 @@ console.log(
 if (flag('--out'))
   writeFileSync(
     flag('--out'),
-    JSON.stringify({ score: total, at: new Date().toISOString(), rows }, null, 2),
+    JSON.stringify({ score: total, at: new Date().toISOString(), rows, conversations }, null, 2),
   );
