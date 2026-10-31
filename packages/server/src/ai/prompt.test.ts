@@ -112,6 +112,24 @@ describe('resolution question (per agent)', () => {
     expect(on.instructions).toContain('If the administrator instructions forbid check-in');
   });
 
+  it('closes a thanks in words with the switch on and with a 👍 only with the switch off', () => {
+    const off = buildAiPrompt(knowledge, '', 'x', [], situation).instructions;
+    const on = buildAiPrompt(
+      { ...knowledge, resolutionCheck: true },
+      '',
+      'x',
+      [],
+      situation,
+    ).instructions;
+    expect(on).toContain(
+      'a plain thanks or yes after your resolution question is such a confirmation',
+    );
+    expect(on).toContain('one short closing line in the customer');
+    expect(on).not.toContain('the server reacts with a 👍 and closes the chat');
+    expect(off).toContain('only thanks you, choose no_reply');
+    expect(off).toContain('the server reacts with a 👍 and closes the chat');
+  });
+
   it('keeps everything before the resolution block identical for every agent (cache prefix)', () => {
     const off = buildAiPrompt(knowledge, '', 'x', [], situation).instructions;
     const on = buildAiPrompt(
