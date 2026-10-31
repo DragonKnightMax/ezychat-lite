@@ -98,11 +98,19 @@ export const AI_DEFAULT_TIMEZONE = 'Asia/Kuala_Lumpur';
 /** Optional plain setting (IANA zone name) for the Current situation block; no UI yet. */
 export const AI_TIMEZONE_SETTING = 'ai_timezone';
 
+/** The second try after the server refused a resolve: reply to what the customer said instead. */
+export const NOT_CONFIRMED_SITUATION =
+  'Resolution confirmation was awaited, but the latest customer message is not a confirmation: it adds new facts, a plan or an objection. Do not choose resolve and do not repeat your resolution question. Reply briefly to what they said, in their language (for example that they can take their time and message any time); if they object or ask something, answer it.';
+
 /** The per-call facts. They go in the last input block so everything before them can be cached. */
 export interface AiSituation {
   now: Date;
   timeZone: string;
-  awaitingConfirmation: boolean;
+  /**
+   * Whether the resolution question is awaited; `not_confirmed` = it was, and the server found that
+   * the customer's latest message is not a confirmation (the model is asked once more).
+   */
+  awaitingConfirmation: boolean | 'not_confirmed';
   /** A WhatsApp group answer: the group, the asking member and the message to answer. */
   group?: AiGroupSituation;
 }
@@ -172,7 +180,10 @@ function currentSituation(
     };
   return {
     ...situationClock(now, timeZone),
-    resolution: `Resolution confirmation is currently ${awaitingConfirmation ? 'awaited' : 'NOT awaited'}.`,
+    resolution:
+      awaitingConfirmation === 'not_confirmed'
+        ? NOT_CONFIRMED_SITUATION
+        : `Resolution confirmation is currently ${awaitingConfirmation ? 'awaited' : 'NOT awaited'}.`,
     // Editable by the team at any time, so it lives in this per-call block, never earlier.
     ...(customer ? { customer } : {}),
   };

@@ -102,6 +102,7 @@ import {
   type AiGroupSituation,
   type AiCustomer,
   type AiKnowledge,
+  type AiSituation,
 } from './prompt.js';
 import { OPENAI_DEFAULT_MODEL } from './provider.js';
 import { claudeModelId } from './claude.js';
@@ -533,7 +534,7 @@ export function createAiService(
     internal: string,
     business: string,
     conversation: AiConversationTurn[],
-    awaitingConfirmation: boolean,
+    awaitingConfirmation: AiSituation['awaitingConfirmation'],
     images: readonly AiPromptImage[] = [],
     customer: AiCustomer | null = null,
     /** A WhatsApp group answer (group rules and the group in the Current situation block). */
@@ -1475,7 +1476,7 @@ export function createAiService(
       const decide = async (
         turns: AiConversationTurn[],
         facts: string,
-        awaitingConfirmation: boolean,
+        awaitingConfirmation: AiSituation['awaitingConfirmation'],
         batchImages: AiPromptImage[],
       ): Promise<AiDecision> => {
         // A failed extension look-up ends the turn at once; the catch below hands over.
@@ -1636,9 +1637,31 @@ export function createAiService(
         .map(customerText)
         .join('\n');
       const proposed = decision.action;
-      decision = guardResolution(decision, asked, batchText, conversationText, {
-        resolutionCheck: agent.resolutionCheck,
-      });
+      const guard = (d: AiDecision) =>
+        guardResolution(d, asked, batchText, conversationText, {
+          resolutionCheck: agent.resolutionCheck,
+        });
+      decision = guard(decision);
+      // The guard refused the model's resolve after the resolution question (new facts, a plan or
+      // an objection): ask the model once more, so the reply follows what the customer said in
+      // their language instead of repeating the fixed English question.
+      let secondTry = false;
+      if (proposed === 'resolve' && awaiting && decision.action === 'ask_resolution') {
+        secondTry = true;
+        try {
+          const again = await decide(
+            conversation(history, aiUsers),
+            knowledge,
+            'not_confirmed',
+            images,
+          );
+          if (!owned()) return;
+          if (again.action !== 'resolve') decision = guard(again);
+        } catch {
+          if (controller.signal.aborted) return;
+          // Keep the guard's question: the first decision stands.
+        }
+      }
       // A reply that quotes an Internal item is never sent: the team takes over (no text logged).
       if (decision.action !== 'no_reply' && findLeak(decision.reply, internalTexts)) {
         log.warn({ jid, agentId: agent.id, reason: 'confidential_leak' }, 'AI reply withheld');
@@ -1654,6 +1677,7 @@ export function createAiService(
           jid,
           action: decision.action,
           proposed,
+          secondTry,
           handoffReason: decision.handoffReason ?? null,
           asked,
           images: images.length,

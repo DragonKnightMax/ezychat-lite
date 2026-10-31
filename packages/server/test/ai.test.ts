@@ -15,6 +15,7 @@ import { authHeaders } from './auth-helpers.js';
 import { sha256 } from '../src/crypto/secret.js';
 import { createMessageService } from '../src/messages/service.js';
 import { createChatService } from '../src/chats/service.js';
+import { ASK_RESOLUTION_REPLY } from '../src/ai/resolution.js';
 import { pdfFixture } from './ai-fixtures.js';
 import { OAuthError } from '../src/ai/chatgpt-oauth.js';
 import { createVoiceService, type VoiceServiceDeps } from '../src/voice/service.js';
@@ -768,6 +769,37 @@ describe('a plain thanks after the AI answered', () => {
     await incoming('thanks', 'thanks!');
     await vi.advanceTimersByTimeAsync(11_000);
     expect(t.wa.reactions).toEqual([]);
+    expect(getChats(t.ctx).get(jid)?.status).toBe('open');
+  });
+
+  it('asks the model once more when it resolves a thanks that adds a plan (switch on)', async () => {
+    resolutionCheck(true);
+    const sent = await answeredByAi();
+    vi.mocked(provider.generate)
+      .mockResolvedValueOnce({ reply: 'Glad that helped!', action: 'resolve' })
+      .mockResolvedValueOnce({ reply: 'Sure, take your time!', action: 'answer' });
+    const calls = vi.mocked(provider.generate).mock.calls.length;
+    await incoming('plan', 'thanks, I will ask my boss and come back tomorrow');
+    await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS + 1200);
+    expect(vi.mocked(provider.generate).mock.calls).toHaveLength(calls + 2);
+    const second = vi.mocked(provider.generate).mock.calls.at(-1)![2] as { input: string };
+    expect(second.input).toContain('is not a confirmation');
+    expect(t.wa.sent.slice(sent).map((m) => m.text)).toEqual(['Sure, take your time!']);
+    expect(getChats(t.ctx).get(jid)?.status).toBe('open');
+    expect(
+      aiLogs.map((l) => JSON.parse(l)).find((l) => l.msg === 'AI decision' && l.secondTry),
+    ).toMatchObject({ proposed: 'resolve', action: 'answer' });
+  });
+
+  it('keeps the resolution question when the second try resolves too', async () => {
+    resolutionCheck(true);
+    const sent = await answeredByAi();
+    vi.mocked(provider.generate)
+      .mockResolvedValueOnce({ reply: 'Glad that helped!', action: 'resolve' })
+      .mockResolvedValueOnce({ reply: 'Bye!', action: 'resolve' });
+    await incoming('plan', 'thanks, I will ask my boss and come back tomorrow');
+    await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS + 1200);
+    expect(t.wa.sent.slice(sent).map((m) => m.text)).toEqual([ASK_RESOLUTION_REPLY]);
     expect(getChats(t.ctx).get(jid)?.status).toBe('open');
   });
 });
