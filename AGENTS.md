@@ -587,6 +587,14 @@ cover navigation from every admin section and recovery from malformed URLs.
   add one row per check (scenario, exact steps, result, what stays untested). AI behaviour checks use
   `e2e/devbuild-ai-check.mjs` and real model calls only with the owner's sign-in and agreement. Code
   changes after a check (e.g. review fixes) mean re-running the affected checks on the final commit.
+- **Local AI eval on every AI behaviour change** (owner rule): a change to the prompt, the AI decisions or
+  what the server does after them gets a real-model eval score before and after it, on the owner's test
+  Dev Build with the AI subscription signed in (`D:\dev\test-env\lite`, port 7491; the owner's request or
+  agreement covers the model calls). Use or extend an `e2e/devbuild-*-eval.mjs` script (example:
+  `devbuild-resolution-eval.mjs`: fixed cases in en/ms/zh, a new number per conversation, rule-checked
+  results from the API, `--out`/`--baseline` for the diff); run the baseline on the code before the change,
+  then the change with `--baseline`. A check that turns `▼ REGRESSED` blocks the change; put both scores and
+  every changed check in the PR description and the Dev Build check log.
 - **Owner test environments** (owner rule): Dev Builds that the owner tests by hand (real AI sign-in or
   key, Enterprise licence trial) run on the permanent folders outside the repos, `D:\dev\test-env\lite`
   (port 7491) and `D:\dev\test-env\enterprise` (port 7434), each with `start.ps1` and a README; their data
