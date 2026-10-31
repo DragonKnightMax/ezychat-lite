@@ -887,7 +887,9 @@ into AGENTS.md.
 - A sentence about server behaviour in `CORE_RULES` steers the model for every agent and switch: "a thanks
   gets a 👍" made switch-on agents close silently instead of with a closing line. Put switch-specific
   behaviour only in the per-switch block (`RESOLUTION_RULES_ON`/`_OFF`); unit tests pass either way, only
-  a real-model eval (`e2e/devbuild-resolution-eval.mjs --baseline`) shows it.
+  a real-model eval (`e2e/devbuild-resolution-eval.mjs --baseline`) shows it. Rule checks miss bad words (a
+  server-side fixed English re-ask passed "stays open"): read the saved conversations, and before trusting a
+  new judge question run it on a saved run that has the fault (`eval-judge-jev.mjs`: 0.01 there, 0.93 fixed).
 - A fixed rule in `CORE_RULES` that says the admin's rules "never override" it silently beats the admin: the model
   handed over a consultation request as needs_action against saved "never hand over" rules because the core listed
   "book" as an action. Keep built-in hand-off reasons narrow, state which ones the business rules may rule out
