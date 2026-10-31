@@ -10,7 +10,7 @@
 //   off: no check-in line; a plain thanks gets only a 👍 (nothing to answer) and closes the chat;
 //   both: a thanks with new facts keeps the chat open.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { apiClient, poll, wait, oneLine } from './devbuild-client.mjs';
+import { apiClient, changeMark, poll, wait, oneLine } from './devbuild-client.mjs';
 
 const args = process.argv.slice(2);
 const [port, loginFile] = args;
@@ -21,7 +21,12 @@ if (!/^\d+$/.test(port ?? '') || !loginFile)
   );
 const BASE = 'http://127.0.0.1:' + port;
 const login = readFileSync(loginFile, 'utf8');
-const field = (name) => new RegExp(`^${name}:\\s*(.+)$`, 'mi').exec(login)?.[1].trim();
+const field = (name) =>
+  login
+    .split(/\r?\n/)
+    .find((line) => line.toLowerCase().startsWith(name + ':'))
+    ?.slice(name.length + 1)
+    .trim();
 const api = apiClient(BASE);
 if (
   (await api('POST', '/auth/login', { username: field('username'), password: field('password') }))
@@ -52,7 +57,11 @@ const CASES = [
 ];
 // A check-in in any language: the reply's last line ends with a question mark (the opening-hours
 // question itself needs no question back, so a closing "?" is the check-in).
-const asksBack = (text) => /[?？]\s*\p{Extended_Pictographic}*\s*$/u.test(text.trim());
+const asksBack = (text) => {
+  const chars = [...text.trim()];
+  while (chars.length && /[\p{Extended_Pictographic}\s️]/u.test(chars.at(-1))) chars.pop();
+  return /[?？]/.test(chars.at(-1) ?? '');
+};
 
 const messages = async (jid) =>
   (await api('GET', `/chats/${encodeURIComponent(jid)}/messages`)).json?.messages ?? [];
@@ -73,7 +82,7 @@ async function run(jid, c) {
     45_000,
   );
   await wait(4_000);
-  const last = (await messages(jid)).filter((m) => !m.fromMe).at(-1);
+  const last = (await messages(jid)).findLast((m) => !m.fromMe);
   return {
     answer,
     after: (await aiTexts(jid)).slice(1),
@@ -91,14 +100,16 @@ function score(on, c, r) {
     oneLine(r.answer).slice(-60),
   ]);
   if (!c.closes) {
-    checks.push(['stays open', r.status === 'open', r.status]);
-    checks.push(['no 👍', r.thumbs === 0, r.thumbs]);
-    // The customer said what happens next: asking the check-in question again ignores it.
-    checks.push([
-      'does not repeat the check-in question',
-      !r.after.some((text) => asksBack(text) && r.answer.trim().endsWith(text.trim())),
-      JSON.stringify(r.after),
-    ]);
+    checks.push(
+      ['stays open', r.status === 'open', r.status],
+      ['no 👍', r.thumbs === 0, r.thumbs],
+      // The customer said what happens next: asking the check-in question again ignores it.
+      [
+        'does not repeat the check-in question',
+        !r.after.some((text) => asksBack(text) && r.answer.trim().endsWith(text.trim())),
+        JSON.stringify(r.after),
+      ],
+    );
     return checks;
   }
   checks.push(['closes the chat', r.status === 'resolved', r.status]);
@@ -149,22 +160,16 @@ const passed = rows.filter((r) => r.ok).length;
 const total = Math.round((passed / rows.length) * 100);
 const baseline = flag('--baseline') ? JSON.parse(readFileSync(flag('--baseline'), 'utf8')) : null;
 const was = new Map((baseline?.rows ?? []).map((r) => [r.key, r.ok]));
-for (const r of rows) {
-  const diff = !was.has(r.key)
-    ? ''
-    : was.get(r.key) === r.ok
-      ? ''
-      : r.ok
-        ? '  ▲ fixed'
-        : '  ▼ REGRESSED';
-  console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.key}  (${oneLine(r.detail)})${diff}`);
+for (const r of rows)
+  console.log(
+    `${r.ok ? 'PASS' : 'FAIL'}  ${r.key}  (${oneLine(r.detail)})${changeMark(was, r.key, r.ok)}`,
+  );
+let vsBaseline = '';
+if (baseline) {
+  const delta = total - baseline.score;
+  vsBaseline = `; baseline ${baseline.score}/100 → ${delta >= 0 ? '+' : ''}${delta}`;
 }
-console.log(
-  `AI eval score: ${total}/100 (${passed}/${rows.length} checks)` +
-    (baseline
-      ? `; baseline ${baseline.score}/100 → ${total - baseline.score >= 0 ? '+' : ''}${total - baseline.score}`
-      : ''),
-);
+console.log(`AI eval score: ${total}/100 (${passed}/${rows.length} checks)${vsBaseline}`);
 if (flag('--out'))
   writeFileSync(
     flag('--out'),

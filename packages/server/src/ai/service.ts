@@ -1694,11 +1694,10 @@ export function createAiService(
         // A plain "thanks" after the AI resolved the chat, or after its own answer, closes it with a 👍
         // whatever the resolution switch (owner rule). The 👍 goes out first: the send guard lets an AI
         // reply out only while the message is unanswered.
-        const after = resolvedByAgentSinceThen(jid, user.id)
-          ? 'resolved'
-          : looksLikeConfirmation(batchText) && answeredByAgentSinceThen(jid, user.id)
-            ? 'answer'
-            : null;
+        let after: 'resolved' | 'answer' | null = null;
+        if (resolvedByAgentSinceThen(jid, user.id)) after = 'resolved';
+        else if (looksLikeConfirmation(batchText) && answeredByAgentSinceThen(jid, user.id))
+          after = 'answer';
         if (after)
           await closeAfterThanks(
             jid,

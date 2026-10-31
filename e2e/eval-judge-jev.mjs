@@ -2,21 +2,20 @@
 // rule cannot settle (does it ask back, in which language, is the closing line only a closing). Exact
 // facts (status, 👍, message counts) stay with the eval script's rule checks.
 // Usage: node e2e/eval-judge-jev.mjs <eval result.json> [--dry-run] [--baseline <judged.json>] [--out <f>]
-// Reads the `conversations` that e2e/devbuild-resolution-eval.mjs --out saved; calls Jev through the
-// user-level skill caller (key: Windows user variable TYPESAFE_API_KEY, never printed). --dry-run checks
-// the requests without a key or network. A yes probability between LOW and HIGH is "unclear": the
-// check then falls back to the eval's rule result and is listed, so a judge's doubt is visible.
+// Reads the `conversations` that e2e/devbuild-resolution-eval.mjs --out saved and calls the Jev HTTPS
+// API (key: TYPESAFE_API_KEY in the environment, never printed; a session started before the Windows
+// user variable was set copies it into this one command). --dry-run checks the requests without a key
+// or network. A yes probability between LOW and HIGH is "unclear": the check then falls back to the
+// eval's rule result and is listed, so a judge's doubt is visible.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { changeMark, wait } from './devbuild-client.mjs';
 
 const args = process.argv.slice(2);
 const [file] = args;
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 if (!file) throw new Error('Usage: node e2e/eval-judge-jev.mjs <eval result.json> [--dry-run]');
 const dryRun = args.includes('--dry-run');
-const CALLER = join(homedir(), '.claude', 'skills', 'jev-decision', 'scripts', 'call_jev.py');
+const JEV_URL = 'https://api.typesafe.ai/v1/systemone';
 const LOW = 0.3;
 const HIGH = 0.7;
 const LANGUAGE = { en: 'English', ms: 'Malay', zh: 'Chinese' };
@@ -70,14 +69,26 @@ function stateFor(c) {
   };
 }
 
-function callJev(request) {
-  const res = spawnSync('python', [CALLER, '--request', '-', ...(dryRun ? ['--dry-run'] : [])], {
-    input: JSON.stringify(request),
-    encoding: 'utf8',
-    timeout: 60_000,
-  });
-  if (res.status !== 0) throw new Error(`Jev call failed: ${(res.stderr || res.stdout).trim()}`);
-  return JSON.parse(res.stdout);
+/** One Jev evaluation: 30 s timeout, no redirects, up to two waits on 429/529 (rate limit, overload). */
+async function callJev(request) {
+  const key = process.env.TYPESAFE_API_KEY;
+  if (!key) throw new Error('TYPESAFE_API_KEY is not set in this environment');
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(JEV_URL, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+      redirect: 'error',
+      signal: AbortSignal.timeout(30_000),
+    });
+    if ((res.status === 429 || res.status === 529) && attempt < 2) {
+      await wait(Number(res.headers.get('retry-after')) * 1000 || 5_000);
+      continue;
+    }
+    // Status only: the body may echo the request.
+    if (!res.ok) throw new Error(`Jev call failed: HTTP ${res.status}`);
+    return res.json();
+  }
 }
 
 const rows = [];
@@ -91,11 +102,13 @@ for (const c of run.conversations) {
       Object.entries(questions).map(([id, { type, instructions }]) => [id, { type, instructions }]),
     ),
   };
-  const response = callJev(request);
   if (dryRun) {
+    if (!request.state.ai_answer || !Object.keys(request.questions).length)
+      throw new Error(`incomplete request for ${c.key}`);
     console.log(`DRY  ${c.key}: ${Object.keys(request.questions).join(', ')}`);
     continue;
   }
+  const response = await callJev(request);
   for (const [id, spec] of Object.entries(questions)) {
     const yes = response.answers?.[id]?.noul;
     const key = `${c.key}/judge:${id}`;
@@ -120,9 +133,7 @@ const score = Math.round((passed / all.length) * 100);
 const baseline = flag('--baseline') ? JSON.parse(readFileSync(flag('--baseline'), 'utf8')) : null;
 const was = new Map((baseline?.rows ?? []).map((r) => [r.key, r.ok]));
 for (const r of rows) {
-  const diff =
-    !was.has(r.key) || was.get(r.key) === r.ok ? '' : r.ok ? '  ▲ fixed' : '  ▼ REGRESSED';
-  console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.key}  (${r.detail})${diff}`);
+  console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.key}  (${r.detail})${changeMark(was, r.key, r.ok)}`);
 }
 console.log(
   `Judged AI eval score: ${score}/100 (${passed}/${all.length}: ${run.rows.length} rule + ${rows.length} Jev checks, ${unclear} unclear)` +

@@ -21,6 +21,12 @@ export function checker() {
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** An eval check against a baseline run's result for the same key: '', ▲ fixed or ▼ REGRESSED. */
+export function changeMark(baseline, key, ok) {
+  if (!baseline.has(key) || baseline.get(key) === ok) return '';
+  return ok ? '  ▲ fixed' : '  ▼ REGRESSED';
+}
+
 /** `api(method, '/path', body)` against `<base>/api`, keeping the session cookie; `reset()` signs out. */
 export function apiClient(base) {
   let cookie = '';

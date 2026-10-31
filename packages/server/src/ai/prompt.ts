@@ -161,6 +161,11 @@ export function situationClock(now: Date, timeZone: string) {
   };
 }
 
+function resolutionSituation(awaiting: AiSituation['awaitingConfirmation']): string {
+  if (awaiting === 'not_confirmed') return NOT_CONFIRMED_SITUATION;
+  return `Resolution confirmation is currently ${awaiting ? 'awaited' : 'NOT awaited'}.`;
+}
+
 function currentSituation(
   { now, timeZone, awaitingConfirmation, group }: AiSituation,
   customer: AiCustomer | null,
@@ -180,10 +185,7 @@ function currentSituation(
     };
   return {
     ...situationClock(now, timeZone),
-    resolution:
-      awaitingConfirmation === 'not_confirmed'
-        ? NOT_CONFIRMED_SITUATION
-        : `Resolution confirmation is currently ${awaitingConfirmation ? 'awaited' : 'NOT awaited'}.`,
+    resolution: resolutionSituation(awaitingConfirmation),
     // Editable by the team at any time, so it lives in this per-call block, never earlier.
     ...(customer ? { customer } : {}),
   };

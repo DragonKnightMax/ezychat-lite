@@ -30,8 +30,19 @@ const CONFIRMING =
  * Words that only confirm or thank ("yes that answers it, thank you so much"). Whatever else a
  * confirming-looking message says is new information (see `addsNewFacts`).
  */
-const CONFIRMING_FILLER =
-  /\b(?:yes|yep|yeah|yup|ya|yah|ok|okay|okey|noted|thanks|thank|you|so|much|very|a|lot|lots|again|appreciated|resolved|sorted|done|great|perfect|all|good|that['’]?s|that|is|it|this|answers?|answered|my|question|questions|sure|cool|nice|got|understood|alright|clear|baik|terima|kasih|selesai|sudah|dah|faham|lah|la|ye|yer|tq|ty|thx)\b/gi;
+const CONFIRMING_FILLER = new Set(
+  (
+    'yes yep yeah yup ya yah ok okay okey noted thanks thank you so much very a lot lots again ' +
+    "appreciated resolved sorted done great perfect all good that's thats that is it this answer " +
+    'answers answered my question questions sure cool nice got understood alright clear baik ' +
+    'terima kasih selesai sudah dah faham lah la ye yer tq ty thx'
+  ).split(' '),
+);
+/** The message without its confirming filler words (Latin words only; other scripts stay). */
+const withoutFiller = (text: string) =>
+  text.replace(/[\p{L}'’]+/gu, (word) =>
+    CONFIRMING_FILLER.has(word.toLowerCase().replace('’', "'")) ? ' ' : word,
+  );
 /** The customer tells something about themselves ("we are in Malaysia", "我们公司…"). */
 const SELF_STATEMENT =
   /\b(?:we|we['’]re|i['’]m|im|i am|our|us|kami|syarikat)\b|我们|我是|我在|公司/i;
@@ -43,9 +54,7 @@ const SELF_STATEMENT =
  */
 export function addsNewFacts(text: string): boolean {
   if (/\d/.test(text) || SELF_STATEMENT.test(text)) return true;
-  const rest = text
-    .replace(HARMLESS, ' ')
-    .replace(CONFIRMING_FILLER, ' ')
+  const rest = withoutFiller(text.replace(HARMLESS, ' '))
     // Words are counted in Latin script only; Chinese facts are caught by SELF_STATEMENT.
     .replace(/[^\p{Script=Latin}\s]/gu, ' ')
     .trim();

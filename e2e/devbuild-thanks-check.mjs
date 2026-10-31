@@ -53,7 +53,7 @@ async function thanked(jid, thanks) {
   await poll(async () => (await chat(jid)).status === 'resolved', 20_000);
   await wait(2_000);
   const list = await messages(jid);
-  const last = list.filter((m) => !m.fromMe).at(-1);
+  const last = list.findLast((m) => !m.fromMe);
   return {
     chat: await chat(jid),
     aiSent: list.filter((m) => m.sentByUserId === agent.userId).length,
