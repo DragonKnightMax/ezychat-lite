@@ -42,6 +42,14 @@ function questionsFor(c) {
       instructions: `Is ai_answer written in ${lang}, the language of customer_question?`,
     },
   };
+  if (!c.case.closes && c.after.length)
+    q.follows_customer = {
+      want: true,
+      rule: `${c.key}/does not repeat the check-in question`,
+      type: 'noul',
+      instructions:
+        'Does ai_after_closing respond to what the customer said in customer_closing (for example it acknowledges their plan), instead of only repeating a question the AI already asked in ai_answer?',
+    };
   if (c.case.closes && c.switchOn)
     q.closing_only = {
       want: true,

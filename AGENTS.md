@@ -571,7 +571,9 @@ cover navigation from every admin section and recovery from malformed URLs.
   "jav"): for batches of small judgments (classify files or review comments, triage an external issue, pick a
   LEARNINGS section, rubric scores, ambiguous yes/no checks) call Jev instead of long reasoning; about 1 s and
   under 1k tokens a request. Gather evidence first; never for what code, graphify, `rg` or tests settle exactly.
-  The key is the Windows user variable `TYPESAFE_API_KEY` (never read or print it). Results are advisory: below
+  The key is the Windows user variable `TYPESAFE_API_KEY` (never print it); a session started before it was set
+  copies it into the one command that calls Jev:
+  `$env:TYPESAFE_API_KEY = [Environment]::GetEnvironmentVariable('TYPESAFE_API_KEY','User')`. Results are advisory: below
   your threshold, decide from the evidence; if Jev is down, continue without it and say so.
 - **Release review** (skill `release-review`, design `docs/superpowers/specs/2026-10-24-release-review-design.md`):
   after the last verification of a feature PR, score it with `node scripts/release-review.mjs <pr>` and log it;
@@ -593,8 +595,10 @@ cover navigation from every admin section and recovery from malformed URLs.
   agreement covers the model calls). Use or extend an `e2e/devbuild-*-eval.mjs` script (example:
   `devbuild-resolution-eval.mjs`: fixed cases in en/ms/zh, a new number per conversation, rule-checked
   results from the API, `--out`/`--baseline` for the diff); run the baseline on the code before the change,
-  then the change with `--baseline`. A check that turns `▼ REGRESSED` blocks the change; put both scores and
-  every changed check in the PR description and the Dev Build check log.
+  then the change with `--baseline`. The rule checks settle facts (status, 👍, counts); the words are judged by
+  TypeSafe Jev on the saved run (`node e2e/eval-judge-jev.mjs <run.json> --out <judged.json>`: yes/no
+  questions, a doubtful answer falls back to the rule and is counted). A check that turns `▼ REGRESSED`
+  blocks the change; put both scores and every changed check in the PR description and the Dev Build log.
 - **Owner test environments** (owner rule): Dev Builds that the owner tests by hand (real AI sign-in or
   key, Enterprise licence trial) run on the permanent folders outside the repos, `D:\dev\test-env\lite`
   (port 7491) and `D:\dev\test-env\enterprise` (port 7434), each with `start.ps1` and a README; their data
