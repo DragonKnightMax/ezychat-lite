@@ -16,6 +16,9 @@ into AGENTS.md.
 - In a Playwright Test spec, `browser.newContext()` inherits the project's `storageState`: a second person's context
   starts signed in as the saved admin, so `/login` redirects and the sign-in waits until the test times out. Pass
   `storageState: { cookies: [], origins: [] }` for a fresh sign-in.
+- A user created or reset over the API answers 403 `Password change required` on every call until
+  `POST /api/auth/change-password`: a role check (agent refused a locked file) then "passes" for the wrong reason.
+  Assert the error code (`safety_locked`, …) and a positive control (a clean file the agent may download), never the status alone.
 - Never name a module constant after a global (`URL`, `Map`, `Set`, `Buffer`): `const URL = /…/` made every
   `new URL()` in that file throw, the `try` swallowed it, and link checks silently answered "safe". A rule that
   fails closed to "nothing found" needs a test with a positive case.
@@ -1348,6 +1351,9 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
   (`dev` mode stamps a "Dev Build" badge); save a placeholder AI key so the AI page isn't red "Needs connection".
   It rewrites every module (times change), so commit only the modules whose screens changed and
   `git checkout` the rest. Demo group members never reuse a customer's number: the member's name renames that chat.
+  Headless Chromium reports notifications as blocked, so every admin shot shows the "Notifications are
+  blocked" box in the sidebar: crop the sidebar for guides, and never take test-env (Dev Build) data for
+  them (test names, repeated chats, the badge).
 - Playwright `page.clock.pauseAt(new Date())` is flaky under load (page clock runs ahead: "Cannot
   fast-forward to the past"); pause at the page's own `Date.now()` plus a few ms.
 - Never pipe a step into `tail`/`head` inside an `&&` chain: the pipe hides its exit code and the chain
