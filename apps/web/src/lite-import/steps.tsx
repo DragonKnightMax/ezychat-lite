@@ -342,11 +342,23 @@ export function defaultTeam(liteUsers: LiteUser[], people: User[]): LiteTeamChoi
   });
 }
 
-/** Merge review: what comes over, who is who, what stays Enterprise's, what to set up again. */
-export function ReviewStep({ state, bridge, act, busy, people }: StepProps & { people: User[] }) {
+/**
+ * Merge review: what comes over, who is who, what stays Enterprise's, what to set up again.
+ * `ownAddress`: this install already has its own address. Without one, Lite's app-managed address
+ * comes over (server `merge-address.ts`) instead of being set up again.
+ */
+export function ReviewStep({
+  state,
+  bridge,
+  act,
+  busy,
+  people,
+  ownAddress,
+}: StepProps & { people: User[]; ownAddress: boolean }) {
   const { t } = useTranslation('admin');
   const fail = useFail();
   const lite = state.lite!;
+  const addressMoves = lite.remote === 'managed' && lite.address !== null && !ownAddress;
   const [team, setTeam] = useState<LiteTeamChoice[]>(() => defaultTeam(lite.users, people));
   const update = (id: number, patch: Partial<LiteTeamChoice>) =>
     setTeam((rows) => rows.map((r) => (r.liteUserId === id ? { ...r, ...patch } : r)));
@@ -381,6 +393,9 @@ export function ReviewStep({ state, bridge, act, busy, people }: StepProps & { p
                 value: t('liteImport.review.reportsValue'),
                 label: t('liteImport.tile.reports'),
               },
+              ...(addressMoves && lite.address
+                ? [{ icon: Globe, value: lite.address, label: t('liteImport.tile.address') }]
+                : []),
             ]}
           />
         </CardContent>
@@ -507,7 +522,9 @@ export function ReviewStep({ state, bridge, act, busy, people }: StepProps & { p
           <ul className="flex flex-col gap-1">
             <IconLine icon={Bot}>{t('liteImport.review.stays.aiConnection')}</IconLine>
             <IconLine icon={Clock}>{t('liteImport.review.stays.timezone')}</IconLine>
-            <IconLine icon={Globe}>{t('liteImport.review.stays.address')}</IconLine>
+            {!addressMoves && (
+              <IconLine icon={Globe}>{t('liteImport.review.stays.address')}</IconLine>
+            )}
           </ul>
         </div>
         <div
@@ -519,7 +536,9 @@ export function ReviewStep({ state, bridge, act, busy, people }: StepProps & { p
             {t('liteImport.review.redoTitle')}
           </p>
           <ul className="flex flex-col gap-1">
-            <IconLine icon={Globe}>{t('liteImport.review.redo.address')}</IconLine>
+            {!addressMoves && (
+              <IconLine icon={Globe}>{t('liteImport.review.redo.address')}</IconLine>
+            )}
             <IconLine icon={LogIn}>{t('liteImport.review.redo.signIn')}</IconLine>
             <IconLine icon={PlugZap}>{t('liteImport.review.redo.mcp')}</IconLine>
           </ul>

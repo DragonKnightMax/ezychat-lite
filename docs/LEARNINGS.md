@@ -767,6 +767,9 @@ into AGENTS.md.
 - Lite → Enterprise merge (`lite-import/merge-tables.ts` `TABLE_PLAN`): every new core table must be listed as merged
   or skipped with a reason; the coverage test fails otherwise. A failed hand-over after a committed merge restores the
   pre-import backup (`onCommitted` undo) so Lite and Enterprise never both keep one number.
+  Skipping a setting that owns something outside the app (a tunnel, a DNS record) strands it: move it when the
+  target has none (`merge-address.ts`) and release it in Lite in the hand-over itself, not in Lite's restore code
+  (an older Lite runs its own restore).
 - A read-only better-sqlite3 open of a stopped WAL database still creates `-wal`/`-shm` files: remove them afterwards
   when a folder must stay byte-identical (Lite's data during an import).
 - One-shot CLI commands that exit right away log through a synchronous pino destination; the rotating server logger
@@ -1451,6 +1454,9 @@ DB --remote && wrangler deploy`, other branches `wrangler versions upload`. A tr
 - A Quick Tunnel is Running only after URL assignment and edge registration.
 - Persist app-owned tunnel/DNS IDs first, retry only those, never overwrite foreign DNS or tunnels; fall
   back to the approved zone when zone listing is denied.
+- "Address already in use" on named-tunnel setup: read the CNAME's `<id>.cfargotunnel.com` and that
+  tunnel's `deleted_at` through the Cloudflare API first. Deleting a tunnel in the dashboard (or a new
+  data folder that lost the owned list) leaves the CNAME behind, and the app correctly refuses it.
 - Unknown named-tunnel hosts are allowed only on the validated loopback proxy path, identically for HTTP
   and Socket.IO.
 - Restoration and setup share one tracked operation gate; shutdown waits for it.

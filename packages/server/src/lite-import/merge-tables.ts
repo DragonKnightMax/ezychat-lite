@@ -4,6 +4,7 @@ import type { SecretBox } from '../crypto/secret.js';
 import { audit } from '../db/audit.js';
 import type { DB } from '../db/index.js';
 import { InboxRepo } from '../inboxes/repo.js';
+import { moveOwnAddress } from './merge-address.js';
 import { IdMaps, remapJson } from './merge-remap.js';
 
 /**
@@ -45,7 +46,7 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   safety_downloads: { merged: true },
   safety_numbers: { merged: true },
   settings: {
-    skip: "install-wide settings stay the target's; only per-agent keys (ai_phrases_state:<id>) are copied",
+    skip: "install-wide settings stay the target's; only per-agent keys (ai_phrases_state:<id>) and Lite's own address (when the target has none, merge-address.ts) are copied",
   },
   sessions: { skip: 'not imported: everyone signs in again' },
   push_subscriptions: { skip: 'not imported: phones subscribe again' },
@@ -88,6 +89,8 @@ export interface MergeOutcome {
   agentImported: boolean;
   agentOff: boolean;
   renamedShortcuts: string[];
+  /** Lite's own address (hostname) that moved to the target; null when it did not. */
+  address: string | null;
 }
 
 type Row = Record<string, unknown>;
@@ -171,6 +174,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
   /** Imported agents that came in off and unbound (no slot): their chats are released. */
   const offAgentUsers: number[] = [];
   const importedHumans: number[] = [];
+  let address: string | null = null;
 
   // ── Users ──────────────────────────────────────────────────────────────────────────────────
   phase(() => {
@@ -326,6 +330,11 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       const agentId = maps.agent(Number((s.key as string).slice('ai_phrases_state:'.length)));
       if (agentId !== null) setSetting.run(`ai_phrases_state:${agentId}`, s.value);
     }
+  });
+
+  // ── Own address (only when the target has none) ────────────────────────────────────────────
+  phase(() => {
+    address = moveOwnAddress(target, lite, input.liteSecret, input.targetSecret);
   });
 
   // ── Connectors: connections (target wins), per-agent settings, Google Calendar settings ────
@@ -577,6 +586,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       meta: {
         inbox: input.inboxId,
         counts: { ...counts, agentImported, agentOff, renamedShortcuts: renamedShortcuts.length },
+        addressMoved: address !== null,
       },
     });
   });
@@ -585,5 +595,5 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     run();
     input.progress(i + 1, phases.length);
   });
-  return { counts, agentImported, agentOff, renamedShortcuts };
+  return { counts, agentImported, agentOff, renamedShortcuts, address };
 }

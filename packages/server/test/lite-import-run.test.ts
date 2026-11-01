@@ -148,6 +148,25 @@ describe('merge mode', () => {
     db.close();
   });
 
+  it.each([
+    ['moved', 'inbox.lite.example', 'off'],
+    ['stayed', null, 'named'],
+  ])(
+    "Lite's own address %s: the hand-over releases it only when it moved",
+    async (_n, address, mode) => {
+      makeDataDir(lite, { chats: 1, tunnel: 'inbox.lite.example' });
+      makeDataDir(target, { chats: 1 });
+      merge.fn.mockResolvedValue({ ...result, address });
+      // the address stays internal: the CLI outcome is the plain result
+      expect(await runLiteImport(opts())).toEqual(result);
+      const db = new Database(join(lite, 'app.db'), { readonly: true });
+      expect(db.prepare("SELECT value FROM settings WHERE key = 'tunnel_mode'").get()).toEqual({
+        value: JSON.stringify(mode),
+      });
+      db.close();
+    },
+  );
+
   it('a notice that cannot be saved does not undo a finished merge', async () => {
     makeDataDir(lite, { chats: 1 });
     makeDataDir(target, { chats: 1 });

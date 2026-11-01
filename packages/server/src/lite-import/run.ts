@@ -196,7 +196,7 @@ export async function runLiteImport(opts: LiteImportOptions): Promise<LiteImport
       });
     } else {
       let undoMerge: (() => void) | null = null;
-      result = await mergeLiteInbox({
+      const { address, ...merged } = await mergeLiteInbox({
         targetDataDir: target,
         liteDataDir: lite,
         plan: opts.plan,
@@ -205,6 +205,7 @@ export async function runLiteImport(opts: LiteImportOptions): Promise<LiteImport
         progress,
         onCommitted: (undo) => (undoMerge = undo),
       });
+      result = merged;
       // Only after the merge committed (design §5.8 step 5). A failed hand-over undoes the merge,
       // so Lite and this install never both keep the number.
       current = 'handover';
@@ -216,6 +217,8 @@ export async function runLiteImport(opts: LiteImportOptions): Promise<LiteImport
           version: opts.version,
           log,
           now: opts.now,
+          // The target now runs Lite's tunnel: Lite must not start it again.
+          releaseAddress: Boolean(address),
           afterPart: (part) => opts.fault?.(`handover:${part}`),
         });
       } catch (err) {

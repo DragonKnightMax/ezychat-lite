@@ -68,12 +68,15 @@ function backupPath(targetDataDir: string, now: Date): string {
 
 /**
  * Merges a Lite data folder into a target data folder that already has data, as a new inbox
- * (design §5.8). The target's server must be stopped. Checks throw `LiteImportRefused` before
+ * (design §5.8). Lite's own address comes along when the target has none (`address`; the
+ * caller's hand-over releases it in Lite). The target's server must be stopped. Checks throw `LiteImportRefused` before
  * anything changes; any other failure rolls everything back (the target database is unchanged,
  * the copied WhatsApp and media folders and the work folder are deleted) and rethrows.
  * Lite's folder is only read. The moved marker is the caller's.
  */
-export async function mergeLiteInbox(opts: MergeOptions): Promise<LiteImportResult> {
+export async function mergeLiteInbox(
+  opts: MergeOptions,
+): Promise<LiteImportResult & { address: string | null }> {
   const log = opts.log.child({ mod: 'lite-import' });
   const started = Date.now();
   const { targetDataDir, liteDataDir } = opts;
@@ -213,6 +216,7 @@ export async function mergeLiteInbox(opts: MergeOptions): Promise<LiteImportResu
         inboxId,
         ...outcome.counts,
         agentOff: outcome.agentOff,
+        addressMoved: outcome.address !== null,
         ms: Date.now() - started,
       },
       'lite merge done',
@@ -227,6 +231,7 @@ export async function mergeLiteInbox(opts: MergeOptions): Promise<LiteImportResu
       agentImported: outcome.agentImported,
       agentOff: outcome.agentOff,
       renamedShortcuts: outcome.renamedShortcuts,
+      address: outcome.address,
     };
   } catch (err) {
     for (const dir of created) rmSync(dir, { recursive: true, force: true });

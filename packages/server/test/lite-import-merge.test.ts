@@ -71,6 +71,8 @@ describe('mergeLiteInbox', () => {
       agentImported: true,
       agentOff: false,
       renamedShortcuts: ['hi-lite'],
+      // Lite has no own address here (lite-import-address.test.ts covers one that moves)
+      address: null,
     });
     expect(progress.map((p) => `${p.step}:${p.state}`)).toEqual(
       expect.arrayContaining([

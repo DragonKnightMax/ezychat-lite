@@ -41,11 +41,16 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function renderPage(notice: LiteImportNotice | null = null) {
+function renderPage(
+  notice: LiteImportNotice | null = null,
+  settings: { namedTunnelHostname: string | null; hasTunnelToken: boolean } | null = null,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/users') return json({ users: USERS });
+      if (url === '/api/settings' && settings)
+        return json({ port: 7434, lanEnabled: false, historyDays: 3, ...settings });
       if (url === '/api/lite-import/notice' && notice) return json(notice);
       return json({ error: { code: 'not_found', message: 'nope' } }, 404);
     }),
@@ -165,6 +170,23 @@ describe('LiteImportPage', () => {
     });
     expect(await screen.findByTestId('lite-running')).toBeTruthy();
     expect(screen.getByTestId('lite-steps').textContent).toContain('Copy data 50%');
+  });
+
+  it.each([
+    ['has no own address: Lite’s address comes over', null, false, true],
+    ['has its own address: Lite’s is set up again', 'inbox.ent.example', true, false],
+  ])('merge review when this install %s', async (_n, hostname, hasToken, moves) => {
+    const { bridge } = fakeBridge(liteState());
+    window.watiLiteImport = bridge;
+    renderPage(null, { namedTunnelHostname: hostname, hasTunnelToken: hasToken });
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: 'Add this number' }));
+    await u.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findAllByTestId('lite-team-row');
+    const added = screen.getByText('What comes over').closest('[data-slot="card"]') as HTMLElement;
+    expect(added.textContent?.includes('chat.kopiapong.my')).toBe(moves);
+    expect(screen.getByTestId('lite-redo').textContent?.includes('Lite’s address')).toBe(!moves);
+    expect(screen.queryByText('Address') === null).toBe(moves);
   });
 
   it('switching back to "Same person as" picks the first Enterprise user', async () => {

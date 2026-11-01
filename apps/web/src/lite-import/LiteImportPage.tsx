@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, Loader2, MonitorDown, SearchX, ShieldCheck } from 'lucide-react';
 import type { DesktopLiteImportBridge, LiteImportPhase } from '@ezychat/shared';
-import { useUsers } from '../api/queries';
+import { useSettings, useUsers } from '../api/queries';
 import { Banner, PageHeader } from '@/components/app';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -102,6 +102,7 @@ function Wizard({ bridge }: { bridge: DesktopLiteImportBridge }) {
   const { t } = useTranslation('admin');
   const { state, error, busy, act } = useLiteImport(bridge);
   const users = useUsers();
+  const settings = useSettings();
   const [local, setLocal] = useState<'found' | 'checks' | 'review'>('found');
 
   if (error) return <Banner tone="danger">{t('liteImport.readFailed')}</Banner>;
@@ -148,10 +149,19 @@ function Wizard({ bridge }: { bridge: DesktopLiteImportBridge }) {
         />
       )}
       {view === 'review' &&
-        (users.isPending ? (
+        (users.isPending || settings.isPending ? (
           <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
         ) : (
-          <ReviewStep {...step} people={people} />
+          <ReviewStep
+            {...step}
+            people={people}
+            // Unknown (settings failed to load) reads as "has its own": the old, safe wording.
+            ownAddress={
+              settings.data
+                ? settings.data.hasTunnelToken || Boolean(settings.data.namedTunnelHostname)
+                : true
+            }
+          />
         ))}
       {view === 'running' &&
         (state.phase === 'failed' ? (
