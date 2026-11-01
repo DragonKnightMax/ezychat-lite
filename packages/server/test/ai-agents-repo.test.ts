@@ -1,11 +1,11 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SecretBox } from '../src/crypto/secret.js';
 import type { DB } from '../src/db/index.js';
-import { migrate, migrationsDir } from '../src/db/migrate.js';
+import { migrate } from '../src/db/migrate.js';
 import { SettingsStore } from '../src/db/settings.js';
 import {
   AgentError,
@@ -45,12 +45,7 @@ function dbAt(version: number): { db: DB; settings: SettingsStore } {
   const db = new Database(':memory:');
   dbs.push(db);
   db.pragma('foreign_keys = ON');
-  const files = readdirSync(migrationsDir())
-    .filter((f) => /^\d+_.+\.sql$/.test(f))
-    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-    .filter((f) => parseInt(f, 10) <= version);
-  for (const f of files) db.exec(readFileSync(join(migrationsDir(), f), 'utf8'));
-  db.pragma(`user_version = ${version}`);
+  migrate(db, version);
   const settings = new SettingsStore(db, SecretBox.loadOrCreate(join(dir, 'secret.key')));
   return { db, settings };
 }

@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FakeWaAdapter, type WaAdapter } from '@ezychat/wa';
 import type { User } from '@ezychat/shared';
 import { parseArgs, type ServerConfig } from '../src/config.js';
-import { migrationsDir } from '../src/db/migrate.js';
+import { migrate } from '../src/db/migrate.js';
 import { canOpen, scopeFor, scopeIds, usersWhoCanOpen } from '../src/inboxes/access.js';
 import { InboxConnections } from '../src/inboxes/connections.js';
 import { InboxRepo } from '../src/inboxes/repo.js';
@@ -67,11 +67,7 @@ describe('inbox foundation', () => {
     const dir = tempDir();
     // a data dir as Lite left it: schema 13, two chats, a linked WhatsApp session
     const old = new Database(join(dir, 'app.db'));
-    for (const file of readdirSync(migrationsDir())
-      .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 13)
-      .sort())
-      old.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-    old.pragma('user_version = 13');
+    migrate(old, 13);
     old.exec(
       "INSERT INTO users (username, display_name, password_hash, role, created_at) VALUES ('agent1', 'A', 'x', 'agent', 1)",
     );

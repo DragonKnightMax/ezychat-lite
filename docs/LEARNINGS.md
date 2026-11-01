@@ -331,7 +331,9 @@ into AGENTS.md.
   times out on a branch is a branch regression (load, not flakiness): compare per-test times first.
 - A test that runs every migration on a fresh SQLite file costs ~1 s per test locally and timed out (> 30 s)
   on `windows-latest` (disk sync per migration on a busy runner): build migration-only test databases with
-  `new Database(':memory:')` unless the test reopens the file.
+  `new Database(':memory:')` unless the test reopens the file. Bring it to an old schema with `migrate(db, N)` and
+  compare with `latestMigration()` (`src/db/migrate.ts`); never list `db/migrations`, sort file names or set
+  `user_version` by hand in a test (14 drifting copies were removed, `docs/DEBT.md`).
 - Push a Lite API change before the Enterprise commit that uses it: Enterprise CI builds the Lite branch
   as pushed at that moment (`LITE_REF`), so the reverse order fails its typecheck.
 - Private repositories (e.g. `anchorsprint/ezychat-enterprise`) run CI only on the org's self-hosted
@@ -664,8 +666,8 @@ into AGENTS.md.
 - Run `npm run lint` again after the last code change, also for a script added late: e2e scripts that
   touch `document`/`window` inside `page.evaluate` need `/* global document, window -- … */` (Node globals only).
 - The context-mode hook blocks `fetch('http…` inside a Bash command: put Dev Build HTTP steps in a script
-  file (scratchpad or `e2e/devbuild-*.mjs`) and run that. A new migration also moves `LATEST` and the table
-  list in `src/db/migrate.test.ts`.
+  file (scratchpad or `e2e/devbuild-*.mjs`) and run that. A new migration adds its tables to the table list in
+  `src/db/migrate.test.ts` (`LATEST` follows `latestMigration()`).
 - A browser-side worker (e.g. the WebAssembly voice encoder) is packaged-smoke-tested by serving the
   packaged `resources/web` from the packaged server (`--web-dist`, `ELECTRON_RUN_AS_NODE=1`, `--fake-wa`)
   and driving Chrome; build with `--dir --config.directories.output=<scratch>`.

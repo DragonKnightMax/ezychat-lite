@@ -11,9 +11,6 @@ are listed here until they get a branch. Newest first; remove an item when its P
 - **One name for hand-over.** Setup, Settings and the audit say "Hand-off rules"; the agent page says "Hand-over
   rules", and its ms and zh catalogs still show the English words (`ai.agents.handoffTitle`). Pick one word in every
   language (found in the concept-tips screen review, 2026-10-30).
-- **Flaky on Windows CI:** `packages/server/test/ai-agents-repo.test.ts` › "creates an agent, updates only the
-  given texts and keeps a saved blank" timed out after 30 s once on `windows-latest` (PR #220 docs-only run;
-  passed on rerun). Fix it in its own PR.
 - **Emoji reactions: receive and show done** (branch `feat/emoji-reactions`, 2026-10-23; design
   `docs/features/emoji-reactions/design.md`). Left: (1) a live smoke against real WhatsApp of the Baileys
   mapping (`mapWAReaction`, `mapStoredReactions`: live, change, removal, group, history), still

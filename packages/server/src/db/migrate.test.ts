@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import Database from 'better-sqlite3';
-import { migrate, migrationsDir } from './migrate.js';
+import { latestMigration, migrate, migrationsDir } from './migrate.js';
 import { openDb } from './index.js';
-import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -40,18 +40,13 @@ const TABLES = [
   'safety_numbers',
   'safety_downloads',
 ];
-const LATEST = 28;
+const LATEST = latestMigration();
 
 describe('migrate', () => {
   it('keeps chat events (ids, payload) and accepts ai_tool_used after the rebuild', () => {
     const db = new Database(':memory:');
     try {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 11)
-        .sort()) {
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      }
-      db.pragma('user_version = 11');
+      migrate(db, 11);
       db.prepare(
         "INSERT INTO chat_events (id, chat_jid, type, payload, at) VALUES (7, 'a@s.whatsapp.net', 'resolved', '{\"x\":1}', 5)",
       ).run();
@@ -86,12 +81,7 @@ describe('migrate', () => {
   it('preserves old message text and marks its mention metadata as unknown on upgrade', () => {
     const db = new Database(':memory:');
     try {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 10)
-        .sort()) {
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      }
-      db.pragma('user_version = 10');
+      migrate(db, 10);
       db.prepare(
         "INSERT INTO messages (id, chat_jid, type, body, timestamp, created_at) VALUES ('old', '1203@g.us', 'text', 'Hi @123', 1, 1)",
       ).run();
@@ -144,6 +134,33 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('numbers migrations 1..latest with no gap or duplicate', () => {
+    const versions = readdirSync(migrationsDir())
+      .filter((f) => /^\d+_.+\.sql$/.test(f))
+      .map((f) => parseInt(f, 10))
+      .sort((a, b) => a - b);
+    expect(versions).toEqual(Array.from({ length: versions.length }, (_, i) => i + 1));
+    expect(latestMigration()).toBe(versions[versions.length - 1]);
+  });
+
+  it('stops after the upTo migration and continues from there on the next run', () => {
+    const db = new Database(':memory:');
+    try {
+      migrate(db, 27);
+      expect(db.pragma('user_version', { simple: true })).toBe(27);
+      const hasSafety = () =>
+        db.prepare("SELECT name FROM sqlite_master WHERE name = 'safety_items'").get();
+      expect(hasSafety()).toBeUndefined();
+      migrate(db, 0);
+      expect(db.pragma('user_version', { simple: true })).toBe(27);
+      migrate(db);
+      expect(db.pragma('user_version', { simple: true })).toBe(LATEST);
+      expect(hasSafety()).toEqual({ name: 'safety_items' });
+    } finally {
+      db.close();
+    }
+  });
+
   it('is idempotent on second run', () => {
     const db = new Database(':memory:');
     migrate(db);
@@ -157,9 +174,7 @@ describe('migrate', () => {
   it('upgrades a main-branch locale database while preserving existing users and their language', () => {
     const db = new Database(':memory:');
     try {
-      db.exec(readFileSync(join(migrationsDir(), '001_init.sql'), 'utf8'));
-      db.exec(readFileSync(join(migrationsDir(), '002_user_locale.sql'), 'utf8'));
-      db.pragma('user_version = 2');
+      migrate(db, 2);
       db.prepare(
         "INSERT INTO users(username, display_name, password_hash, role, locale, created_at) VALUES ('existing', 'Existing', 'hash', 'agent', 'ms', 1)",
       ).run();
@@ -180,9 +195,7 @@ describe('migrate', () => {
   it('turns stored AI documents into file context items with kind, size and dates', () => {
     const db = new Database(':memory:');
     try {
-      for (const file of ['001_init.sql', '002_user_locale.sql', '003_ai_member.sql'])
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      db.pragma('user_version = 3');
+      migrate(db, 3);
       db.prepare(
         "INSERT INTO ai_documents(name, size, text, created_at) VALUES ('hours.pdf', 2048, 'Open 9am', 1700)",
       ).run();
@@ -227,10 +240,7 @@ describe('migrate', () => {
   it('004 adds jid_aliases and backfills wa_remote_jid and chats.phone on an existing v3 database', () => {
     const db = new Database(':memory:');
     try {
-      for (const f of ['001_init.sql', '002_user_locale.sql', '003_ai_member.sql']) {
-        db.exec(readFileSync(join(migrationsDir(), f), 'utf8'));
-      }
-      db.pragma('user_version = 3');
+      migrate(db, 3);
       db.exec(`
         INSERT INTO chats (jid, type, name, updated_at) VALUES
           ('60111@s.whatsapp.net', 'dm', 'A', 1), ('999@lid', 'dm', '', 1),
@@ -264,11 +274,7 @@ describe('migrate', () => {
 
   it('020 turns reply suggestions off only for an install that already has users', () => {
     const upTo19 = (db: Database.Database) => {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 19)
-        .sort())
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      db.pragma('user_version = 19');
+      migrate(db, 19);
     };
     const settings = (db: Database.Database) =>
       db
@@ -302,11 +308,7 @@ describe('migrate', () => {
   it('026 adds the resolution question switch, off for every existing agent', () => {
     const db = new Database(':memory:');
     try {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 25)
-        .sort())
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      db.pragma('user_version = 25');
+      migrate(db, 25);
       const user = (name: string) =>
         Number(
           db
@@ -338,11 +340,7 @@ describe('migrate', () => {
 
   it('025 turns Fix English off only for an install that already has users, and adds team words', () => {
     const upTo24 = (db: Database.Database) => {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 24)
-        .sort())
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      db.pragma('user_version = 24');
+      migrate(db, 24);
     };
     const settings = (db: Database.Database) =>
       db
@@ -456,11 +454,7 @@ describe('migrate', () => {
   it('019 keeps inboxes as phones and starts each chat window at its newest customer message', () => {
     const db = new Database(':memory:');
     try {
-      for (const file of readdirSync(migrationsDir())
-        .filter((f) => /^\d+_/.test(f) && parseInt(f, 10) <= 18)
-        .sort())
-        db.exec(readFileSync(join(migrationsDir(), file), 'utf8'));
-      db.pragma('user_version = 18');
+      migrate(db, 18);
       db.exec(`
         INSERT INTO chats (jid, type, name, updated_at) VALUES
           ('a@s.whatsapp.net', 'dm', 'A', 1), ('b@s.whatsapp.net', 'dm', 'B', 1);

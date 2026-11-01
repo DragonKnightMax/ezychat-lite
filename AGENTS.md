@@ -11,6 +11,8 @@ npm-workspaces monorepo: `packages/{shared,wa,server}`, `apps/{web,desktop}`, al
 ## Before you start (required)
 
 1. Read `docs/LEARNINGS.md` — past mistakes and the rules that came out of them.
+   For a tech-debt review or a change in an area it lists, also read `docs/DEBT.md` (findings, fixes, open debt)
+   and record new findings and fixes there.
 2. Read `docs/design-system.md` before touching `apps/web`.
 3. Check `git status`; never overwrite uncommitted work you didn't make.
 

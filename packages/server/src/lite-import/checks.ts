@@ -1,18 +1,13 @@
 // Checks before an import (design §5.2). Each failing check is a LiteImportRefused with one code.
-import { readdirSync, statfsSync } from 'node:fs';
+import { statfsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { migrationsDir } from '../db/migrate.js';
+import { latestMigration } from '../db/migrate.js';
 import { LockedError, acquireLock } from '../lock.js';
 import { LiteImportRefused } from './errors.js';
 
 /** The newest core migration this build ships (its `user_version` after start). */
-export function newestCoreMigration(dir: string = migrationsDir()): number {
-  let max = 0;
-  for (const f of readdirSync(dir)) {
-    if (!/^\d+_.+\.sql$/.test(f)) continue;
-    max = Math.max(max, parseInt(f, 10));
-  }
-  return max;
+export function newestCoreMigration(): number {
+  return latestMigration();
 }
 
 /** Lite's schema must not be newer than this build's (migrations only run forward). */

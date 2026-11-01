@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { listAgents, migrateMemberSetting } from '../src/ai/agents.js';
 import { listSetupVersions } from '../src/ai/setup-versions.js';
-import { migrationsDir } from '../src/db/migrate.js';
+import { latestMigration, migrate } from '../src/db/migrate.js';
 import { createUserAndLogin } from './auth-helpers.js';
 import { makeTestApp, type TestApp } from './helpers.js';
 
@@ -20,8 +20,7 @@ const CREDS = '{"me":{"id":"60111111111:1@s.whatsapp.net"}}';
 function oldestDataDir(): string {
   const dir = mkdtempSync(join(tmpdir(), 'wati-oldest-'));
   const db = new Database(join(dir, 'app.db'));
-  db.exec(readFileSync(join(migrationsDir(), '001_init.sql'), 'utf8'));
-  db.pragma('user_version = 1');
+  migrate(db, 1);
   const now = 1_700_000_000_000;
   db.prepare(
     "INSERT INTO users (id, username, display_name, password_hash, role, created_at) VALUES (1, 'aisyah', 'Aisyah', 'x', 'admin', ?)",
@@ -55,12 +54,7 @@ function oldestDataDir(): string {
 function aiMemberDataDir(): string {
   const dir = oldestDataDir();
   const db = new Database(join(dir, 'app.db'));
-  for (const f of readdirSync(migrationsDir())
-    .filter((f) => /^\d+_.+\.sql$/.test(f))
-    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-    .filter((f) => parseInt(f, 10) > 1 && parseInt(f, 10) <= 14))
-    db.exec(readFileSync(join(migrationsDir(), f), 'utf8'));
-  db.pragma('user_version = 14');
+  migrate(db, 14);
   const now = 1_700_000_000_000;
   db.prepare(
     "INSERT INTO users (id, username, display_name, password_hash, role, kind, created_at) VALUES (7, 'ai-x', 'Kopi Bot', '', 'agent', 'ai', ?)",
@@ -96,12 +90,7 @@ describe('upgrade from the oldest data folder', { timeout: 30_000 }, () => {
   it('runs every migration in one start and keeps chats, messages, notes and quick replies', async () => {
     dir = oldestDataDir();
     t = await makeTestApp({ config: { dataDir: dir } });
-    const latest = Math.max(
-      ...readdirSync(migrationsDir())
-        .filter((f) => /^\d+_.*\.sql$/.test(f))
-        .map((f) => parseInt(f, 10)),
-    );
-    expect(t.ctx.db.pragma('user_version', { simple: true })).toBe(latest);
+    expect(t.ctx.db.pragma('user_version', { simple: true })).toBe(latestMigration());
 
     const { cookie } = await createUserAndLogin(t, { role: 'admin' });
     const chats = (
