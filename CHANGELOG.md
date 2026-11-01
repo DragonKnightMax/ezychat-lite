@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.67] - 2026-11-01
+
 ### Added
 
 - **Move to EzyChat Enterprise in one step.** Your team keeps everything when you upgrade: the same WhatsApp link
