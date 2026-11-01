@@ -21,7 +21,8 @@ const TUNNEL_ID = '11111111-2222-4333-8444-555555555555';
 const OTHER_ID = '66666666-7777-4888-8999-000000000000';
 const ACCOUNT = 'a'.repeat(32);
 const TOKEN = 'runtime-token-123';
-const AUTH = JSON.stringify({ accountID: ACCOUNT, apiToken: 'cf-api-token' });
+const ZONE = 'b'.repeat(32);
+const AUTH = JSON.stringify({ accountID: ACCOUNT, zoneID: ZONE, apiToken: 'cf-api-token' });
 const MANAGED = {
   id: TUNNEL_ID,
   accountID: ACCOUNT,
@@ -81,9 +82,13 @@ describe('merge: own address', () => {
     const lite = seedLite();
     giveAddress(lite.dir);
     {
-      // A half-done Cloudflare sign-in of the target (no address) is replaced; its tunnels stay listed.
+      // A half-done Cloudflare sign-in of the target to the same account (no address): its tunnels
+      // stay listed beside Lite's.
       const { db, s } = settingsOf(t.dir);
-      s.setSecret('cloudflare_auth', JSON.stringify({ accountID: 'c'.repeat(32), apiToken: 'x' }));
+      s.setSecret(
+        'cloudflare_auth',
+        JSON.stringify({ accountID: ACCOUNT, zoneID: ZONE, apiToken: 'target-api-token' }),
+      );
       s.set('cloudflare_owned_tunnels', [
         { id: OTHER_ID, accountID: ACCOUNT, name: 'old' },
         { id: '99999999-2222-4333-8444-555555555555', accountID: 'c'.repeat(32), name: 'x' },
@@ -116,6 +121,27 @@ describe('merge: own address', () => {
     expect(() => liteBox.decrypt(raw.value)).toThrow();
     db.close();
     expect(auditMeta(t.dir).addressMoved).toBe(true);
+  });
+
+  it('never replaces a Cloudflare sign-in of the target to another account', async () => {
+    const t = seedTarget();
+    const lite = seedLite();
+    giveAddress(lite.dir);
+    const other = JSON.stringify({
+      accountID: 'c'.repeat(32),
+      zoneID: ZONE,
+      apiToken: 'other-token',
+    });
+    {
+      const { db, s } = settingsOf(t.dir);
+      s.setSecret('cloudflare_auth', other);
+      db.close();
+    }
+    expect((await merge(t.dir, lite.dir)).address).toBeNull();
+    const { db, s } = settingsOf(t.dir);
+    expect(s.getSecret('cloudflare_auth')).toBe(other);
+    expect(s.getSecret('tunnel_token')).toBeNull();
+    db.close();
   });
 
   it('keeps the target’s own address and leaves Lite’s behind', async () => {
@@ -151,13 +177,20 @@ describe('merge: own address', () => {
     db.close();
   });
 
-  it('does not move a Lite address whose token or sign-in cannot be read', async () => {
+  it.each([
+    ['a sign-in that cannot be decrypted', 'cloudflare_auth', 'garbage'],
+    [
+      'a managed record Cloudflare setup would refuse',
+      'cloudflare_managed_tunnel',
+      JSON.stringify({ ...MANAGED, hostname: 'not a host!' }),
+    ],
+  ])('does not move a Lite address with %s', async (_n, key, value) => {
     const t = seedTarget();
     const lite = seedLite();
     giveAddress(lite.dir);
     {
       const db = openDb(join(lite.dir, 'app.db'));
-      db.prepare("UPDATE settings SET value = 'garbage' WHERE key = 'cloudflare_auth'").run();
+      db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(value, key);
       db.close();
     }
     expect((await merge(t.dir, lite.dir)).address).toBeNull();

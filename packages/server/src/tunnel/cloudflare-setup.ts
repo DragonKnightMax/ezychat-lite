@@ -55,6 +55,8 @@ const Managed = Owned.extend({
   port: z.number(),
   tokenHash: z.string(),
 });
+/** Saved shapes of `CLOUDFLARE_OWNED_KEY` entries and `CLOUDFLARE_MANAGED_KEY` (Lite import reads them). */
+export { Owned as CloudflareOwnedTunnel, Managed as CloudflareManagedTunnel };
 const Record = z.object({
   id: z.string(),
   name: z.string(),

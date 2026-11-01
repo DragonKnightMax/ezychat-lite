@@ -5,11 +5,14 @@
 import { z } from 'zod';
 import type { SecretBox } from '../crypto/secret.js';
 import type { DB } from '../db/index.js';
+import { CloudflareCredentials } from '../tunnel/cloudflare-api.js';
 import {
   CLOUDFLARE_AUTH_KEY,
   CLOUDFLARE_DOMAINS_KEY,
   CLOUDFLARE_MANAGED_KEY,
   CLOUDFLARE_OWNED_KEY,
+  CloudflareManagedTunnel,
+  CloudflareOwnedTunnel,
 } from '../tunnel/cloudflare-setup.js';
 import { TUNNEL_HOSTNAME_KEY, TUNNEL_MODE_KEY, TUNNEL_TOKEN_KEY } from '../tunnel/manager.js';
 
@@ -24,8 +27,9 @@ export const ADDRESS_KEYS = [
   CLOUDFLARE_OWNED_KEY,
 ] as const;
 
-const Owned = z.array(z.object({ id: z.string() }).passthrough());
-const Managed = z.object({ id: z.string(), hostname: z.string() }).passthrough();
+// The same strict shapes Cloudflare setup reads: a record it would refuse never moves.
+const Owned = z.array(CloudflareOwnedTunnel);
+const Managed = CloudflareManagedTunnel;
 
 const raw = (db: DB, key: string): string | null =>
   (db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)
@@ -40,14 +44,22 @@ const json = (value: string | null): unknown => {
   }
 };
 
-const open = (box: SecretBox, value: string | null): string | null => {
+/** Cloudflare sign-in sealed in `value`, or null when it cannot be read or is not a valid one. */
+function credentials(box: SecretBox, value: string | null): CloudflareCredentials | null {
+  const text = open(box, value);
+  if (text === null) return null;
+  const parsed = CloudflareCredentials.safeParse(json(text));
+  return parsed.success ? parsed.data : null;
+}
+
+function open(box: SecretBox, value: string | null): string | null {
   if (value === null) return null;
   try {
     return box.decrypt(value);
   } catch {
     return null;
   }
-};
+}
 
 /** True when the target already has an own address (or a half-saved one): it keeps its own. */
 export function hasOwnAddress(db: DB): boolean {
@@ -63,7 +75,8 @@ export function hasOwnAddress(db: DB): boolean {
  * Copies Lite's app-managed own address into the target (inside the merge transaction) and
  * returns its hostname; null when it does not move: the target has its own address, Lite has none
  * or set its tunnel up in the Cloudflare dashboard (its origin port cannot be updated by the app),
- * or Lite's secrets cannot be read. Secrets are sealed again with the target's key.
+ * Lite's secrets cannot be read, or the target is signed in to another Cloudflare account (its
+ * own sign-in is never replaced). Secrets are sealed again with the target's key.
  */
 export function moveOwnAddress(
   target: DB,
@@ -77,9 +90,12 @@ export function moveOwnAddress(
   const hostname = json(raw(lite, TUNNEL_HOSTNAME_KEY));
   if (!managed.success || hostname !== managed.data.hostname) return null;
   const token = open(liteSecret, raw(lite, TUNNEL_TOKEN_KEY));
-  const auth = open(liteSecret, raw(lite, CLOUDFLARE_AUTH_KEY));
+  const auth = credentials(liteSecret, raw(lite, CLOUDFLARE_AUTH_KEY));
   // Without Lite's Cloudflare sign-in the target could not move the origin to its own port.
-  if (!token || !auth) return null;
+  if (!token || !auth || auth.accountID !== managed.data.accountID) return null;
+  const targetAuth = raw(target, CLOUDFLARE_AUTH_KEY);
+  if (targetAuth !== null && credentials(targetSecret, targetAuth)?.accountID !== auth.accountID)
+    return null;
 
   const ownedOf = (db: DB) => {
     const parsed = Owned.safeParse(json(raw(db, CLOUDFLARE_OWNED_KEY)));
@@ -92,9 +108,9 @@ export function moveOwnAddress(
   upsert(target, TUNNEL_TOKEN_KEY, targetSecret.encrypt(token));
   upsert(target, TUNNEL_HOSTNAME_KEY, JSON.stringify(hostname));
   upsert(target, CLOUDFLARE_MANAGED_KEY, JSON.stringify(managed.data));
-  // The managed tunnel belongs to Lite's Cloudflare account: its sign-in and domains come along
-  // (the target had no address, so its own sign-in, if any, was not in use).
-  upsert(target, CLOUDFLARE_AUTH_KEY, targetSecret.encrypt(auth));
+  // The managed tunnel belongs to Lite's Cloudflare account (the target has no sign-in, or one to
+  // the same account): Lite's sign-in and domains come along.
+  upsert(target, CLOUDFLARE_AUTH_KEY, targetSecret.encrypt(JSON.stringify(auth)));
   upsert(target, CLOUDFLARE_DOMAINS_KEY, raw(lite, CLOUDFLARE_DOMAINS_KEY) ?? '[]');
   upsert(target, CLOUDFLARE_OWNED_KEY, JSON.stringify(owned));
   return managed.data.hostname;
