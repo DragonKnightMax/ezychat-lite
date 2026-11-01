@@ -84,7 +84,15 @@ export const LiteImportPlan = z.object({
 });
 export type LiteImportPlan = z.infer<typeof LiteImportPlan>;
 
-export const LiteImportStepId = z.enum(['stop', 'copy', 'migrate', 'merge', 'verify', 'handover', 'start']);
+export const LiteImportStepId = z.enum([
+  'stop',
+  'copy',
+  'migrate',
+  'merge',
+  'verify',
+  'handover',
+  'start',
+]);
 export type LiteImportStepId = z.infer<typeof LiteImportStepId>;
 
 /** One JSON line the import CLI prints on stdout while it runs. */
@@ -120,6 +128,7 @@ export type LiteImportOutcome = z.infer<typeof LiteImportOutcome>;
 export const LiteImportPhase = z.enum([
   'idle', // nothing scanned yet
   'none', // no Lite data on this PC
+  'protected', // Lite's data is in its OS service's machine folder, which this user cannot read
   'found', // summary ready, checks pass
   'blocked', // a check failed (issues)
   'running',
@@ -135,6 +144,12 @@ export interface LiteImportStep {
   progress: number | null;
 }
 
+/**
+ * The "Allow" step of phase 'protected' (one admin prompt runs Lite's own "Remove service", which moves
+ * its data to Lite's user folder): waiting for the OS prompt, refused (nothing changed) or failed.
+ */
+export type LiteUnlockState = 'idle' | 'waiting' | 'declined' | 'failed';
+
 /** Desktop main → web state of the import (never contains secrets or chat data). */
 export interface LiteImportState {
   phase: LiteImportPhase;
@@ -142,6 +157,8 @@ export interface LiteImportState {
   lite: LiteSummary | null;
   /** Lite ran as an OS service (the stop needs one admin prompt). */
   liteService: boolean;
+  /** Phase 'protected' only; 'idle' everywhere else. */
+  unlock: LiteUnlockState;
   enterprise: {
     hasData: boolean;
     inboxes: number;
@@ -160,6 +177,11 @@ export interface DesktopLiteImportBridge {
   getState(): Promise<LiteImportState>;
   /** Find Lite data on this PC, read its summary and run the checks. */
   scan(): Promise<LiteImportState>;
+  /**
+   * Phase 'protected': scan again, and only when Lite's data is still locked, free it with one admin
+   * prompt (Lite's own "Remove service") and scan. No arguments: nothing from the page reaches the step.
+   */
+  unlock(): Promise<LiteImportState>;
   /** Stop Lite, then copy or merge. The plan is only used in merge mode. */
   start(plan: LiteImportPlan): Promise<LiteImportState>;
   /** Back to the scan after a failure or a blocked check. */

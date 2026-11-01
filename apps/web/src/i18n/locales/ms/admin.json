@@ -2149,7 +2149,8 @@
       "enterprise": "{{product}}",
       "newInbox": "Peti masuk baharu",
       "sameInbox": "Nombor sama",
-      "noNumber": "Tiada nombor dipaut"
+      "noNumber": "Tiada nombor dipaut",
+      "service": "Perkhidmatan latar belakang"
     },
     "tile": {
       "chats": "chat",
@@ -2173,6 +2174,21 @@
     "none": {
       "title": "Tiada data EzyChat Lite pada PC ini",
       "body": "EzyChat Lite tidak dijumpai pada komputer ini. Tambah nombor dengan imbasan QR."
+    },
+    "protected": {
+      "title": "EzyChat Lite berjalan sebagai perkhidmatan latar belakang",
+      "ask": "Windows akan meminta kebenaran anda sekali",
+      "moves": "Perkhidmatan Lite berhenti. Datanya berpindah ke folder Lite sendiri.",
+      "allow": "Benarkan dan teruskan",
+      "allowAgain": "Cuba lagi",
+      "waitingTitle": "Menunggu Windows",
+      "waitingBody": "Pilih Yes dalam tetingkap Windows. Jika anda tidak nampak, klik ikon perisai pada bar tugas.",
+      "declined": "Windows tidak membenarkannya. Tiada apa yang berubah.",
+      "failed": "Tidak dapat membebaskan data EzyChat Lite.",
+      "byHand": "Atau lakukannya dalam EzyChat Lite:",
+      "step1": "Buka \"Status & Perkhidmatan…\" dari dulang sistem.",
+      "step2": "Di bawah \"Perkhidmatan latar belakang\", pilih \"Buang perkhidmatan\".",
+      "step3": "Kembali ke sini dan pilih \"Cuba lagi\"."
     },
     "check": {
       "title": "Semakan pantas",
@@ -2290,6 +2306,7 @@
       "bring": "Bawa dari EzyChat Lite",
       "bringChats": "{{chats}} chat dan pelanggan",
       "bringTeam": "{{n}} rakan pasukan, kata laluan sama",
+      "bringAll": "Chat, pelanggan dan pasukan",
       "new": "Mula baharu",
       "newAccount": "Cipta admin baharu",
       "newQr": "Imbas QR untuk paut WhatsApp",

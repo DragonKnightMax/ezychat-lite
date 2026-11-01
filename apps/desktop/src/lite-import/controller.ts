@@ -2,7 +2,9 @@
 // that produces the shared `LiteImportState` for the web screens. No electron import: main.ts injects
 // the file system, the server CLI, the health probe and the own-server stop/start.
 //
-// scan():  find Lite's data → `--lite-summary` → checks (Lite running, Lite's service running, disk).
+// scan():  find Lite's data (a folder this user may not read → phase 'protected') → `--lite-summary` → checks (Lite running, Lite's service running, disk).
+// unlock(): phase 'protected' → scan again (freed by hand?) → one admin prompt runs Lite's own "Remove
+//          service" (data to Lite's user folder) → scan. Refused or failed: phase stays 'protected'.
 // start(): re-check Lite is stopped → stop our server → `--import-lite` (plan in a temp file) with its
 //          progress lines → copy mode: take over Lite's port → start our server.
 // The CLI owns everything that touches data, including the checks it can only make with the databases
@@ -54,6 +56,12 @@ export interface LiteImportDeps {
   litePorts(): number[];
   /** Lite's OS service state (the adopted product's service). */
   liteServiceState(): Promise<ServiceState>;
+  /**
+   * Frees Lite's locked service folder with one admin prompt: Lite's own "Remove service" moves the data
+   * to Lite's user folder. 'cancelled': the prompt was refused; 'target_has_data': Lite's user folder
+   * already holds an app.db, so nothing ran. Nothing changed in both. Throws when the step failed.
+   */
+  unlockLite(): Promise<'done' | 'cancelled' | 'target_has_data'>;
   /** True when Lite's server answers /api/health on that port (app and edition match). */
   liteAnswers(port: number): Promise<boolean>;
   /** Whether this install already has data (decides the shown mode; the CLI decides the real one). */
@@ -81,6 +89,7 @@ function initialState(): LiteImportState {
     mode: null,
     lite: null,
     liteService: false,
+    unlock: 'idle',
     enterprise: null,
     issues: [],
     steps: [],
@@ -147,52 +156,95 @@ export class LiteImportController {
   }
 
   scan(): Promise<LiteImportState> {
+    return this.exclusive(() => this.doScan());
+  }
+
+  /**
+   * The "Allow" step of phase 'protected'. Scans first: the folder may have been freed by hand, which
+   * needs no prompt. Without Lite's service there is nothing to remove, so only the manual way is left.
+   */
+  unlock(): Promise<LiteImportState> {
     return this.exclusive(async () => {
-      if (this.state.phase === 'running') return this.getState();
-      if (!this.deps.enabled) return this.set({ ...initialState(), phase: 'none' });
+      if (this.state.phase !== 'protected') return this.getState();
+      const before = await this.doScan();
+      if (before.phase !== 'protected') return before;
       const started = this.now();
-      const location = await this.deps.findLite().catch(() => null);
-      this.location = location;
-      if (!location) {
-        this.log({ step: 'scan', found: false, ms: this.now() - started });
-        return this.set({ ...initialState(), phase: 'none' });
+      if (!before.liteService) {
+        this.log({ step: 'unlock', outcome: 'no_service' });
+        return this.set({ unlock: 'failed' });
       }
-      let lite: LiteSummary;
+      this.set({ unlock: 'waiting' });
+      let outcome: 'done' | 'cancelled' | 'target_has_data' | 'error';
       try {
-        lite = await readLiteSummary(this.deps.cli, location.dataDir);
+        outcome = await this.deps.unlockLite();
       } catch {
-        this.log({ step: 'scan', found: true, summary: false, ms: this.now() - started });
-        return this.set({ ...initialState(), phase: 'failed', failure: 'summary_failed' });
+        // The error text can carry folder paths (a user name): log the outcome only.
+        outcome = 'error';
       }
-      const [running, hasData, freeBytes] = await Promise.all([
-        this.runningIssues(),
-        this.deps.ownHasData().catch(() => false),
-        this.deps.freeBytes(this.deps.ownDataDir).catch(() => null),
-      ]);
-      const issues = [...running.issues];
-      if (freeBytes !== null && freeBytes < lite.totalBytes * DISK_MARGIN) issues.push('disk');
-      const mode: LiteImportMode = hasData ? 'merge' : 'copy';
-      this.log({
-        step: 'scan',
-        found: true,
-        kind: location.kind,
-        chats: lite.chats,
-        users: lite.users.length,
-        bytes: lite.totalBytes,
-        issues,
-        mode,
-        ms: this.now() - started,
-      });
+      this.log({ step: 'unlock', outcome, ms: this.now() - started });
+      if (outcome === 'cancelled') return this.set({ unlock: 'declined' });
+      if (outcome !== 'done') return this.set({ unlock: 'failed' });
+      const after = await this.doScan();
+      return after.phase === 'protected' ? this.set({ unlock: 'failed' }) : after;
+    });
+  }
+
+  private async doScan(): Promise<LiteImportState> {
+    if (this.state.phase === 'running') return this.getState();
+    if (!this.deps.enabled) return this.set({ ...initialState(), phase: 'none' });
+    const started = this.now();
+    const location = await this.deps.findLite().catch(() => null);
+    this.location = location;
+    if (!location) {
+      this.log({ step: 'scan', found: false, ms: this.now() - started });
+      return this.set({ ...initialState(), phase: 'none' });
+    }
+    if (!location.readable) {
+      // Lite's service folder: found, but only an elevated step may read it (design §5.5).
+      const service = await this.deps.liteServiceState().catch((): ServiceState => 'not-installed');
+      this.location = null;
+      this.log({ step: 'scan', found: true, readable: false, ms: this.now() - started });
       return this.set({
         ...initialState(),
-        phase: issues.length ? 'blocked' : 'found',
-        mode,
-        lite,
-        liteService: running.liteService,
-        // Inbox counts are not known to the desktop; the web reads them from its own API.
-        enterprise: { hasData, inboxes: 0, maxInboxes: 0, freeBytes: freeBytes ?? 0 },
-        issues,
+        phase: 'protected',
+        liteService: service !== 'not-installed',
       });
+    }
+    let lite: LiteSummary;
+    try {
+      lite = await readLiteSummary(this.deps.cli, location.dataDir);
+    } catch {
+      this.log({ step: 'scan', found: true, summary: false, ms: this.now() - started });
+      return this.set({ ...initialState(), phase: 'failed', failure: 'summary_failed' });
+    }
+    const [running, hasData, freeBytes] = await Promise.all([
+      this.runningIssues(),
+      this.deps.ownHasData().catch(() => false),
+      this.deps.freeBytes(this.deps.ownDataDir).catch(() => null),
+    ]);
+    const issues = [...running.issues];
+    if (freeBytes !== null && freeBytes < lite.totalBytes * DISK_MARGIN) issues.push('disk');
+    const mode: LiteImportMode = hasData ? 'merge' : 'copy';
+    this.log({
+      step: 'scan',
+      found: true,
+      kind: location.kind,
+      chats: lite.chats,
+      users: lite.users.length,
+      bytes: lite.totalBytes,
+      issues,
+      mode,
+      ms: this.now() - started,
+    });
+    return this.set({
+      ...initialState(),
+      phase: issues.length ? 'blocked' : 'found',
+      mode,
+      lite,
+      liteService: running.liteService,
+      // Inbox counts are not known to the desktop; the web reads them from its own API.
+      enterprise: { hasData, inboxes: 0, maxInboxes: 0, freeBytes: freeBytes ?? 0 },
+      issues,
     });
   }
 

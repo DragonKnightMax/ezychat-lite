@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -80,6 +80,38 @@ describe('LiteSetupStart', () => {
     expect(screen.getByText('EzyChat Lite found on this PC')).toBeTruthy();
     expect(screen.getByTestId('lite-figure').textContent).toContain('Same number');
     await userEvent.setup().click(screen.getByRole('button', { name: 'Start new' }));
+    expect(screen.getByTestId('today-wizard')).toBeTruthy();
+  });
+
+  it('Lite as a background service: Bring stays offered and opens the Allow step', async () => {
+    const { bridge } = fakeBridge(
+      liteState({ phase: 'protected', mode: null, lite: null, liteService: true }),
+    );
+    bridge.unlock.mockResolvedValueOnce(liteState({ phase: 'found', mode: 'copy' }));
+    window.watiLiteImport = bridge;
+    renderStart();
+    const user = userEvent.setup();
+    const bring = await screen.findByTestId('lite-setup-bring');
+    // The counts are in the locked folder: generic points, and Windows asks first.
+    expect(bring.textContent).toContain('Chats, customers and team');
+    expect(bring.textContent).toContain('Windows asks you once to allow it');
+    expect(screen.getByTestId('lite-figure').textContent).toContain('Background service');
+    await user.click(within(bring).getByRole('button', { name: 'Bring from EzyChat Lite' }));
+    const card = await screen.findByTestId('lite-protected');
+    await user.click(within(card).getByRole('button', { name: 'Allow and continue' }));
+    expect(bridge.unlock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('lite-checks')).toBeTruthy();
+  });
+
+  it('Lite as a background service: Start new on the Allow step is today’s wizard', async () => {
+    window.watiLiteImport = fakeBridge(
+      liteState({ phase: 'protected', mode: null, lite: null, liteService: true }),
+    ).bridge;
+    renderStart();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Bring from EzyChat Lite' }));
+    const card = await screen.findByTestId('lite-protected');
+    await user.click(within(card).getByRole('button', { name: 'Start new' }));
     expect(screen.getByTestId('today-wizard')).toBeTruthy();
   });
 

@@ -13,6 +13,8 @@ import {
   Globe,
   HardDrive,
   Inbox,
+  KeyRound,
+  Loader2,
   LogIn,
   MessageSquare,
   PlugZap,
@@ -28,12 +30,14 @@ import {
 import type {
   DesktopLiteImportBridge,
   LiteCheckIssue,
+  LiteImportMode,
   LiteImportState,
   LiteRole,
   LiteTeamChoice,
   LiteUser,
   User,
 } from '@ezychat/shared';
+import { Banner } from '@/components/app';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +64,85 @@ interface StepProps {
 function useFail() {
   const { t } = useTranslation('admin');
   return t('liteImport.actionFailed');
+}
+
+/**
+ * Lite runs as an OS service and its data folder is locked to it (phase 'protected', confirmed mock
+ * round 4): "Allow" frees it with one admin prompt (Lite's own "Remove service"), then the normal flow
+ * starts at Found. Nothing of Lite's data is known here, so the figure shows no number.
+ */
+export function ProtectedStep({
+  state,
+  bridge,
+  act,
+  busy,
+  mode,
+  cancel,
+}: StepProps & { mode: LiteImportMode; cancel: ReactNode }) {
+  const { t } = useTranslation('admin');
+  const fail = useFail();
+  const unlock = state.unlock;
+  const again = unlock === 'declined' || unlock === 'failed';
+  return (
+    <Card data-testid="lite-protected" data-unlock={unlock}>
+      <CardHeader>
+        <CardTitle className="text-lg">{t('liteImport.protected.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <MoveFigure number={null} service mode={mode} />
+        {unlock === 'declined' && (
+          <Banner tone="warning">{t('liteImport.protected.declined')}</Banner>
+        )}
+        {unlock === 'failed' && <Banner tone="danger">{t('liteImport.protected.failed')}</Banner>}
+        {unlock === 'waiting' ? (
+          <div className="flex min-w-0 items-start gap-3 rounded-lg border p-3" role="status">
+            <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-primary" aria-hidden />
+            <span className="flex min-w-0 flex-col">
+              <span className="font-medium">{t('liteImport.protected.waitingTitle')}</span>
+              <span className="text-sm break-words text-muted-foreground">
+                {t('liteImport.protected.waitingBody')}
+              </span>
+            </span>
+          </div>
+        ) : (
+          <>
+            <ul className="flex flex-col gap-1">
+              <IconLine icon={KeyRound} tone="text-primary">
+                {t('liteImport.protected.ask')}
+              </IconLine>
+              <IconLine icon={Settings2} tone="text-primary">
+                {t('liteImport.protected.moves')}
+              </IconLine>
+              <IconLine icon={ShieldCheck} tone="text-success">
+                {t('liteImport.found.kept')}
+              </IconLine>
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="touch"
+                disabled={busy}
+                onClick={() => void act(() => bridge.unlock(), fail)}
+              >
+                <ShieldCheck aria-hidden />
+                {again ? t('liteImport.protected.allowAgain') : t('liteImport.protected.allow')}
+              </Button>
+              {cancel}
+            </div>
+          </>
+        )}
+        {again && (
+          <div className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
+            <span className="font-medium">{t('liteImport.protected.byHand')}</span>
+            <ol className="flex list-decimal flex-col gap-1 pl-5">
+              <li>{t('liteImport.protected.step1')}</li>
+              <li>{t('liteImport.protected.step2')}</li>
+              <li>{t('liteImport.protected.step3')}</li>
+            </ol>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 /** What was found: the figure, summary tiles, and that Lite's data stays. */

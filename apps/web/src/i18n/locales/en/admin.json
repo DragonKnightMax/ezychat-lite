@@ -2179,7 +2179,8 @@
       "enterprise": "{{product}}",
       "newInbox": "New inbox",
       "sameInbox": "Same number",
-      "noNumber": "No number linked"
+      "noNumber": "No number linked",
+      "service": "Background service"
     },
     "tile": {
       "chats": "chats",
@@ -2203,6 +2204,21 @@
     "none": {
       "title": "No EzyChat Lite data on this PC",
       "body": "EzyChat Lite was not found on this computer. Add the number with a QR scan instead."
+    },
+    "protected": {
+      "title": "EzyChat Lite runs as a background service",
+      "ask": "Windows asks you once to allow it",
+      "moves": "Lite’s service stops. Its data moves to Lite’s own folder.",
+      "allow": "Allow and continue",
+      "allowAgain": "Try again",
+      "waitingTitle": "Waiting for Windows",
+      "waitingBody": "Choose Yes in the Windows window. If you do not see it, click the shield icon on the taskbar.",
+      "declined": "Windows did not allow it. Nothing changed.",
+      "failed": "Could not free EzyChat Lite’s data.",
+      "byHand": "Or do it in EzyChat Lite:",
+      "step1": "Open \"Status & Service…\" from the system tray.",
+      "step2": "Under \"Background service\", choose \"Remove service\".",
+      "step3": "Come back here and choose \"Try again\"."
     },
     "check": {
       "title": "Quick check",
@@ -2320,6 +2336,7 @@
       "bring": "Bring from EzyChat Lite",
       "bringChats": "{{chats}} chats and customers",
       "bringTeam": "{{n}} teammates, same passwords",
+      "bringAll": "Chats, customers and team",
       "new": "Start new",
       "newAccount": "Create a new admin",
       "newQr": "Scan a QR to link WhatsApp",

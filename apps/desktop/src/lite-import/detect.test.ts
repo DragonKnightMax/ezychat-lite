@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LITE_PRODUCT, defineProduct } from '../product.js';
-import { chooseLiteFolder, liteFolders, litePorts } from './detect.js';
+import { chooseLiteFolder, liteFolders, litePorts, mtimeOrDenied } from './detect.js';
 
 describe('liteFolders', () => {
   it('Windows: ProgramData and the roaming profile, from the product identity', () => {
@@ -40,7 +40,7 @@ const folders = liteFolders(LITE_PRODUCT, {
 const machineDb = '/Library/Application Support/wa-team-inbox/app.db';
 const userDb = '/Users/a/Library/Application Support/WA Team Inbox/data/app.db';
 
-function choose(dbs: Record<string, number>, serviceInstalled = false) {
+function choose(dbs: Record<string, number | 'denied'>, serviceInstalled = false) {
   return chooseLiteFolder(folders, {
     platform: 'darwin',
     serviceInstalled,
@@ -65,7 +65,45 @@ describe('chooseLiteFolder', () => {
       kind: 'machine',
       dataDir: folders.machine,
       profile: folders.profile,
+      readable: true,
     });
+  });
+
+  it('counts a locked service folder as found but not readable, never as missing', () => {
+    expect(choose({ [machineDb]: 'denied' }, true)).toEqual({
+      kind: 'machine',
+      dataDir: folders.machine,
+      profile: folders.profile,
+      readable: false,
+    });
+    // The service runs on the machine folder, even when an older user folder is still there.
+    expect(choose({ [machineDb]: 'denied', [userDb]: 9 }, true)).toMatchObject({
+      kind: 'machine',
+      readable: false,
+    });
+    // No service but still locked: a "Remove service" that stopped halfway. The user folder may lack
+    // secret.key or wa-auth/, so it is never imported; the locked folder stays the one to free.
+    expect(choose({ [machineDb]: 'denied', [userDb]: 9 })).toMatchObject({
+      kind: 'machine',
+      readable: false,
+    });
+    expect(choose({ [machineDb]: 5, [userDb]: 'denied' })).toMatchObject({
+      kind: 'machine',
+      readable: true,
+    });
+  });
+});
+
+describe('mtimeOrDenied', () => {
+  const failing = (code: string) => () => {
+    throw Object.assign(new Error(code), { code });
+  };
+
+  it('returns the mtime, null for a missing file and denied for EPERM / EACCES', () => {
+    expect(mtimeOrDenied(() => ({ mtimeMs: 42 }), '/x')).toBe(42);
+    expect(mtimeOrDenied(failing('ENOENT'), '/x')).toBeNull();
+    expect(mtimeOrDenied(failing('EPERM'), '/x')).toBe('denied');
+    expect(mtimeOrDenied(failing('EACCES'), '/x')).toBe('denied');
   });
 });
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Move to EzyChat Enterprise when EzyChat Lite runs as a background service.** Enterprise said "No EzyChat Lite
+  data on this PC", because the service keeps its data in a protected folder. It now says that EzyChat Lite runs as a
+  background service and offers **Allow and continue**: Windows asks once, EzyChat Lite's own "Remove service" step
+  moves the data to Lite's folder, and the import continues as usual. If Windows does not allow it, nothing changes
+  and the page shows how to do it in EzyChat Lite.
+- **Remove service no longer stops halfway.** When the target folder already holds data, "Remove service" now
+  refuses before it touches the service, instead of removing the service and then leaving the data where it was.
+
 ## [0.1.67] - 2026-11-01
 
 ### Added

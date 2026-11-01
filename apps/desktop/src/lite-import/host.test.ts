@@ -2,7 +2,13 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { LITE_PRODUCT } from '../product.js';
 import type { ServerCli } from './cli.js';
-import { liteImportDeps, saveSupportFile, type LiteImportHostOptions } from './host.js';
+import { ElevationCancelledError } from '../service/index.js';
+import {
+  liteImportDeps,
+  liteServiceFolders,
+  saveSupportFile,
+  type LiteImportHostOptions,
+} from './host.js';
 
 const cli: ServerCli = { run: vi.fn(async () => ({ code: 0, lines: [] })) };
 
@@ -15,7 +21,10 @@ function options(over: Partial<LiteImportHostOptions> = {}) {
     appData: '/Users/a/Library/Application Support',
     dataDir: '/ent/data',
     cli,
-    liteService: { status: vi.fn(async () => 'not-installed' as const) },
+    liteService: {
+      status: vi.fn(async () => 'not-installed' as const),
+      uninstall: vi.fn(async () => {}),
+    },
     probe: vi.fn(async (port: number) => port === 7431),
     serverUrl: () => 'http://127.0.0.1:7440',
     fetch: vi.fn(async () => Response.json({ needsSetup: false })),
@@ -53,6 +62,7 @@ describe('liteImportDeps', () => {
       dataDir: '/Users/a/Library/Application Support/WA Team Inbox/data',
       kind: 'user',
       profile: '/Users/a/Library/Application Support/WA Team Inbox',
+      readable: true,
     });
     expect(deps.litePorts()).toEqual([7431, 7420]);
     expect(await deps.liteAnswers(7431)).toBe(true);
@@ -134,6 +144,60 @@ describe('liteImportDeps', () => {
     await expect(d2.stopOwnServer()).rejects.toThrow('service mode');
     await d2.startOwnServer();
     expect(refusing.ownServer.restart).not.toHaveBeenCalled();
+  });
+});
+
+describe('unlockLite and the Lite service folders', () => {
+  const win = {
+    adoptFrom: LITE_PRODUCT,
+    platform: 'win32' as const,
+    env: { ProgramData: 'C:\\ProgramData' },
+    appData: 'C:\\Users\\a\\AppData\\Roaming',
+    dataDir: 'C:\\Users\\a\\AppData\\Roaming\\EzyChat Enterprise\\data',
+  };
+  const liteUserDb = 'C:\\Users\\a\\AppData\\Roaming\\WA Team Inbox\\data\\app.db';
+
+  it('moves between Lite’s own folders, never into ours', () => {
+    const folders = liteServiceFolders(LITE_PRODUCT, win);
+    expect(folders).toEqual({
+      userDataDir: 'C:\\Users\\a\\AppData\\Roaming\\WA Team Inbox\\data',
+      machineDataDir: 'C:\\ProgramData\\wa-team-inbox',
+    });
+    expect(folders.userDataDir).not.toBe(win.dataDir);
+  });
+
+  it('runs Lite’s own Remove service: done, or cancelled when the prompt is refused', async () => {
+    const { o } = options(win);
+    o.fs.exists = () => false;
+    expect(await liteImportDeps(o).unlockLite()).toBe('done');
+    expect(o.liteService?.uninstall).toHaveBeenCalledTimes(1);
+
+    o.liteService = {
+      status: async () => 'running',
+      uninstall: vi.fn(async () => {
+        throw new ElevationCancelledError();
+      }),
+    };
+    expect(await liteImportDeps(o).unlockLite()).toBe('cancelled');
+  });
+
+  it('asks nothing when Lite’s user folder already holds an app.db, and passes other errors on', async () => {
+    const { o } = options(win);
+    o.fs.exists = (p) => p === liteUserDb;
+    expect(await liteImportDeps(o).unlockLite()).toBe('target_has_data');
+    expect(o.liteService?.uninstall).not.toHaveBeenCalled();
+
+    o.fs.exists = () => false;
+    o.liteService = {
+      status: async () => 'running',
+      uninstall: async () => {
+        throw new Error('service uninstall failed');
+      },
+    };
+    await expect(liteImportDeps(o).unlockLite()).rejects.toThrow('service uninstall failed');
+    await expect(
+      liteImportDeps(options({ ...win, liteService: null }).o).unlockLite(),
+    ).rejects.toThrow('No EzyChat Lite service');
   });
 });
 

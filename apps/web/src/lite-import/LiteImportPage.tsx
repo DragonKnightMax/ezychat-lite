@@ -12,7 +12,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { liteImportBridge, useLiteImport } from './bridge';
 import { LiteChecklistCard } from './notice';
-import { ChecksStep, DoneStep, FailedStep, FoundStep, ReviewStep, RunningStep } from './steps';
+import {
+  ChecksStep,
+  DoneStep,
+  FailedStep,
+  FoundStep,
+  ProtectedStep,
+  ReviewStep,
+  RunningStep,
+} from './steps';
 import { IconBubble, IconLine } from './ui';
 
 type View = 'found' | 'checks' | 'review' | 'running' | 'done';
@@ -104,17 +112,25 @@ function Wizard({ bridge }: { bridge: DesktopLiteImportBridge }) {
         aria-label={t('liteImport.scanning')}
       />
     );
-  if (state.phase === 'none' || !state.lite) return <NoLite />;
-
-  const merge = state.mode === 'merge';
-  const view = viewOf(state.phase, local);
-  const people = (users.data ?? []).filter((u) => !u.disabled && u.kind !== 'ai');
   const cancel = (
     <Button asChild variant="outline" size="touch">
       <Link to="/admin/inboxes">{t('liteImport.cancel')}</Link>
     </Button>
   );
   const step = { state, bridge, act, busy };
+  if (state.phase === 'protected')
+    return (
+      <div className="flex min-w-0 flex-col gap-5" data-testid="lite-wizard" data-phase="protected">
+        <Stepper merge at="found" done={false} />
+        {/* Admin → Inboxes runs after setup, so Lite's number comes in as a new inbox. */}
+        <ProtectedStep {...step} mode="merge" cancel={cancel} />
+      </div>
+    );
+  if (state.phase === 'none' || !state.lite) return <NoLite />;
+
+  const merge = state.mode === 'merge';
+  const view = viewOf(state.phase, local);
+  const people = (users.data ?? []).filter((u) => !u.disabled && u.kind !== 'ai');
   const fail = t('liteImport.actionFailed');
   return (
     <div className="flex min-w-0 flex-col gap-5" data-testid="lite-wizard" data-phase={state.phase}>

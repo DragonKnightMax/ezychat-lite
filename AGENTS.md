@@ -591,7 +591,9 @@ cover navigation from every admin section and recovery from malformed URLs.
   key, Enterprise licence trial) run on the permanent folders outside the repos, `D:\dev\test-env\lite`
   (port 7491) and `D:\dev\test-env\enterprise` (port 7434), each with `start.ps1` and a README; their data
   stays between checks. `npm run e2e`, unit tests and the mock-model checks never use them (they start
-  from empty temp data). Never real app data.
+  from empty temp data). Never real app data. A Dev Build you hand to the owner on a PC that also runs a live
+  install must make irreversible steps against that install impossible (test data, or a build that refuses
+  them); a warning in chat is not enough.
 - **Run the Dev Build check yourself before saying a feature works.** Unit tests, e2e and a screen
   review are not enough: run the feature end to end in a Dev Build (and with the real outside client
   where one exists, e.g. an MCP client), log it, and only then report it as working. Until then say

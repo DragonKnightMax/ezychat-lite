@@ -132,8 +132,31 @@ export function serviceCommand(
     : cmd;
 }
 
+/** The administrator prompt was refused (or never shown): the elevated script did not run at all. */
+export class ElevationCancelledError extends Error {
+  constructor() {
+    super('The administrator prompt was cancelled; nothing was changed.');
+    this.name = 'ElevationCancelledError';
+  }
+}
+
+/**
+ * Result of runElevatedWindows. The elevated wrapper always writes its log once it runs (Out-File opens
+ * the file first, the catch appends), so no log means UAC was refused or the process never started.
+ */
+export function elevatedWindowsOutcome(code: number, log: string | null, stderr: string): string {
+  if (code === 0) return log ?? '';
+  if (log === null) throw new ElevationCancelledError();
+  throw new Error(log || stderr.trim() || 'Elevated command failed.');
+}
+
+/** sudo-prompt's error when the macOS admin prompt is cancelled. */
+export function isMacPromptCancelled(message: string): boolean {
+  return /did not grant permission|User canceled/i.test(message);
+}
+
 /** Runs a PowerShell script elevated (UAC prompt); returns its combined output. */
-async function runElevatedWindows(script: string): Promise<string> {
+export async function runElevatedWindows(script: string): Promise<string> {
   const dir = mkdtempSync(join(tmpdir(), 'wati-svc-'));
   const inner = join(dir, 'task.ps1');
   const wrapper = join(dir, 'run.ps1');
@@ -169,12 +192,8 @@ async function runElevatedWindows(script: string): Promise<string> {
       ? readFileSync(log, 'utf8')
           .replace(/^\uFEFF/, '')
           .trim()
-      : '';
-    if (r.code !== 0) {
-      const msg = out || r.stderr.trim() || 'Elevated command failed or was cancelled.';
-      throw new Error(msg);
-    }
-    return out;
+      : null;
+    return elevatedWindowsOutcome(r.code, out, r.stderr);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -188,7 +207,8 @@ async function runElevatedMac(script: string, name: string): Promise<string> {
   try {
     return await new Promise<string>((resolve, reject) => {
       sudoExec(`/bin/bash ${shQuote(file)}`, { name }, (err, stdout, stderr) => {
-        if (err) reject(new Error(String(stderr ?? '').trim() || err.message));
+        if (err && isMacPromptCancelled(err.message)) reject(new ElevationCancelledError());
+        else if (err) reject(new Error(String(stderr ?? '').trim() || err.message));
         else resolve(String(stdout ?? '').trim());
       });
     });

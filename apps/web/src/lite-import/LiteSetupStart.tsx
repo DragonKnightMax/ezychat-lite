@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Check,
   Download,
+  KeyRound,
   MessageSquare,
   MonitorDown,
   ShieldCheck,
@@ -21,7 +22,7 @@ import { AuthShell, FullPageLoader } from '../auth/AuthShell';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { liteImportBridge, useLiteImport } from './bridge';
-import { ChecksStep, DoneStep, FailedStep, RunningStep } from './steps';
+import { ChecksStep, DoneStep, FailedStep, ProtectedStep, RunningStep } from './steps';
 import { IconBubble, IconLine, MoveFigure, type Icon } from './ui';
 
 type LiteStep = 'start' | 'bring' | 'ready';
@@ -130,9 +131,11 @@ function WithBridge({
   // Mid-import (the window was reloaded): stay on the Lite path.
   const underway = state.phase === 'running' || state.phase === 'done' || state.phase === 'failed';
   const lite = state.lite;
+  // Lite runs as an OS service: its data is locked, so nothing is known until "Allow" frees it.
+  const locked = state.phase === 'protected';
   if (path === 'choose' && !underway) {
     if (status.isPending) return <FullPageLoader />;
-    if (!status.data?.needsSetup || state.mode !== 'copy' || !lite) return startNew;
+    if (!status.data?.needsSetup || (!locked && (state.mode !== 'copy' || !lite))) return startNew;
   }
 
   const fail = t('liteImport.actionFailed');
@@ -149,20 +152,28 @@ function WithBridge({
         data-testid="lite-setup"
         data-path={choosing ? 'choose' : 'lite'}
       >
-        {choosing && lite && (
+        {choosing && (lite || locked) && (
           <>
-            <MoveFigure number={lite.number} mode="copy" />
+            <MoveFigure number={lite?.number ?? null} service={locked} mode="copy" />
             <div className="grid gap-3 sm:grid-cols-2">
               <BigChoice
                 testId="lite-setup-bring"
                 icon={Download}
                 title={t('liteImport.setup.bring')}
                 primary
-                points={[
-                  [MessageSquare, t('liteImport.setup.bringChats', { chats: lite.chats })],
-                  [Users, t('liteImport.setup.bringTeam', { n: lite.users.length })],
-                  [Zap, t('liteImport.found.noQr')],
-                ]}
+                points={
+                  lite && !locked
+                    ? [
+                        [MessageSquare, t('liteImport.setup.bringChats', { chats: lite.chats })],
+                        [Users, t('liteImport.setup.bringTeam', { n: lite.users.length })],
+                        [Zap, t('liteImport.found.noQr')],
+                      ]
+                    : [
+                        [MessageSquare, t('liteImport.setup.bringAll')],
+                        [KeyRound, t('liteImport.protected.ask')],
+                        [Zap, t('liteImport.found.noQr')],
+                      ]
+                }
                 onPick={() => setPath('lite')}
               />
               <BigChoice
@@ -185,6 +196,17 @@ function WithBridge({
         {!choosing && (
           <>
             <LiteSteps current={state.phase === 'done' ? 'ready' : 'bring'} />
+            {locked && (
+              <ProtectedStep
+                {...step}
+                mode="copy"
+                cancel={
+                  <Button variant="outline" size="touch" onClick={() => setPath('new')}>
+                    {t('liteImport.setup.new')}
+                  </Button>
+                }
+              />
+            )}
             {(state.phase === 'found' || state.phase === 'blocked') && (
               <ChecksStep
                 {...step}

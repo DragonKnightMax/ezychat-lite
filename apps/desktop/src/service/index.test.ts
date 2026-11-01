@@ -1,10 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import {
   createServiceManager,
+  elevatedWindowsOutcome,
+  ElevationCancelledError,
+  isMacPromptCancelled,
   macRuntimeBundle,
   serviceCommand,
   type ServiceDeps,
 } from './index.js';
+
+describe('elevated outcome', () => {
+  it('returns the log on success and tells a refused prompt from a failed script', () => {
+    expect(elevatedWindowsOutcome(0, 'Service removed.', '')).toBe('Service removed.');
+    expect(elevatedWindowsOutcome(0, null, '')).toBe('');
+    // No log: the elevated wrapper never ran (UAC refused), so nothing changed.
+    expect(() =>
+      elevatedWindowsOutcome(1, null, 'The operation was canceled by the user.'),
+    ).toThrow(ElevationCancelledError);
+    expect(() => elevatedWindowsOutcome(1, 'service uninstall failed', '')).toThrow(
+      'service uninstall failed',
+    );
+    expect(() => elevatedWindowsOutcome(1, '', 'boom')).toThrow('boom');
+    expect(() => elevatedWindowsOutcome(1, '', '')).toThrow('Elevated command failed.');
+  });
+
+  it('knows sudo-prompt’s cancel message on macOS', () => {
+    expect(isMacPromptCancelled('User did not grant permission.')).toBe(true);
+    expect(isMacPromptCancelled('Command failed: exit 3')).toBe(false);
+  });
+});
 
 const B = String.fromCharCode(92);
 const w = (...p: string[]) => p.join(B);

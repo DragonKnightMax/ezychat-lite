@@ -1,12 +1,13 @@
 // Builds the Lite import's dependencies from the desktop's pieces (main.ts keeps only the window and
 // server glue). No electron import: the file system, fetch and the service manager are injected.
-import { join } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 import type { LiteImportPlan } from '@ezychat/shared';
 import type { Product } from '../product.js';
+import { ElevationCancelledError } from '../service/index.js';
 import type { ServiceState } from '../service/windows.js';
 import type { ServerCli } from './cli.js';
 import type { LiteImportController, LiteImportDeps } from './controller.js';
-import { chooseLiteFolder, liteFolders, litePorts } from './detect.js';
+import { chooseLiteFolder, liteFolders, litePorts, type DetectFs } from './detect.js';
 
 export interface LiteImportHostOptions {
   /** The product whose data is imported (activeProduct().adoptFrom); null turns the import off. */
@@ -18,15 +19,19 @@ export interface LiteImportHostOptions {
   /** Our data folder. */
   dataDir: string;
   cli: ServerCli;
-  /** The adopted product's OS service (status only); null where services are not supported. */
-  liteService: { status(): Promise<ServiceState> } | null;
+  /**
+   * The adopted product's OS service; null where services are not supported. Its `uninstall` must move
+   * the data to Lite's own user folder (`liteFolders(adoptFrom).user`), never to ours: main.ts builds it
+   * with that folder as `userDataDir`.
+   */
+  liteService: { status(): Promise<ServiceState>; uninstall(): Promise<void> } | null;
   /** probeServer(port, …, product) !== null */
   probe(port: number, product: Product): Promise<boolean>;
   /** Our server's loopback URL (for GET /api/setup/status). */
   serverUrl(): string;
   fetch: typeof globalThis.fetch;
   fs: {
-    mtimeMs(path: string): number | null;
+    mtimeMs: DetectFs['mtimeMs'];
     readText(path: string): string | null;
     exists(path: string): boolean;
     freeBytes(dir: string): Promise<number | null>;
@@ -45,6 +50,18 @@ export interface LiteImportHostOptions {
   log?: LiteImportDeps['log'];
 }
 
+/**
+ * The two folders Lite's own service manager moves the data between: Lite's machine folder and Lite's
+ * user folder. Never our own data folder: "Remove service" would move Lite's data into it.
+ */
+export function liteServiceFolders(
+  product: Product,
+  o: { platform: NodeJS.Platform; env: NodeJS.ProcessEnv; appData: string },
+): { userDataDir: string; machineDataDir: string } {
+  const folders = liteFolders(product, o);
+  return { userDataDir: folders.user, machineDataDir: folders.machine };
+}
+
 export function liteImportDeps(o: LiteImportHostOptions): LiteImportDeps {
   const product = o.adoptFrom;
   const folders = product
@@ -58,6 +75,19 @@ export function liteImportDeps(o: LiteImportHostOptions): LiteImportDeps {
     enabled: !!product,
     ownDataDir: o.dataDir,
     liteServiceState: serviceState,
+    unlockLite: async () => {
+      if (!o.liteService || !folders) throw new Error('No EzyChat Lite service on this computer');
+      // The move into a folder that holds an app.db stops halfway (the script refuses too): ask nothing.
+      const path = o.platform === 'win32' ? win32 : posix;
+      if (o.fs.exists(path.join(folders.user, 'app.db'))) return 'target_has_data';
+      try {
+        await o.liteService.uninstall();
+        return 'done';
+      } catch (error) {
+        if (error instanceof ElevationCancelledError) return 'cancelled';
+        throw error;
+      }
+    },
     findLite: async () =>
       folders &&
       chooseLiteFolder(folders, {

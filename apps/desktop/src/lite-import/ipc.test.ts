@@ -33,6 +33,7 @@ function fixture() {
   const controller = {
     getState: vi.fn(() => state),
     scan: vi.fn(async () => state),
+    unlock: vi.fn(async () => state),
     start: vi.fn(async () => state),
     reset: vi.fn(async () => state),
     saveSupportFile: vi.fn(async () => true),
@@ -65,6 +66,16 @@ describe('Lite import IPC', () => {
     expect(await f.invoke(LITE_IMPORT_CHANNELS.support)).toBe(true);
     expect(f.controller.scan).toHaveBeenCalledOnce();
     expect(f.controller.reset).toHaveBeenCalledOnce();
+  });
+
+  it('unlock takes nothing from the page: the elevated step is fixed', async () => {
+    const f = fixture();
+    await f.invoke(LITE_IMPORT_CHANNELS.unlock);
+    expect(f.controller.unlock).toHaveBeenCalledOnce();
+    expect(() => f.invoke(LITE_IMPORT_CHANNELS.unlock, f.main.event, 'C:\\evil')).toThrow(
+      /Invalid request/,
+    );
+    expect(f.controller.unlock).toHaveBeenCalledOnce();
   });
 
   it('validates the plan and passes only the clean copy', async () => {

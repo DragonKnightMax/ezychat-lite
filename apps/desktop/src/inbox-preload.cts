@@ -39,6 +39,7 @@ if (process.argv.includes('--wati-lite-import')) {
   const liteImport: DesktopLiteImportBridge = {
     getState: () => ipcRenderer.invoke('wati:lite-import-state'),
     scan: () => ipcRenderer.invoke('wati:lite-import-scan'),
+    unlock: () => ipcRenderer.invoke('wati:lite-import-unlock'),
     start: (plan) => ipcRenderer.invoke('wati:lite-import-start', plan),
     reset: () => ipcRenderer.invoke('wati:lite-import-reset'),
     saveSupportFile: () => ipcRenderer.invoke('wati:lite-import-support'),

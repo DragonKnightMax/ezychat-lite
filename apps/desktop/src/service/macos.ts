@@ -152,11 +152,19 @@ export function macUninstallScript(o: MacUninstallOptions): string {
   return [
     '#!/bin/bash',
     'set -euo pipefail',
+    // Refuse before touching the daemon: a move into a folder that holds an app.db stops halfway.
+    `if [ -d ${shQuote(o.dataDir)} ] && [ -e ${shQuote(posix.join(o.moveTo, 'app.db'))} ]; then echo "Target already contains app.db; the service was left as it is." >&2; exit 3; fi`,
+    // The target is in the user's home: a symlink there (or above it) would send the move as root
+    // elsewhere. Checked before the daemon is touched, and again right before each privileged write.
+    `assert_no_link_up() { local p="$1"; while [ "$p" != "/" ] && [ -n "$p" ]; do if [ -L "$p" ]; then echo "Unexpected link: $p" >&2; exit 3; fi; p=$(dirname "$p"); done; }`,
+    `assert_no_link_up ${shQuote(o.moveTo)}`,
+    `assert_no_link_up ${shQuote(o.dataDir)}`,
     `launchctl bootout system/${o.label} 2>/dev/null || true`,
     `rm -f ${shQuote(plist)}`,
     ...(o.runtimeDir ? [`rm -rf ${shQuote(o.runtimeDir)}`] : []),
+    `assert_no_link_up ${shQuote(o.moveTo)}`,
     ...dataMoveCommands('darwin', o.dataDir, o.moveTo, null),
-    `if [ -d ${shQuote(o.moveTo)} ]; then chown -R ${shQuote(o.owner)} ${shQuote(o.moveTo)}; fi`,
+    `if [ -d ${shQuote(o.moveTo)} ]; then assert_no_link_up ${shQuote(o.moveTo)}; chown -R ${shQuote(o.owner)} ${shQuote(o.moveTo)}; fi`,
     `echo 'Service removed.'`,
     '',
   ].join('\n');

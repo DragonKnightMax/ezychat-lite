@@ -358,6 +358,58 @@ describe('LiteImportPage', () => {
     renderPage();
     expect((await screen.findByRole('alert')).textContent).toContain('Could not read');
   });
+
+  it('Lite as a background service: Allow asks Windows once, then the normal flow', async () => {
+    const { bridge } = fakeBridge(liteState({ phase: 'protected', lite: null, liteService: true }));
+    // Windows said Yes: the controller scans the freed folder and answers with the summary.
+    bridge.unlock.mockResolvedValueOnce(liteState({ phase: 'found' }));
+    window.watiLiteImport = bridge;
+    renderPage();
+    const card = await screen.findByTestId('lite-protected');
+    expect(card.dataset.unlock).toBe('idle');
+    expect(card.textContent).toContain('EzyChat Lite runs as a background service');
+    expect(card.textContent).toContain('Windows asks you once to allow it');
+    // Nothing of Lite's data is known yet: the figure shows no number.
+    expect(within(card).getByTestId('lite-figure').textContent).toContain('Background service');
+    // The manual way shows only after a refusal or a failure.
+    expect(card.textContent).not.toContain('"Remove service"');
+    expect(screen.queryByTestId('lite-none')).toBeNull();
+    await userEvent.click(within(card).getByRole('button', { name: 'Allow and continue' }));
+    await waitFor(() => expect(bridge.unlock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('lite-found')).toBeTruthy();
+  });
+
+  it('Lite as a background service: waiting for Windows shows no buttons', async () => {
+    const { bridge } = fakeBridge(
+      liteState({ phase: 'protected', lite: null, liteService: true, unlock: 'waiting' }),
+    );
+    window.watiLiteImport = bridge;
+    renderPage();
+    const card = await screen.findByTestId('lite-protected');
+    expect(within(card).getByRole('status').textContent).toContain('Waiting for Windows');
+    // The prompt can open behind the app window: the text says where to find it.
+    expect(within(card).getByRole('status').textContent).toContain('shield icon on the taskbar');
+    expect(within(card).queryByRole('button')).toBeNull();
+  });
+
+  it.each([
+    ['declined', 'Windows did not allow it. Nothing changed.'],
+    ['failed', 'Could not free EzyChat Lite’s data.'],
+  ] as const)(
+    'Lite as a background service, %s: says so, Try again, and the manual way',
+    async (unlock, text) => {
+      const { bridge } = fakeBridge(
+        liteState({ phase: 'protected', lite: null, liteService: true, unlock }),
+      );
+      window.watiLiteImport = bridge;
+      renderPage();
+      const card = await screen.findByTestId('lite-protected');
+      expect(card.textContent).toContain(text);
+      expect(card.textContent).toContain('"Remove service"');
+      await userEvent.click(within(card).getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(bridge.unlock).toHaveBeenCalledTimes(1));
+    },
+  );
 });
 
 describe('helpers', () => {

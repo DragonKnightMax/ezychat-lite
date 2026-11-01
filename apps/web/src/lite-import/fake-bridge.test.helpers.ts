@@ -46,6 +46,7 @@ export function liteState(patch: Partial<LiteImportState> = {}): LiteImportState
     mode: 'merge',
     lite: LITE,
     liteService: false,
+    unlock: 'idle',
     enterprise: { hasData: true, inboxes: 2, maxInboxes: 10, freeBytes: 50 * 1024 ** 3 },
     issues: [],
     steps: [],
@@ -61,6 +62,10 @@ export function fakeBridge(initial: LiteImportState) {
   const bridge = {
     getState: vi.fn(async () => initial),
     scan: vi.fn(async () => initial),
+    // Windows said Yes: the data is free, the normal flow starts at Found with the summary.
+    unlock: vi.fn(async () =>
+      liteState({ ...initial, phase: 'found', lite: LITE, unlock: 'idle' }),
+    ),
     start: vi.fn(async () => liteState({ ...initial, phase: 'running', steps: STEPS })),
     reset: vi.fn(async () => liteState({ ...initial, phase: 'idle' })),
     saveSupportFile: vi.fn(async () => true),

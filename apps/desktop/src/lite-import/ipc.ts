@@ -6,6 +6,7 @@ import { parseLiteImportPlan } from './parse.js';
 export const LITE_IMPORT_CHANNELS = {
   state: 'wati:lite-import-state',
   scan: 'wati:lite-import-scan',
+  unlock: 'wati:lite-import-unlock',
   start: 'wati:lite-import-start',
   reset: 'wati:lite-import-reset',
   support: 'wati:lite-import-support',
@@ -18,6 +19,7 @@ export const LITE_IMPORT_PRELOAD_ARG = '--wati-lite-import';
 export interface LiteImportIpcController {
   getState(): LiteImportState;
   scan(): Promise<LiteImportState>;
+  unlock(): Promise<LiteImportState>;
   start(plan: LiteImportPlan): Promise<LiteImportState>;
   reset(): Promise<LiteImportState>;
   saveSupportFile(): Promise<boolean>;
@@ -33,6 +35,8 @@ export function registerLiteImportIpc(
     {
       [c.state]: { arity: 0, run: () => controller.getState() },
       [c.scan]: { arity: 0, run: () => controller.scan() },
+      // No arguments: the elevated step is fixed (Lite's own "Remove service"), nothing comes from the page.
+      [c.unlock]: { arity: 0, run: () => controller.unlock() },
       [c.start]: {
         arity: 1,
         run: (plan: unknown) => {

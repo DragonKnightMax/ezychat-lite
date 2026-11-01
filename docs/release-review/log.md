@@ -311,3 +311,31 @@ Decision: **risk:auto**
 Owner's merge request in the session (2026-10-31). No real WhatsApp test was done: the Baileys send of `{ text, mentions }`
 is untested on a live number. Checked instead: unit tests, full e2e, Dev Build check 35/35, screen review, Enterprise on
 the local core.
+
+## 2026-11-01 · PR #244 · `2b3e562` · approved by the owner
+
+> now, my lite back to normal, so i can confirm its is working, release lite and enterprise
+
+## 2026-11-01 · PR #244 · `2b3e562` · risk:human (40)
+
+**NOT READY: checks pending (running: Test (ubuntu-latest), Test (windows-latest), Test (macos-latest); missing: SonarCloud Code Analysis); score 40 < 70: the owner tests and approves · risk:human (40)**
+
+Tier **critical**, set by: apps/desktop/src/main.ts, apps/desktop/src/service/index.ts, apps/desktop/src/service/macos.ts, apps/desktop/src/service/windows.ts
+
+| Item | Points | Proof |
+| --- | --- | --- |
+| Start | 50 | |
+| Tier: critical | -30 | ✓ |
+| Size: 578 code lines | -20 | ✓ |
+| Changed-lines coverage pending (CI running) | 0 | ✗ missing |
+| e2e covers the change | +10 | ✓ |
+| Desktop link check | 0 | ✗ missing |
+| Dev Build check | +10 | ✓ |
+| Screen review | +5 | ✓ |
+| Real-part test | +15 | ✓ |
+| Review comments: 0 open of 0 | 0 | ✓ |
+| **Score** | **40** | |
+
+Hard stops: 4. checks pending (running: Test (ubuntu-latest), Test (windows-latest), Test (macos-latest); missing: SonarCloud Code Analysis)
+
+Decision: **risk:human**

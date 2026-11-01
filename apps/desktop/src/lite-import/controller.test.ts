@@ -77,9 +77,10 @@ function setup(
   const deps: LiteImportDeps = {
     enabled: true,
     ownDataDir: '/ent',
-    findLite: async () => ({ dataDir: '/lite', kind: 'user', profile: '/profile' }),
+    findLite: async () => ({ dataDir: '/lite', kind: 'user', profile: '/profile', readable: true }),
     litePorts: () => [7431, 7420],
     liteServiceState: async () => over.service ?? 'not-installed',
+    unlockLite: vi.fn(async () => 'done' as const),
     liteAnswers: async (port) => (over.answers ?? []).includes(port),
     ownHasData: async () => false,
     freeBytes: async () => 10_000,
@@ -102,6 +103,27 @@ describe('scan', () => {
     const { controller, calls } = setup({ findLite: async () => null });
     expect((await controller.scan()).phase).toBe('none');
     expect(calls).toEqual([]);
+  });
+
+  it('answers protected for a locked service folder: no summary read, no start possible', async () => {
+    const { controller, calls, logs } = setup({
+      service: 'running',
+      findLite: async () => ({
+        dataDir: 'C:\\ProgramData\\wa-team-inbox',
+        kind: 'machine',
+        profile: '/profile',
+        readable: false,
+      }),
+    });
+    expect(await controller.scan()).toMatchObject({
+      phase: 'protected',
+      lite: null,
+      liteService: true,
+      issues: [],
+    });
+    expect(calls).toEqual([]);
+    expect(logs).toContainEqual(expect.objectContaining({ step: 'scan', readable: false }));
+    await expect(controller.start({ team: [] })).rejects.toThrow('scan first');
   });
 
   it('reads the summary and passes the checks: found, copy mode on an empty install', async () => {
@@ -154,6 +176,103 @@ describe('scan', () => {
   it('fails with summary_failed when the CLI cannot read Lite’s folder', async () => {
     const { controller } = setup({ script: { summary: { code: 2, lines: [] } } });
     expect(await controller.scan()).toMatchObject({ phase: 'failed', failure: 'summary_failed' });
+  });
+});
+
+describe('unlock', () => {
+  /** Lite's service folder stays locked until `free()` (what Lite's "Remove service" does). */
+  function locked(over: Parameters<typeof setup>[0] = {}) {
+    let isLocked = true;
+    const free = () => {
+      isLocked = false;
+    };
+    const ctx = setup({
+      // "Remove service" also removes the service itself.
+      liteServiceState: async () => (isLocked ? 'running' : 'not-installed'),
+      findLite: async () =>
+        isLocked
+          ? {
+              dataDir: 'C:\\ProgramData\\wa-team-inbox',
+              kind: 'machine',
+              profile: '/profile',
+              readable: false,
+            }
+          : { dataDir: '/lite', kind: 'user', profile: '/profile', readable: true },
+      ...over,
+    });
+    return { ...ctx, free };
+  }
+
+  it('asks once, then scans the freed folder: Found with the summary', async () => {
+    const ctx = locked();
+    ctx.deps.unlockLite = vi.fn(async () => {
+      ctx.free();
+      return 'done' as const;
+    });
+    await ctx.controller.scan();
+    const state = await ctx.controller.unlock();
+    expect(state).toMatchObject({ phase: 'found', unlock: 'idle', lite: summary });
+    expect(ctx.deps.unlockLite).toHaveBeenCalledTimes(1);
+    // The page saw "waiting" while the prompt was open.
+    expect(ctx.changes.map((s) => s.unlock)).toContain('waiting');
+    expect(ctx.logs).toContainEqual({ mod: 'lite-import', step: 'unlock', outcome: 'done', ms: 0 });
+  });
+
+  it('a refused prompt is declined and stays protected; nothing else runs', async () => {
+    const ctx = locked();
+    ctx.deps.unlockLite = vi.fn(async () => 'cancelled' as const);
+    await ctx.controller.scan();
+    expect(await ctx.controller.unlock()).toMatchObject({
+      phase: 'protected',
+      unlock: 'declined',
+      lite: null,
+    });
+    expect(ctx.calls).toEqual([]);
+  });
+
+  it('a failed step, a user folder that already has data, or a folder still locked: failed', async () => {
+    for (const run of [
+      async () => {
+        throw new Error('Move-Item failed in C:\\Users\\someone');
+      },
+      async () => 'target_has_data' as const,
+      async () => 'done' as const, // reported done, but the folder is still locked
+    ]) {
+      const ctx = locked();
+      ctx.deps.unlockLite = vi.fn(run);
+      await ctx.controller.scan();
+      expect(await ctx.controller.unlock()).toMatchObject({ phase: 'protected', unlock: 'failed' });
+      // The log never carries the error text (it can hold a user name).
+      expect(JSON.stringify(ctx.logs)).not.toContain('someone');
+    }
+  });
+
+  it('freed by hand meanwhile: scans without asking Windows', async () => {
+    const ctx = locked();
+    await ctx.controller.scan();
+    ctx.free();
+    expect((await ctx.controller.unlock()).phase).toBe('found');
+    expect(ctx.deps.unlockLite).not.toHaveBeenCalled();
+  });
+
+  it('without Lite’s service there is nothing to remove: failed, no prompt', async () => {
+    const ctx = locked({ liteServiceState: async () => 'not-installed' });
+    await ctx.controller.scan();
+    expect(await ctx.controller.unlock()).toMatchObject({ phase: 'protected', unlock: 'failed' });
+    expect(ctx.deps.unlockLite).not.toHaveBeenCalled();
+  });
+
+  it('does nothing outside phase protected, and a new scan clears the last answer', async () => {
+    const plain = setup();
+    await plain.controller.scan();
+    expect((await plain.controller.unlock()).phase).toBe('found');
+    expect(plain.deps.unlockLite).not.toHaveBeenCalled();
+
+    const ctx = locked();
+    ctx.deps.unlockLite = vi.fn(async () => 'cancelled' as const);
+    await ctx.controller.scan();
+    await ctx.controller.unlock();
+    expect((await ctx.controller.scan()).unlock).toBe('idle');
   });
 });
 

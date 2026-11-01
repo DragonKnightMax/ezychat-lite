@@ -39,12 +39,14 @@ describe('inbox preload bridges', () => {
     expect(mock.exposed.has('watiUpgrade')).toBe(false);
     await api.getState!();
     await api.scan!();
+    await api.unlock!();
     await api.start!({ team: [] });
     await api.reset!();
     await api.saveSupportFile!();
     expect(mock.invoke.mock.calls).toEqual([
       ['wati:lite-import-state'],
       ['wati:lite-import-scan'],
+      ['wati:lite-import-unlock'],
       ['wati:lite-import-start', { team: [] }],
       ['wati:lite-import-reset'],
       ['wati:lite-import-support'],
@@ -86,6 +88,7 @@ describe('inbox preload bridges', () => {
     expect(Object.values(LITE_IMPORT_CHANNELS)).toEqual([
       'wati:lite-import-state',
       'wati:lite-import-scan',
+      'wati:lite-import-unlock',
       'wati:lite-import-start',
       'wati:lite-import-reset',
       'wati:lite-import-support',

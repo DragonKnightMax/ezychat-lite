@@ -146,6 +146,9 @@ into AGENTS.md.
 ## Multi-agent process
 
 - AGENTS.md is the single source of truth (CLAUDE.md imports it); edit rules there.
+- Order the end checks: independent (security) review first, its fixes, then e2e + workbook record. A fix
+  commit after the e2e round changes the PR's own code, so the release review drops the e2e evidence and the
+  2–3 minute round runs twice.
 - Small changes are done directly. Large multi-part work runs through the Workflow tool with as many
   parallel agents as the work allows, with disjoint file ownership and a time budget; only the
   orchestrator commits; agents don't `npm install` unless they own that package.json.
@@ -479,9 +482,21 @@ into AGENTS.md.
 
 ## Build, tooling and Windows
 
+- Desktop-only screens (Lite import, status window) in a Dev Build on a PC with the installed apps: run the
+  window from source with `npx electron <apps/desktop> --user-data-dir=<test profile>` plus a `desktop.json`
+  port of its own. An unpackaged run does not pin the installed profile, but without its own port it finds
+  the installed server's health and becomes a client of that old build. The source-run shell serves the web
+  from `<app>/../web/dist` (`webDistDir`): an edition that builds `dist/web` needs a link there, or `/` is 404.
+- Right after a service install (data moved back to the machine folder), `/api/health` can stay silent for
+  more than 3 s while `sc query` already says RUNNING: probe with a ~15 s timeout before calling it down.
+- The service data folder (`C:\ProgramData\wa-team-inbox`, LocalSystem) is unreadable for a normal user: `statSync`
+  there throws `EPERM` (Windows) / `EACCES`. Never fold every error into "missing" (`lite-import/detect.ts`
+  `mtimeOrDenied`): a locked folder is "found, needs elevation", and the screen must say how to free it, not "not found".
 - A new `e2e/*-screens.mjs` script imports `e2e/screens-common.mjs` (argv checks, demo admin, browser, sizes,
   shot helper): copying that setup from an older script made SonarCloud fail on duplication of new code (20 %,
-  limit 3 %).
+  limit 3 %). A script that shoots the setup wizard needs fresh data on every run: `signInDemoAdmin` creates the
+  admin, and `/setup` then no longer shows (a second run times out waiting for it). A desktop-only screen gets
+  its bridge from `addInitScript` (`e2e/lite-protected-screens.mjs`).
 - An antivirus "threat blocked" report on our installer: first compare the file's SHA-256 with the release digest
   (`gh api …/releases/tags/<tag>` asset `digest`; Enterprise `latest.json`) and check `Get-AuthenticodeSignature`
   (signer Anchor Sprint Pte. Ltd.). Genuine and signed means a reputation false positive (each release is a new,
@@ -593,7 +608,9 @@ into AGENTS.md.
 
 - Owner-run PowerShell scripts: Windows PowerShell 5 with `$ErrorActionPreference = 'Stop'` stops on any native
   stderr line (e.g. npm's normal E404 for a new package). Use `Continue` and check `$LASTEXITCODE`; test the
-  read-only parts yourself before handing the script over.
+  read-only parts yourself before handing the script over. The same goes for generated (elevated) service
+  scripts: string tests passed while PS 5 rejected `Split-Path -LiteralPath $p -Parent`; run their prechecks in
+  `powershell.exe` against temp folders (cut before the first privileged command).
 
 - Stopping a background server task can leave its node child running: before a restart on the same
   `--data`, stop the process whose command line names that folder. Exit 3 can also be Windows PID reuse
@@ -631,8 +648,9 @@ into AGENTS.md.
   logs its own exit), so a low-memory reap of one does not lose the others; stop a no-longer-needed Dev
   Build first.
 - Run `node -v` before verifying: nvm4w switches Node machine-wide and Node 20 breaks this repo (Vitest
-  workers die with exit code 3221225477 before any test runs; a one-off script that loads `better-sqlite3`
-  segfaults, exit 139). Put `D:\nvm\v24.13.0` first on PATH for every command, one-off scripts included,
+  workers die with exit code 3221225477 before any test runs; jsdom test files fail with "Failed to start forks
+  worker … reading 'bind'" while node-environment files pass, so the summary looks like a partial pass; a one-off
+  script that loads `better-sqlite3` segfaults, exit 139). Put `D:\nvm\v24.13.0` first on PATH for every command, one-off scripts included,
   instead of changing the global version. A
   missing `better-sqlite3/build/` is not a failure: the module loads from its `prebuilds/`.
 - "No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs" on thousands of files means ESLint
@@ -753,6 +771,19 @@ into AGENTS.md.
 
 ## Security
 
+- A destructive elevated step (remove a service, move data) can still be checked on the owner's live PC: keep
+  its read-only checks in their own function (`windowsUninstallPrechecks`) and run the real detection, UAC
+  prompt and elevated runner with only that part (`e2e/devbuild-lite-unlock.mjs`). With the owner's agreement
+  the reversible real half can run on the live install too (`--real`: remove the service, scan), stopping
+  before what cannot be undone (the import hands the number over); tell the owner how to undo it. A chat
+  warning does not stop a click: a Dev Build window handed to the owner on a PC with a live install ran the
+  whole import. Make the irreversible step impossible there (test data, or a build that refuses it) instead.
+- A Lite marked moved (`moved.json`) while its service is installed cannot start (exit 4, the service stays
+  stopped), and the "Use EzyChat Lite again" screen appears only in standalone mode. Restore order: Remove
+  service → open Lite → Use EzyChat Lite again → install the service again.
+- An elevated script that writes into a user-writable folder (data moved back to the profile, then
+  `icacls /reset /T`) must refuse first when that folder or any folder above it is a link (junction, symlink),
+  and check every "would stop halfway" condition (target already has app.db) before it touches the service.
 - A script that writes to a folder named on the command line fails the SonarCloud gate (S8707, path
   traversal): resolve it and accept only the repo or `os.tmpdir()` (`path.relative`, no `..`), and check
   ports. Read a PR's Sonar issues with a script file: `api/issues/search?componentKeys=ossmalaysia_wa-team-inbox&pullRequest=<n>&types=VULNERABILITY` (public, no token).
@@ -1114,6 +1145,9 @@ into AGENTS.md.
 
 ## Desktop and web UI
 
+- A UAC prompt started by the hidden runner (`runElevatedWindows`: `Start-Process -Verb RunAs` from a
+  windowless PowerShell) can open behind the app window: the owner saw only "Waiting for Windows". Every
+  screen that waits for it says where to look (taskbar shield, Alt+Tab).
 - Mock screenshot scripts that need the AI to hold a chat must switch the AI member on first (`GET /api/ai`, then
   `PUT /api/ai` with `{...settings, enabled: true}`; an earlier run can leave it off and the assign answers 400), and
   scope a select to its container (`page.locator('header').getByRole('combobox')`): the chat list's inbox filter is

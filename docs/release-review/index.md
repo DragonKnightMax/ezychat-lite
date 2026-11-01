@@ -25,3 +25,5 @@ Every release review run, newest last. Never pruned.
 | 2026-10-30 | #230 | `1a244ab` | core | 75 | risk:auto | docs/release-review/log.md |
 | 2026-10-31 | #236 | `2c05465` | — | — | human-approved | docs/release-review/log.md |
 | 2026-10-31 | #239 | `f2c82dc` | — | — | human-approved | docs/release-review/log.md |
+| 2026-11-01 | #244 | `2b3e562` | — | — | human-approved | docs/release-review/log.md |
+| 2026-11-01 | #244 | `2b3e562` | critical | 40 | risk:human | docs/release-review/log.md |

@@ -51,7 +51,8 @@ import { watchForService } from './service-recovery.js';
 import { decideStartup, MOVED_EXIT_CODE, parsePortFile, serviceWaitMs } from './startup.js';
 import { createServerCli, restoreMoved } from './lite-import/cli.js';
 import { LiteImportController } from './lite-import/controller.js';
-import { liteImportDeps, saveSupportFile } from './lite-import/host.js';
+import { mtimeOrDenied } from './lite-import/detect.js';
+import { liteImportDeps, liteServiceFolders, saveSupportFile } from './lite-import/host.js';
 import { LITE_IMPORT_PRELOAD_ARG, registerLiteImportIpc } from './lite-import/ipc.js';
 import { createMovedFlow } from './lite-import/moved-flow.js';
 import { sameInboxOrigin } from './inbox-ipc.js';
@@ -823,7 +824,8 @@ async function main(): Promise<void> {
   const inboxWindow = { main: () => mainWindow, baseUrl: () => url };
 
   // Lite import (design §5.1–5.4): only a product with adoptFrom. v1 runs it with our server in
-  // standalone mode; Lite or Enterprise as an OS service needs the elevated step of §5.5 (follow-up).
+  // standalone mode. Lite as an OS service: its folder is locked; "Allow" runs Lite's own "Remove
+  // service" with one admin prompt (§5.5), which moves the data to Lite's user folder.
   const inboxPath = () => {
     const current = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getURL() : '';
     if (!sameInboxOrigin(current, url)) return '/';
@@ -849,8 +851,12 @@ async function main(): Promise<void> {
               cloudflaredBinary: cfBin,
               cloudflaredDir: cfDir,
               winswExe: winswExe(isPackaged, resourcesPath, appPath),
-              userDataDir: dataDir,
-              machineDataDir: machineDataDir(process.platform, process.env, adoptFrom),
+              // Lite's folders, never ours: uninstall() moves Lite's data into userDataDir.
+              ...liteServiceFolders(adoptFrom, {
+                platform: process.platform,
+                env: process.env,
+                appData: app.getPath('appData'),
+              }),
               port,
               version,
               product: adoptFrom,
@@ -860,13 +866,7 @@ async function main(): Promise<void> {
       serverUrl: () => url,
       fetch,
       fs: {
-        mtimeMs: (path) => {
-          try {
-            return statSync(path).mtimeMs;
-          } catch {
-            return null;
-          }
-        },
+        mtimeMs: (path) => mtimeOrDenied(statSync, path),
         readText: readTextOrNull,
         exists: existsSync,
         freeBytes: freeBytesAt,
@@ -910,6 +910,7 @@ async function main(): Promise<void> {
       {
         getState: () => liteImport.getState(),
         scan: () => liteImport.scan(),
+        unlock: () => liteImport.unlock(),
         start: (plan) => liteImport.start(plan),
         reset: () => liteImport.reset(),
         saveSupportFile: async () =>

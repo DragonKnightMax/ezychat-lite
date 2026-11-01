@@ -76,8 +76,19 @@ export function IconLine({
   );
 }
 
-/** The figure: EzyChat Lite → this product, with what happens to the number. */
-export function MoveFigure({ number, mode }: { number: string | null; mode: LiteImportMode }) {
+/**
+ * The figure: EzyChat Lite → this product, with what happens to the number. `service`: Lite's data is
+ * still locked to its OS service, so the number is not known yet.
+ */
+export function MoveFigure({
+  number,
+  mode,
+  service = false,
+}: {
+  number: string | null;
+  mode: LiteImportMode;
+  service?: boolean;
+}) {
   const { t } = useTranslation('admin');
   const box = (icon: Icon, title: string, sub: string) => (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg border bg-card p-3 text-center">
@@ -88,7 +99,11 @@ export function MoveFigure({ number, mode }: { number: string | null; mode: Lite
   );
   return (
     <div className="flex min-w-0 items-center gap-2" data-testid="lite-figure">
-      {box(Smartphone, t('liteImport.fig.lite'), number ?? t('liteImport.fig.noNumber'))}
+      {box(
+        Smartphone,
+        t('liteImport.fig.lite'),
+        service ? t('liteImport.fig.service') : (number ?? t('liteImport.fig.noNumber')),
+      )}
       <ArrowRight className="size-5 shrink-0 text-primary" aria-hidden />
       {box(
         Building2,
