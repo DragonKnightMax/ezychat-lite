@@ -203,5 +203,19 @@
     "copyLink": "Copy link address",
     "addToDictionary": "Add to dictionary",
     "noSuggestions": "No spelling suggestions"
+  },
+  "liteImport": {
+    "busy": "Bringing your data over…",
+    "supportSaved": "Support file saved"
+  },
+  "moved": {
+    "title": "This WhatsApp number now runs in {{target}}.",
+    "body": "{{product}} stays off so customers never get two replies.",
+    "open": "Open {{target}}",
+    "useLite": "Use {{product}} again",
+    "confirmTitle": "Use {{product}} again?",
+    "confirmDetail": "New messages since the move are only in {{target}}.\nWhatsApp needs a new QR scan.\nStop {{target}} on this number first.",
+    "restoring": "Turning {{product}} back on…",
+    "restoreFailed": "Could not turn {{product}} back on"
   }
 }

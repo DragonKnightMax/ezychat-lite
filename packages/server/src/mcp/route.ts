@@ -15,6 +15,7 @@ import { createMcpServer } from './server.js';
 import { resourceMetadataUrl } from './oauth-routes.js';
 import { MCP_PATH, isMcpEnabled } from './settings.js';
 import { handleMcpRequest } from './transport.js';
+import { clearMcpNotice } from '../lite-import/notice.js';
 
 // resource_metadata tells an MCP client where to find the sign-in (RFC 9728, MCP authorization).
 const unauthorized = (req: FastifyRequest) =>
@@ -93,6 +94,9 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
 
     scope.post(MCP_PATH, async (req, reply) => {
       const principal = principals.get(req)!;
+      // An AI assistant reached the new address after a Lite import: its "connect again" flag is done.
+      if (clearMcpNotice(ctx.settings))
+        log.info({ tokenId: principal.tokenId }, 'lite import mcp flag cleared');
       const server = createMcpServer({
         inbox,
         aiSetup,

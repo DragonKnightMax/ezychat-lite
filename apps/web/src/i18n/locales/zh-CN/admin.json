@@ -2126,5 +2126,178 @@
       "done": "已处理"
     },
     "teamLocked": "锁定拦下了每一次尝试，没有人打开高风险文件。"
+  },
+  "liteImport": {
+    "entry": "从 EzyChat Lite 添加号码",
+    "pageTitle": "从 EzyChat Lite 添加号码",
+    "backInboxes": "‹ 收件箱",
+    "cancel": "取消",
+    "progress": "步骤",
+    "scanning": "正在查找 EzyChat Lite…",
+    "readFailed": "无法读取迁移状态。请关闭此页面后重新打开。",
+    "actionFailed": "操作未成功，请重试。",
+    "step": {
+      "found": "已找到",
+      "checks": "检查",
+      "review": "确认",
+      "running": "迁移",
+      "done": "完成"
+    },
+    "fig": {
+      "lite": "EzyChat Lite",
+      "enterprise": "{{product}}",
+      "newInbox": "新收件箱",
+      "sameInbox": "同一号码",
+      "noNumber": "未关联号码"
+    },
+    "tile": {
+      "chats": "个聊天",
+      "customers": "位客户",
+      "team": "位同事",
+      "agent": "AI 代理",
+      "size": "待复制",
+      "address": "地址",
+      "quickReplies": "条快捷回复",
+      "reports": "报表",
+      "inbox": "收件箱"
+    },
+    "found": {
+      "titleMerge": "已找到 EzyChat Lite",
+      "titleCopy": "要带入 EzyChat Lite 的数据吗？",
+      "kept": "Lite 的数据会保留，不会删除",
+      "noQr": "无需重新扫码",
+      "continueMerge": "添加此号码",
+      "continueCopy": "带入我的数据"
+    },
+    "none": {
+      "title": "此电脑上没有 EzyChat Lite 数据",
+      "body": "这台电脑上没有找到 EzyChat Lite。请改用扫码添加号码。"
+    },
+    "check": {
+      "title": "快速检查",
+      "liteRunning": "请先关闭 EzyChat Lite",
+      "liteStopped": "Lite 已停止",
+      "liteService": "Lite 以服务方式运行。请先停止它（需要管理员权限）。",
+      "liteNewer": "Lite 版本更新。请先更新 EzyChat Enterprise。",
+      "versionOk": "版本正常",
+      "update": "更新",
+      "updateFailed": "无法检查更新。请从托盘菜单重试。",
+      "diskLow": "需要 {{need}} 可用磁盘空间",
+      "diskOk": "磁盘空间充足",
+      "again": "再次检查",
+      "sameNumber": "此号码已在这里",
+      "newNumber": "新号码",
+      "noSlot": "没有空余收件箱。请先删除一个。",
+      "slotOk": "已用 {{used}} / {{max}} 个收件箱",
+      "openInboxes": "收件箱",
+      "continue": "继续"
+    },
+    "review": {
+      "addedTitle": "将带入的内容",
+      "inboxValue": "新收件箱",
+      "reportsValue": "合并",
+      "teamTitle": "团队",
+      "teamIntro": "谁是谁？",
+      "actionLabel": "如何处理 {{name}}",
+      "match": "与此人相同",
+      "add": "新增",
+      "skip": "不带入",
+      "matchLabel": "{{name}} 对应的人",
+      "roleLabel": "{{name}} 的角色",
+      "renamed": "登录名为 {{username}}",
+      "seesEveryInbox": "可看到所有收件箱",
+      "staysTitle": "Enterprise 保留自己的设置",
+      "stays": {
+        "aiConnection": "AI 连接",
+        "timezone": "时区",
+        "address": "地址"
+      },
+      "redoTitle": "需要重新设置",
+      "redo": {
+        "address": "Lite 的地址",
+        "signIn": "登录和手机提醒",
+        "mcp": "AI 助手 （MCP）",
+        "tokens": "已连接 Lite 的 AI 助手"
+      },
+      "merge": "立即合并"
+    },
+    "role": {
+      "admin": "管理员",
+      "agent": "团队成员"
+    },
+    "run": {
+      "title": "正在迁移…",
+      "intro": "请保持这台电脑开机。",
+      "stop": "停止 Lite",
+      "copy": "复制数据",
+      "migrate": "更新数据",
+      "merge": "添加收件箱",
+      "verify": "检查",
+      "handover": "交接号码",
+      "start": "启动"
+    },
+    "fail": {
+      "title": "迁移失败",
+      "safe": "没有任何更改。Lite 已重新运行。",
+      "retry": "重试",
+      "support": "保存支持文件",
+      "saved": "支持文件已保存（不含消息或姓名）",
+      "codes": {
+        "own_server_stop": "EzyChat 无法暂停以完成迁移。请关闭其他 EzyChat 窗口后重试。",
+        "summary_failed": "EzyChat 无法读取 EzyChat Lite 的数据。",
+        "no_lite_data": "这台电脑上已找不到 EzyChat Lite 的数据。",
+        "other": "迁移时出了问题。"
+      }
+    },
+    "done": {
+      "titleMerge": "号码已添加",
+      "titleCopy": "你的数据已到位",
+      "openInbox": "打开收件箱",
+      "toInboxes": "收件箱",
+      "signInLite": "请用 EzyChat Lite 的密码登录",
+      "signIn": "登录",
+      "agentOff": "Lite 的 AI 代理已带入但处于关闭状态：没有空余 AI 代理。",
+      "renamed": "已重命名的快捷回复：{{shortcuts}}"
+    },
+    "list": {
+      "title": "为 Lite 团队完成设置",
+      "intro": "Lite 的号码现在是 {{inbox}}。已完成 {{done}} / {{total}}",
+      "share": "把地址分享给 {{n}} 位同事",
+      "signin": "他们重新登录",
+      "notifications": "他们打开手机提醒",
+      "mcp": "重新连接 AI 助手",
+      "copyAddress": "复制地址",
+      "dismiss": "关闭"
+    },
+    "mcp": {
+      "title": "EzyChat 的地址已更改",
+      "body": "连接到 EzyChat Lite 的 AI 助手需要重新连接。",
+      "newAddress": "新地址",
+      "noAddress": "打开手机访问以获取新地址",
+      "tokens": "已连接 EzyChat Lite",
+      "quickHint": "快速地址会变化。使用自己的域名可保持连接。",
+      "dismiss": "忽略"
+    },
+    "desktopOnly": {
+      "title": "仅限 EzyChat 所在的电脑",
+      "pc": "请在运行 {{product}} 的电脑上打开它",
+      "admin": "仅限管理员"
+    },
+    "setup": {
+      "title": "欢迎使用 {{product}}",
+      "subtitle": "在此电脑上找到了 EzyChat Lite",
+      "bring": "从 EzyChat Lite 带入",
+      "bringChats": "{{chats}} 个聊天和客户",
+      "bringTeam": "{{n}} 位同事，密码不变",
+      "new": "全新开始",
+      "newAccount": "创建新管理员",
+      "newQr": "扫码关联 WhatsApp",
+      "onlyHere": "仅在此电脑的桌面应用中",
+      "steps": {
+        "start": "开始",
+        "bring": "带入数据",
+        "ready": "就绪"
+      }
+    }
   }
 }

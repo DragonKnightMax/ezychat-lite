@@ -29,12 +29,16 @@ export function serviceWaitMs(serviceState: ServiceState, uptimeSeconds: number)
   return 0;
 }
 
+/** Server exit code for a data folder whose WhatsApp number moved to another edition (moved.json). */
+export const MOVED_EXIT_CODE = 4;
+
 /**
  * Server exit codes the desktop must not restart: 2 = invalid arguments, 3 = the data dir is
- * locked by another server process (restarting would loop forever).
+ * locked by another server process (restarting would loop forever), 4 = the number moved to
+ * another edition (the desktop shows the moved screen instead).
  */
 export function isRestartableExit(code: number): boolean {
-  return code !== 2 && code !== 3;
+  return code !== 2 && code !== 3 && code !== MOVED_EXIT_CODE;
 }
 
 /** Parses the port file written by server-host ({ port, pid }); null when invalid. */

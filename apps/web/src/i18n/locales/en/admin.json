@@ -2157,5 +2157,178 @@
       "done": "Reviewed"
     },
     "teamLocked": "The lock stopped every try. Nobody opened a risky file."
+  },
+  "liteImport": {
+    "entry": "Add a number from EzyChat Lite",
+    "pageTitle": "Add a number from EzyChat Lite",
+    "backInboxes": "‹ Inboxes",
+    "cancel": "Cancel",
+    "progress": "Steps",
+    "scanning": "Looking for EzyChat Lite…",
+    "readFailed": "Could not read the move status. Close this page and open it again.",
+    "actionFailed": "That did not work. Try again.",
+    "step": {
+      "found": "Found",
+      "checks": "Check",
+      "review": "Review",
+      "running": "Move",
+      "done": "Done"
+    },
+    "fig": {
+      "lite": "EzyChat Lite",
+      "enterprise": "{{product}}",
+      "newInbox": "New inbox",
+      "sameInbox": "Same number",
+      "noNumber": "No number linked"
+    },
+    "tile": {
+      "chats": "chats",
+      "customers": "customers",
+      "team": "teammates",
+      "agent": "AI agent",
+      "size": "to copy",
+      "address": "address",
+      "quickReplies": "quick replies",
+      "reports": "reports",
+      "inbox": "inbox"
+    },
+    "found": {
+      "titleMerge": "EzyChat Lite found",
+      "titleCopy": "Bring your EzyChat Lite data?",
+      "kept": "Lite’s data is kept, not deleted",
+      "noQr": "No new QR scan",
+      "continueMerge": "Add this number",
+      "continueCopy": "Bring my data"
+    },
+    "none": {
+      "title": "No EzyChat Lite data on this PC",
+      "body": "EzyChat Lite was not found on this computer. Add the number with a QR scan instead."
+    },
+    "check": {
+      "title": "Quick check",
+      "liteRunning": "Close EzyChat Lite first",
+      "liteStopped": "Lite is stopped",
+      "liteService": "Lite runs as a service. Stop it first (needs admin).",
+      "liteNewer": "Lite is newer. Update EzyChat Enterprise first.",
+      "versionOk": "Version OK",
+      "update": "Update",
+      "updateFailed": "Could not check for updates. Try again from the tray menu.",
+      "diskLow": "Need {{need}} free disk",
+      "diskOk": "Disk space OK",
+      "again": "Check again",
+      "sameNumber": "This number is already here",
+      "newNumber": "New number",
+      "noSlot": "No free inbox. Remove one first.",
+      "slotOk": "{{used}} of {{max}} inboxes used",
+      "openInboxes": "Inboxes",
+      "continue": "Continue"
+    },
+    "review": {
+      "addedTitle": "What comes over",
+      "inboxValue": "New inbox",
+      "reportsValue": "Combined",
+      "teamTitle": "Team",
+      "teamIntro": "Who is who?",
+      "actionLabel": "What to do with {{name}}",
+      "match": "Same person as",
+      "add": "Add as new",
+      "skip": "Don’t bring",
+      "matchLabel": "Same person as for {{name}}",
+      "roleLabel": "Role for {{name}}",
+      "renamed": "Signs in as {{username}}",
+      "seesEveryInbox": "Sees every inbox",
+      "staysTitle": "Enterprise keeps its own",
+      "stays": {
+        "aiConnection": "AI connection",
+        "timezone": "Time zone",
+        "address": "Address"
+      },
+      "redoTitle": "Set up again",
+      "redo": {
+        "address": "Lite’s address",
+        "signIn": "Sign-in and phone alerts",
+        "mcp": "AI assistants (MCP)",
+        "tokens": "AI assistants connected to Lite"
+      },
+      "merge": "Merge now"
+    },
+    "role": {
+      "admin": "Admin",
+      "agent": "Team member"
+    },
+    "run": {
+      "title": "Moving…",
+      "intro": "Keep this PC on.",
+      "stop": "Stop Lite",
+      "copy": "Copy data",
+      "migrate": "Update data",
+      "merge": "Add inbox",
+      "verify": "Check",
+      "handover": "Hand over the number",
+      "start": "Start"
+    },
+    "fail": {
+      "title": "Move failed",
+      "safe": "Nothing changed. Lite is running again.",
+      "retry": "Try again",
+      "support": "Save support file",
+      "saved": "Support file saved (no messages or names)",
+      "codes": {
+        "own_server_stop": "EzyChat could not pause itself for the move. Close other EzyChat windows and try again.",
+        "summary_failed": "EzyChat could not read EzyChat Lite's data.",
+        "no_lite_data": "EzyChat Lite's data is no longer on this computer.",
+        "other": "Something went wrong while moving."
+      }
+    },
+    "done": {
+      "titleMerge": "Number added",
+      "titleCopy": "Your data is here",
+      "openInbox": "Open inbox",
+      "toInboxes": "Inboxes",
+      "signInLite": "Sign in with your EzyChat Lite password",
+      "signIn": "Sign in",
+      "agentOff": "Lite’s AI agent came in turned off: no free AI agent.",
+      "renamed": "Quick replies renamed: {{shortcuts}}"
+    },
+    "list": {
+      "title": "Finish for Lite’s team",
+      "intro": "Lite’s number is now {{inbox}}. {{done}} of {{total}} done",
+      "share": "Share the address with {{n}} teammates",
+      "signin": "They sign in again",
+      "notifications": "They turn phone alerts on",
+      "mcp": "Reconnect AI assistants",
+      "copyAddress": "Copy address",
+      "dismiss": "Close"
+    },
+    "mcp": {
+      "title": "EzyChat’s address changed",
+      "body": "AI assistants connected to EzyChat Lite must be connected again.",
+      "newAddress": "New address",
+      "noAddress": "Turn on Phone access to get the new address",
+      "tokens": "Connected to EzyChat Lite",
+      "quickHint": "Quick addresses change. Use your own domain to keep them connected.",
+      "dismiss": "Dismiss"
+    },
+    "desktopOnly": {
+      "title": "Only on the EzyChat computer",
+      "pc": "Open {{product}} on the PC where it runs",
+      "admin": "Admins only"
+    },
+    "setup": {
+      "title": "Welcome to {{product}}",
+      "subtitle": "EzyChat Lite found on this PC",
+      "bring": "Bring from EzyChat Lite",
+      "bringChats": "{{chats}} chats and customers",
+      "bringTeam": "{{n}} teammates, same passwords",
+      "new": "Start new",
+      "newAccount": "Create a new admin",
+      "newQr": "Scan a QR to link WhatsApp",
+      "onlyHere": "Only in the desktop app on this PC",
+      "steps": {
+        "start": "Start",
+        "bring": "Bring data",
+        "ready": "Ready"
+      }
+    }
   }
 }

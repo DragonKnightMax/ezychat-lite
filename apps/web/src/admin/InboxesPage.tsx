@@ -42,6 +42,7 @@ import {
 import { ConfirmDialog, ErrorState, Field, ListSkeleton } from './adminUi';
 import { formatInboxNumber, inboxCardStatus } from './inbox-status';
 import { cn } from '@/lib/utils';
+import { LiteChecklistCard, LiteImportEntry } from '../lite-import/notice';
 
 /** While a phone is being linked, ask for the status this often (the socket usually is faster). */
 const LINK_POLL_MS = 5_000;
@@ -102,18 +103,22 @@ export function InboxesPage() {
         title={t('inboxes.title')}
         description={types.length > 0 ? t('inboxes.descriptionTypes') : t('inboxes.description')}
         actions={
-          <Button
-            type="button"
-            size="touch"
-            className="md:min-h-9"
-            disabled={!canAdd}
-            onClick={() => setEditing('new')}
-          >
-            <Plus aria-hidden />
-            {t('inboxes.add')}
-          </Button>
+          <>
+            <LiteImportEntry maxInboxes={maxInboxes} />
+            <Button
+              type="button"
+              size="touch"
+              className="md:min-h-9"
+              disabled={!canAdd}
+              onClick={() => setEditing('new')}
+            >
+              <Plus aria-hidden />
+              {t('inboxes.add')}
+            </Button>
+          </>
         }
       />
+      <LiteChecklistCard />
       {!canAdd && (
         <p className="text-sm text-muted-foreground" data-testid="inbox-limit">
           {t('inboxes.limitReached', { max: maxInboxes })}

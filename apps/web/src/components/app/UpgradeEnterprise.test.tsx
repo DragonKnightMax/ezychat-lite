@@ -1,5 +1,6 @@
-import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import type { DesktopUpgradeBridge, DesktopUpgradeState } from '@ezychat/shared';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -109,4 +110,95 @@ it('the account menu has no upgrade item when the product hides it', async () =>
   await openMenu();
   expect(screen.getByRole('menuitem', { name: 'Admin settings' })).toBeTruthy();
   expect(screen.queryByRole('menuitem', { name: 'Upgrade to Enterprise' })).toBeNull();
+});
+
+describe('desktop Upgrade dialog (host PC)', () => {
+  function fakeUpgrade(initial: Partial<DesktopUpgradeState> = {}) {
+    let listener: ((s: DesktopUpgradeState) => void) | null = null;
+    const base: DesktopUpgradeState = {
+      available: true,
+      status: 'idle',
+      version: '0.2.0',
+      downloadedBytes: 0,
+      totalBytes: null,
+      error: null,
+      ...initial,
+    };
+    const bridge = {
+      getState: vi.fn(async () => base),
+      install: vi.fn(async () => ({
+        ...base,
+        status: 'downloading' as const,
+        downloadedBytes: 50 * 1024 ** 2,
+        totalBytes: 100 * 1024 ** 2,
+      })),
+      cancel: vi.fn(async () => ({ ...base, status: 'idle' as const })),
+      onChanged: vi.fn((cb: (s: DesktopUpgradeState) => void) => {
+        listener = cb;
+        return () => {
+          listener = null;
+        };
+      }),
+    } satisfies DesktopUpgradeBridge;
+    window.watiUpgrade = bridge;
+    return { bridge, base, emit: (s: DesktopUpgradeState) => listener?.(s) };
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: true,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+    }));
+  });
+  afterEach(() => {
+    delete window.watiUpgrade;
+    vi.unstubAllGlobals();
+  });
+
+  it('downloads and starts the installer, with progress and cancel', async () => {
+    const { bridge, base, emit } = fakeUpgrade();
+    renderWith(<UpgradeButton />);
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: 'Upgrade to Enterprise' }));
+    const dialog = await screen.findByTestId('upgrade-dialog');
+    expect(dialog.textContent).toContain('Chats, team and WhatsApp come with you');
+    expect(within(dialog).getByRole('link', { name: 'Learn more' }).getAttribute('href')).toBe(
+      ENTERPRISE_UPGRADE_URL,
+    );
+    await u.click(within(dialog).getByRole('button', { name: 'Install EzyChat Enterprise' }));
+    expect(bridge.install).toHaveBeenCalledOnce();
+    expect(dialog.textContent).toContain('50 MB of 100 MB');
+    await u.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(bridge.cancel).toHaveBeenCalledOnce();
+    act(() => emit({ ...base, status: 'started' }));
+    expect(screen.getByTestId('upgrade-started').textContent).toContain(
+      'Finish it, then EzyChat Enterprise brings your data over.',
+    );
+  });
+
+  it('a failed download shows the error and Try again', async () => {
+    const { bridge } = fakeUpgrade({ status: 'error', error: 'sha_mismatch' });
+    bridge.install.mockRejectedValueOnce(new Error('ipc'));
+    renderWith(<UpgradeButton />);
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: 'Upgrade to Enterprise' }));
+    const dialog = await screen.findByTestId('upgrade-dialog');
+    expect(within(dialog).getByRole('alert').textContent).toContain('did not finish');
+    await u.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(bridge.install).toHaveBeenCalledOnce();
+    expect(within(dialog).getByRole('alert')).toBeTruthy();
+  });
+
+  it('keeps opening the website when the desktop has no installer feed', async () => {
+    const { bridge } = fakeUpgrade({ available: false });
+    renderWith(<UpgradeButton />);
+    await waitFor(() => expect(bridge.getState).toHaveBeenCalled());
+    expect(screen.getByRole('link', { name: 'Upgrade to Enterprise' }).getAttribute('href')).toBe(
+      ENTERPRISE_UPGRADE_URL,
+    );
+  });
 });

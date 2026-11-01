@@ -35,7 +35,12 @@ function openExternalSafe(url: string): void {
  * Simple self-contained HTML page (data URL) used while the server starts or on errors.
  * `title`/`body` are already translated; `lang` is the desktop locale.
  */
-export function messagePage(title: string, body: string, lang: Locale = 'en'): string {
+export function messagePage(
+  title: string,
+  body: string,
+  lang: Locale = 'en',
+  opts: { spinner?: boolean } = {},
+): string {
   const esc = (s: string) =>
     s.replace(
       /[&<>"]/g,
@@ -48,7 +53,7 @@ export function messagePage(title: string, body: string, lang: Locale = 'en'): s
 @media (prefers-color-scheme:dark){body{background:#0b1120;color:#e2e8f0}}
 .c{max-width:28rem;padding:24px;text-align:center}.s{width:36px;height:36px;margin:0 auto 16px;border:4px solid #05966933;border-top-color:#059669;border-radius:50%;animation:r 1s linear infinite}
 @keyframes r{to{transform:rotate(360deg)}}h1{font-size:1.15rem;margin:0 0 8px}p{margin:0;opacity:.75;white-space:pre-wrap}
-</style></head><body><div class="c"><div class="s"></div><h1>${esc(title)}</h1><p>${esc(body)}</p></div></body></html>`;
+</style></head><body><div class="c">${opts.spinner === false ? '' : '<div class="s"></div>'}<h1>${esc(title)}</h1><p>${esc(body)}</p></div></body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
@@ -112,6 +117,8 @@ export function createMainWindow(o: {
   title: string;
   preload: string;
   locale: Locale;
+  /** Flags the inbox preload reads from process.argv (which privileged bridges to expose). */
+  preloadArgs?: string[];
 }): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
@@ -123,7 +130,12 @@ export function createMainWindow(o: {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#0b1120',
-    webPreferences: { ...SAFE_PREFS, preload: o.preload, backgroundThrottling: false },
+    webPreferences: {
+      ...SAFE_PREFS,
+      preload: o.preload,
+      backgroundThrottling: false,
+      ...(o.preloadArgs?.length ? { additionalArguments: o.preloadArgs } : {}),
+    },
   });
   registerInboxNotifications(win, o.baseUrl, o.icon);
   pinTitle(win, o.title);

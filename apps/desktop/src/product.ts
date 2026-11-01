@@ -62,7 +62,24 @@ export interface Product {
    * installed next to Lite needs its own, or its server cannot start while Lite runs.
    */
   defaultPort?: number;
+  /**
+   * The product whose data this one can bring over on the same PC (design: Lite → Enterprise upgrade):
+   * Enterprise passes LITE_PRODUCT; Lite has none. Only its identity (folders, service, health, port) is
+   * read, never its feeds. Turns on the desktop's Lite import (lite-import/) and `window.watiLiteImport`.
+   */
+  adoptFrom?: ProductIdentity;
+  /**
+   * https JSON manifest of the edition the "Install EzyChat Enterprise" button downloads (upgrade/):
+   * Lite: Enterprise's latest.json; others none. `null` or omitted hides the button (`window.watiUpgrade`).
+   */
+  upgradeInstallerFeed?: string | null;
 }
+
+/** Another product's installer identity (the one `adoptFrom` names). */
+export type ProductIdentity = Product;
+
+/** Enterprise's update manifest: Lite's "Install EzyChat Enterprise" downloads its installer. */
+export const ENTERPRISE_INSTALLER_FEED = 'https://dl.ezychat.ai/enterprise/latest.json';
 
 export type UpdateFeed = { kind: 'github'; repo: string } | { kind: 'url'; url: string };
 
@@ -86,7 +103,44 @@ export const LITE_PRODUCT: Product = Object.freeze({
   releaseRepositories: Object.freeze(['ossmalaysia/ezychat-lite', 'ossmalaysia/wa-team-inbox']),
   artifactPrefixes: Object.freeze(['EzyChat-Lite', 'WA-Team-Inbox']),
   executableNames: Object.freeze(['EzyChat Lite', 'WA Team Inbox']),
+  upgradeInstallerFeed: ENTERPRISE_INSTALLER_FEED,
 });
+
+function httpsFeedUrl(field: string, value: string): string | null {
+  let url: URL | null;
+  try {
+    url = new URL(value);
+  } catch {
+    url = null;
+  }
+  if (url && url.protocol === 'https:' && !url.username && !url.password && !url.hash)
+    return url.href;
+  throw new Error(`Invalid product ${field}: ${JSON.stringify(value)}`);
+}
+
+function checkInstallerFeed(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string') throw new Error('Invalid product upgradeInstallerFeed');
+  return httpsFeedUrl('upgradeInstallerFeed', value);
+}
+
+function checkAdoptFrom(
+  value: unknown,
+  own: { edition: string; appDirName: string; profileDirName: string },
+): Product {
+  if (!value || typeof value !== 'object') throw new Error('Invalid product adoptFrom');
+  const other = value as Product;
+  if (other.adoptFrom !== undefined)
+    throw new Error('Invalid product adoptFrom: it cannot adopt from another product itself');
+  const checked = defineProduct(other);
+  if (
+    checked.edition === own.edition ||
+    checked.appDirName === own.appDirName ||
+    checked.profileDirName === own.profileDirName
+  )
+    throw new Error('Invalid product adoptFrom: it must be another edition');
+  return checked;
+}
 
 function checkFeed(value: unknown, releaseRepository: string): UpdateFeed {
   const feed = value as UpdateFeed | null;
@@ -185,6 +239,10 @@ export function defineProduct(p: Product): Product {
       ? { statusSections: checkStatusSections(p.statusSections) }
       : {}),
     ...(p.defaultPort !== undefined ? { defaultPort: checkPort(p.defaultPort) } : {}),
+    ...(p.adoptFrom !== undefined ? { adoptFrom: checkAdoptFrom(p.adoptFrom, p) } : {}),
+    ...(p.upgradeInstallerFeed !== undefined
+      ? { upgradeInstallerFeed: checkInstallerFeed(p.upgradeInstallerFeed) }
+      : {}),
   });
 }
 

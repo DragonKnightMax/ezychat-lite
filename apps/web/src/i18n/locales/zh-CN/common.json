@@ -78,7 +78,27 @@
     "cta": "升级到企业版",
     "agents": "需要更多 AI 客服？EzyChat Enterprise 为每个 WhatsApp 号码提供一个 AI 客服。",
     "numbers": "需要更多 WhatsApp 号码？EzyChat Enterprise 可将多个号码连接到同一个团队收件箱。",
-    "about": "更多 WhatsApp 号码和 AI 客服，并由 Anchor Sprint 提供支持。"
+    "about": "更多 WhatsApp 号码和 AI 客服，并由 Anchor Sprint 提供支持。",
+    "dialog": {
+      "title": "升级到 EzyChat Enterprise",
+      "numbersValue": "10",
+      "numbers": "个 WhatsApp 号码",
+      "agentsValue": "10",
+      "agents": "个 AI 代理",
+      "apiValue": "API",
+      "api": "Business API",
+      "keeps": "聊天、团队和 WhatsApp 都会带过去",
+      "trial": "7 天免费试用",
+      "install": "安装 EzyChat Enterprise",
+      "retry": "重试",
+      "learnMore": "了解更多",
+      "cancel": "取消",
+      "downloading": "正在下载",
+      "progress": "{{done}} / {{total}}",
+      "error": "下载未完成。请检查网络后重试。",
+      "startedTitle": "安装程序已启动",
+      "startedBody": "完成安装后，EzyChat Enterprise 会带入你的数据。"
+    }
   },
   "tips": {
     "guide": "完整指南",

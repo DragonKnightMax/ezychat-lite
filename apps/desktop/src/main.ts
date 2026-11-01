@@ -11,7 +11,8 @@ import {
   type NativeImage,
 } from 'electron';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { uptime } from 'node:os';
+import { mkdtemp, rm, statfs, writeFile } from 'node:fs/promises';
+import { tmpdir, uptime } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appTitle } from './app-title.js';
@@ -47,7 +48,16 @@ import {
 import { runServerCommand, StandaloneServer } from './server-process.js';
 import { createServiceOperation } from './service-operation.js';
 import { watchForService } from './service-recovery.js';
-import { decideStartup, parsePortFile, serviceWaitMs } from './startup.js';
+import { decideStartup, MOVED_EXIT_CODE, parsePortFile, serviceWaitMs } from './startup.js';
+import { createServerCli, restoreMoved } from './lite-import/cli.js';
+import { LiteImportController } from './lite-import/controller.js';
+import { liteImportDeps, saveSupportFile } from './lite-import/host.js';
+import { LITE_IMPORT_PRELOAD_ARG, registerLiteImportIpc } from './lite-import/ipc.js';
+import { createMovedFlow } from './lite-import/moved-flow.js';
+import { sameInboxOrigin } from './inbox-ipc.js';
+import { UpgradeInstaller } from './upgrade/controller.js';
+import { UPGRADE_PRELOAD_ARG, registerUpgradeIpc } from './upgrade/ipc.js';
+import { createInstallerLauncher } from './upgrade/launch.js';
 import { createServiceManager, type ServiceManager, type ServiceState } from './service/index.js';
 import { createTray } from './tray.js';
 import { closeAction } from './window-close.js';
@@ -123,6 +133,25 @@ function writeDesktopPort(port: number): void {
   }
 }
 
+function readTextOrNull(file: string): string | null {
+  try {
+    return existsSync(file) ? readFileSync(file, 'utf8') : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Free bytes on the volume of `dir` (its nearest existing parent), or null when unknown. */
+async function freeBytesAt(dir: string): Promise<number | null> {
+  for (let path = dir; ; path = dirname(path)) {
+    if (existsSync(path)) {
+      const s = await statfs(path);
+      return Number(s.bavail) * Number(s.bsize);
+    }
+    if (dirname(path) === path) return null;
+  }
+}
+
 function readPortFile(file: string): number | null {
   try {
     return parsePortFile(existsSync(file) ? readFileSync(file, 'utf8') : null);
@@ -151,6 +180,12 @@ async function main(): Promise<void> {
   const runtime: 'utility' | 'node' =
     !isPackaged && process.env.WATI_DESKTOP_RUNTIME === 'node' ? 'node' : 'utility';
   const version = app.getVersion();
+  // Lite → Enterprise (design 2026-10-31): the product whose data this one imports, and the installer
+  // feed of the edition this one upgrades to. Each turns on its desktop-only bridge in the inbox window.
+  const adoptFrom = activeProduct().adoptFrom ?? null;
+  const upgradeFeed = activeProduct().upgradeInstallerFeed ?? null;
+  // One-shot server commands (--lite-summary, --import-lite, --restore-moved).
+  const serverCli = createServerCli({ entry, runtime });
   // The desktop shell follows the OS language of this machine (not a web user's setting).
   const locale = desktopLocale(app);
   const page = (title: string, body: string) => messagePage(title, body, locale);
@@ -437,6 +472,10 @@ async function main(): Promise<void> {
         title: appTitle(version, { devBuild: !isPackaged }),
         preload: join(here, 'inbox-preload.cjs'),
         locale,
+        preloadArgs: [
+          ...(adoptFrom ? [LITE_IMPORT_PRELOAD_ARG] : []),
+          ...(upgradeFeed ? [UPGRADE_PRELOAD_ARG] : []),
+        ],
       });
       mainWindow.on('close', (e) => {
         if (quitting) return;
@@ -460,6 +499,8 @@ async function main(): Promise<void> {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
+    if (moved.active())
+      void moved.ask().catch((e: unknown) => log(`[desktop] moved dialog: ${String(e)}`));
   };
 
   const loadMain = (target: string) => {
@@ -505,10 +546,36 @@ async function main(): Promise<void> {
       loadMain(url);
       return true;
     }
+    if (server.lastExitCode === MOVED_EXIT_CODE) {
+      void moved.show().catch((e: unknown) => log(`[desktop] moved dialog: ${String(e)}`));
+      return false;
+    }
     setMode('error');
     loadMain(page(t(locale, 'page.notStartedTitle'), t(locale, 'page.notStartedBody', { port })));
     return false;
   };
+
+  // §5.6: this data folder's WhatsApp number moved to another edition (server exit 4, moved.json).
+  const moved = createMovedFlow({
+    dataDir,
+    platform: process.platform,
+    env: process.env,
+    productName: activeProduct().productName,
+    t: (key, vars) => t(locale, key, vars),
+    readText: readTextOrNull,
+    exists: existsSync,
+    showMessageBox: (options) => dialog.showMessageBox(options),
+    openPath: (path) => shell.openPath(path),
+    openExternal: (href) => shell.openExternal(href),
+    showPage: (title, body) => {
+      setMode('error');
+      loadMain(messagePage(title, body, locale, { spinner: false }));
+    },
+    restore: () => restoreMoved(serverCli, dataDir),
+    start: () => startStandalone(),
+    runOperation: (label, errorTitle, action) => runOperation(label, errorTitle, action),
+    log,
+  });
 
   const currentServiceState = async (): Promise<ServiceState> => {
     if (!serviceSupported) return 'not-installed';
@@ -753,6 +820,141 @@ async function main(): Promise<void> {
     baseUrl: () => url,
     statusFile,
   });
+  const inboxWindow = { main: () => mainWindow, baseUrl: () => url };
+
+  // Lite import (design §5.1–5.4): only a product with adoptFrom. v1 runs it with our server in
+  // standalone mode; Lite or Enterprise as an OS service needs the elevated step of §5.5 (follow-up).
+  const inboxPath = () => {
+    const current = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getURL() : '';
+    if (!sameInboxOrigin(current, url)) return '/';
+    const u = new URL(current);
+    return `${u.pathname}${u.search}${u.hash}`;
+  };
+  let liteImportIpc: ReturnType<typeof registerLiteImportIpc> | null = null;
+  const liteImport = new LiteImportController(
+    liteImportDeps({
+      adoptFrom,
+      platform: process.platform,
+      env: process.env,
+      appData: app.getPath('appData'),
+      dataDir,
+      cli: serverCli,
+      liteService:
+        adoptFrom && serviceSupported
+          ? createServiceManager(process.platform, {
+              execPath: process.execPath,
+              serverHost: host,
+              serverEntry: entry,
+              webDist,
+              cloudflaredBinary: cfBin,
+              cloudflaredDir: cfDir,
+              winswExe: winswExe(isPackaged, resourcesPath, appPath),
+              userDataDir: dataDir,
+              machineDataDir: machineDataDir(process.platform, process.env, adoptFrom),
+              port,
+              version,
+              product: adoptFrom,
+            })
+          : null,
+      probe: async (p, product) => (await probeServer(p, fetch, 1500, product)) !== null,
+      serverUrl: () => url,
+      fetch,
+      fs: {
+        mtimeMs: (path) => {
+          try {
+            return statSync(path).mtimeMs;
+          } catch {
+            return null;
+          }
+        },
+        readText: readTextOrNull,
+        exists: existsSync,
+        freeBytes: freeBytesAt,
+        makeTempDir: () => mkdtemp(join(tmpdir(), 'ezychat-import-')),
+        writePrivate: (file, text) => writeFile(file, text, { mode: 0o600 }),
+        removeDir: (dir) => rm(dir, { recursive: true, force: true }),
+      },
+      ownServer: {
+        stop: async () => {
+          if (mode !== 'standalone' || busy || quitting)
+            throw new Error('The import runs only while this app runs its own server');
+          setBusy(t(locale, 'liteImport.busy'));
+          await server.stop();
+        },
+        restart: async () => {
+          // Reload the page the import ran on (on Lite's port after a copy).
+          const path = inboxPath();
+          server.start();
+          const ok = await server.waitRunning(45_000);
+          adoptPort(server.port);
+          setBusy(null);
+          setMode(ok ? 'standalone' : 'error');
+          loadMain(
+            ok
+              ? url + path
+              : page(t(locale, 'page.notStartedTitle'), t(locale, 'page.notStartedBody', { port })),
+          );
+          return ok;
+        },
+        takeOverPort: (p) => {
+          server.setPort(p);
+          adoptPort(p);
+        },
+      },
+      onChanged: (state) => liteImportIpc?.broadcast(state),
+      log: (fields) => log(JSON.stringify(fields)),
+    }),
+  );
+  if (adoptFrom)
+    liteImportIpc = registerLiteImportIpc(
+      {
+        getState: () => liteImport.getState(),
+        scan: () => liteImport.scan(),
+        start: (plan) => liteImport.start(plan),
+        reset: () => liteImport.reset(),
+        saveSupportFile: async () =>
+          saveSupportFile(liteImport, {
+            dir: app.getPath('downloads'),
+            now: new Date(),
+            meta: {
+              product: activeProduct().productName,
+              version,
+              platform: `${process.platform}-${process.arch}`,
+            },
+            write: (file, text) => writeFileSync(file, text),
+            reveal: (file) => shell.showItemInFolder(file),
+            log,
+          }),
+      },
+      inboxWindow,
+    );
+
+  // "Install EzyChat Enterprise" (design §5.7): only with an installer feed, on the host computer.
+  let upgradeIpc: ReturnType<typeof registerUpgradeIpc> | null = null;
+  const upgrade = new UpgradeInstaller({
+    feed: upgradeFeed,
+    isHost: ownsHost,
+    platform: process.platform,
+    arch: process.arch,
+    directory: join(app.getPath('userData'), 'updates', 'upgrade'),
+    userAgent: `${activeProduct().artifactPrefixes[0]}-Upgrade`,
+    download: downloadRelease,
+    launch: createInstallerLauncher({
+      platform: process.platform,
+      openPath: (path) => shell.openPath(path),
+    }),
+    onChanged: (state) => upgradeIpc?.broadcast(state),
+    log: (fields) => log(JSON.stringify(fields)),
+  });
+  if (upgradeFeed)
+    upgradeIpc = registerUpgradeIpc(
+      {
+        getState: () => upgrade.getState(),
+        install: () => upgrade.install(),
+        cancel: () => upgrade.cancel(),
+      },
+      inboxWindow,
+    );
 
   const trayHandle = createTray(
     trayIcon,
@@ -801,6 +1003,9 @@ async function main(): Promise<void> {
     sections.stop();
     updateIpc.dispose();
     statusIpc.dispose();
+    liteImportIpc?.dispose();
+    upgrade.cancel();
+    upgradeIpc?.dispose();
     if (finalStopDone || server.state === 'stopped') return;
     e.preventDefault();
     void server.stop().finally(() => {

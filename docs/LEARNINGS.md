@@ -743,6 +743,13 @@ into AGENTS.md.
 - A spec that creates shared state (Lite's single AI agent) changes which branch other specs take: run e2e with one
   worker before reporting, because the order differs from the parallel run, and give each "already exists" branch its
   own assertion that runs on desktop too.
+- Lite → Enterprise merge (`lite-import/merge-tables.ts` `TABLE_PLAN`): every new core table must be listed as merged
+  or skipped with a reason; the coverage test fails otherwise. A failed hand-over after a committed merge restores the
+  pre-import backup (`onCommitted` undo) so Lite and Enterprise never both keep one number.
+- A read-only better-sqlite3 open of a stopped WAL database still creates `-wal`/`-shm` files: remove them afterwards
+  when a folder must stay byte-identical (Lite's data during an import).
+- One-shot CLI commands that exit right away log through a synchronous pino destination; the rotating server logger
+  opens its file asynchronously and loses the last lines.
 
 ## Security
 

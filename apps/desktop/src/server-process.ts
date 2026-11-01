@@ -8,7 +8,7 @@ import { utilityProcess, type UtilityProcess } from 'electron';
 import { probeServer } from './detect.js';
 import { activeProduct } from './product.js';
 import { SHUTDOWN_MESSAGE } from './server-host.cjs';
-import { isRestartableExit, parsePortFile } from './startup.js';
+import { isRestartableExit, MOVED_EXIT_CODE, parsePortFile } from './startup.js';
 
 export type ServerState = 'starting' | 'running' | 'crashed' | 'stopped';
 
@@ -61,6 +61,10 @@ export class StandaloneServer extends EventEmitter {
   private startedAt = 0;
   private _state: ServerState = 'stopped';
   private _port: number;
+  /** --port of the next start (setPort changes it, e.g. after a Lite import takes over Lite's port) */
+  private requestedPort: number;
+  /** Exit code of the last server process (null until one exited). */
+  private _lastExitCode: number | null = null;
   /** true after a non-restartable exit */
   private gaveUp = false;
   readonly logs: string[] = [];
@@ -68,6 +72,19 @@ export class StandaloneServer extends EventEmitter {
   constructor(private readonly opts: StandaloneServerOptions) {
     super();
     this._port = opts.port;
+    this.requestedPort = opts.port;
+  }
+
+  /** Exit code of the last server process; MOVED_EXIT_CODE (4) means its number moved to another edition. */
+  get lastExitCode(): number | null {
+    return this._lastExitCode;
+  }
+
+  /** Port for the next start (only while stopped; the running server keeps its port). */
+  setPort(port: number): void {
+    if (this.child) throw new Error('Stop the server before changing its port');
+    this.requestedPort = port;
+    this._port = port;
   }
 
   /** Effective port (the persisted port setting may override opts.port). */
@@ -143,7 +160,7 @@ export class StandaloneServer extends EventEmitter {
       '--data',
       o.dataDir,
       '--port',
-      String(o.port),
+      String(this.requestedPort),
       '--mode',
       'standalone',
       '--web-dist',
@@ -217,6 +234,7 @@ export class StandaloneServer extends EventEmitter {
 
   private onExit(code: number): void {
     this.child = null;
+    this._lastExitCode = code;
     if (this.healthTimer) clearTimeout(this.healthTimer);
     this.pushLog(`[desktop] server exited with code ${code}`);
     if (this.stopping) {
@@ -228,7 +246,9 @@ export class StandaloneServer extends EventEmitter {
       this.pushLog(
         code === 3
           ? '[desktop] the data folder is in use by another server process; not restarting'
-          : '[desktop] invalid server arguments; not restarting',
+          : code === MOVED_EXIT_CODE
+            ? '[desktop] this WhatsApp number moved to another edition (moved.json); not restarting'
+            : '[desktop] invalid server arguments; not restarting',
       );
       this.gaveUp = true;
       this.setState('crashed');

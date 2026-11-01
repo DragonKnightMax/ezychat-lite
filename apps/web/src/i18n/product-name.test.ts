@@ -8,6 +8,8 @@ const files = import.meta.glob<Record<string, unknown>>('./locales/*/*.json', {
 });
 /** Share-the-app texts promote the free Lite app, so they keep its name in every edition. */
 const LITE_ONLY = new Set(['share.caption', 'share.imageAlt']);
+/** The Lite → Enterprise import names the edition the data comes from, whatever this product is. */
+const NAMES_LITE = (key: string) => key.startsWith('liteImport.');
 
 function strings(node: unknown, path = ''): Array<[string, string]> {
   if (typeof node === 'string') return [[path, node]];
@@ -39,7 +41,9 @@ describe('product name', () => {
   it('no catalog string hard-codes the product name except the share texts', () => {
     const offenders = Object.entries(files).flatMap(([file, json]) =>
       strings(json)
-        .filter(([key, text]) => text.includes('EzyChat Lite') && !LITE_ONLY.has(key))
+        .filter(
+          ([key, text]) => text.includes('EzyChat Lite') && !LITE_ONLY.has(key) && !NAMES_LITE(key),
+        )
         .map(([key]) => `${file}:${key}`),
     );
     expect(offenders).toEqual([]);

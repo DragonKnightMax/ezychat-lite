@@ -24,6 +24,7 @@ import { ConfirmDialog, CopyButton, ErrorState, ListSkeleton } from './adminUi';
 import { CreateTokenDialog } from './CreateTokenDialog';
 import { TokenPermissionsDialog } from './TokenPermissionsDialog';
 import { InfoTip } from '@/components/app/InfoTip';
+import { LiteMcpNoticeCard } from '../lite-import/notice';
 
 /** "Used 5 minutes ago" for recent use, a plain date after that. */
 const RELATIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -56,6 +57,7 @@ export function IntegrationsSection() {
 
   return (
     <div className="flex flex-col gap-4">
+      <LiteMcpNoticeCard />
       <Card className="gap-4">
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">

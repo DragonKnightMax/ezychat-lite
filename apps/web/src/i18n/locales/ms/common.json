@@ -78,7 +78,27 @@
     "cta": "Naik taraf ke Enterprise",
     "agents": "Perlukan lebih banyak ejen AI? EzyChat Enterprise ada satu ejen AI untuk setiap nombor WhatsApp.",
     "numbers": "Perlukan lebih banyak nombor WhatsApp? EzyChat Enterprise memautkan beberapa nombor ke satu peti masuk pasukan.",
-    "about": "Lebih banyak nombor WhatsApp dan ejen AI, dengan sokongan daripada Anchor Sprint."
+    "about": "Lebih banyak nombor WhatsApp dan ejen AI, dengan sokongan daripada Anchor Sprint.",
+    "dialog": {
+      "title": "Naik taraf ke EzyChat Enterprise",
+      "numbersValue": "10",
+      "numbers": "nombor WhatsApp",
+      "agentsValue": "10",
+      "agents": "ejen AI",
+      "apiValue": "API",
+      "api": "Business API",
+      "keeps": "Chat, pasukan dan WhatsApp ikut sekali",
+      "trial": "Percubaan percuma 7 hari",
+      "install": "Pasang EzyChat Enterprise",
+      "retry": "Cuba lagi",
+      "learnMore": "Ketahui lagi",
+      "cancel": "Batal",
+      "downloading": "Memuat turun",
+      "progress": "{{done}} daripada {{total}}",
+      "error": "Muat turun tidak selesai. Semak sambungan anda dan cuba lagi.",
+      "startedTitle": "Pemasang dimulakan",
+      "startedBody": "Lengkapkannya, kemudian EzyChat Enterprise membawa data anda."
+    }
   },
   "tips": {
     "guide": "Panduan penuh",

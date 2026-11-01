@@ -19,6 +19,7 @@ describe('isRestartableExit', () => {
   it('does not restart on bad args (2) or a locked data dir (3)', () => {
     expect(isRestartableExit(2)).toBe(false);
     expect(isRestartableExit(3)).toBe(false);
+    expect(isRestartableExit(4)).toBe(false); // moved.json: the moved screen, never a restart loop
   });
   it('restarts on crashes', () => {
     expect(isRestartableExit(1)).toBe(true);

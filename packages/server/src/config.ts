@@ -27,6 +27,24 @@ export interface ServerConfig {
 
 const MODES = ['standalone', 'service', 'dev'] as const;
 
+/** Flags without a value. */
+const BOOLEAN_FLAGS = new Set(['fake-wa', 'reset-admin', 'ignore-moved', 'restore-moved']);
+
+/** The parsed command line: the server config plus the one-shot commands. */
+export interface CliConfig extends ServerConfig {
+  resetAdmin: boolean;
+  /** Start even when the data folder has `moved.json`. */
+  ignoreMoved: boolean;
+  /** Remove `moved.json` and rename the moved WhatsApp folders back, then exit. */
+  restoreMoved: boolean;
+  /** Lite data folder to summarise (read only), then exit. */
+  liteSummary?: string;
+  /** Lite data folder to import into `dataDir`, then exit. */
+  importLite?: string;
+  /** JSON file with the merge plan (`LiteImportPlan`). */
+  importPlan?: string;
+}
+
 /**
  * The Google sign-in app a release bundle carries (esbuild `define` from repository secrets in
  * scripts/google-oauth-define.mjs, Lite and Enterprise). Undeclared in source runs and forks.
@@ -69,11 +87,13 @@ function defaultWebDist(): string | null {
  * GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET (both or neither), else the release bundle's.
  * Fake WhatsApp is enabled ONLY by the explicit --fake-wa flag (never by env), and never in service mode.
  * --max-inboxes is accepted only together with --mode dev and --fake-wa (never by env).
+ * Lite → Enterprise (flag-only, never env): --ignore-moved (start although `moved.json` is there),
+ * --restore-moved (put a moved Lite folder back, then exit), --lite-summary <liteDir> (print the
+ * summary, then exit; --data is optional with it), --import-lite <liteDir> [--import-plan <file>]
+ * (import into --data, then exit). At most one of --reset-admin, --restore-moved, --lite-summary
+ * and --import-lite.
  */
-export function parseArgs(
-  argv: string[],
-  env: NodeJS.ProcessEnv,
-): ServerConfig & { resetAdmin: boolean } {
+export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
   const flags = new Map<string, string | true>();
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -84,7 +104,7 @@ export function parseArgs(
       continue;
     }
     const name = a.slice(2);
-    if (name === 'fake-wa' || name === 'reset-admin') {
+    if (BOOLEAN_FLAGS.has(name)) {
       flags.set(name, true);
       continue;
     }
@@ -102,6 +122,11 @@ export function parseArgs(
     'web-dist',
     'reset-admin',
     'max-inboxes',
+    'ignore-moved',
+    'restore-moved',
+    'lite-summary',
+    'import-lite',
+    'import-plan',
   ]);
   for (const k of flags.keys()) if (!known.has(k)) throw new Error(`unknown flag: --${k}`);
 
@@ -110,7 +135,26 @@ export function parseArgs(
     return typeof v === 'string' ? v : undefined;
   };
 
-  const data = str('data') ?? env.WATI_DATA;
+  for (const k of ['ignore-moved', 'restore-moved'])
+    if (flags.has(k) && flags.get(k) !== true) throw new Error(`--${k} takes no value`);
+  const liteSummary = str('lite-summary');
+  const importLite = str('import-lite');
+  const importPlan = str('import-plan');
+  const commands = [
+    flags.get('reset-admin') === true,
+    flags.get('restore-moved') === true,
+    liteSummary !== undefined,
+    importLite !== undefined,
+  ].filter(Boolean).length;
+  if (commands > 1)
+    throw new Error(
+      'use only one of --reset-admin, --restore-moved, --lite-summary and --import-lite',
+    );
+  if (importPlan !== undefined && importLite === undefined)
+    throw new Error('--import-plan is allowed only with --import-lite');
+
+  // --lite-summary reads another folder only: --data may be left out there.
+  const data = str('data') ?? env.WATI_DATA ?? liteSummary;
   if (!data) throw new Error('--data <dir> is required (or set WATI_DATA)');
 
   const portRaw = str('port') ?? env.WATI_PORT;
@@ -158,6 +202,11 @@ export function parseArgs(
     portExplicit: portRaw !== undefined,
     hostExplicit: hostRaw !== undefined,
     resetAdmin: flags.get('reset-admin') === true,
+    ignoreMoved: flags.get('ignore-moved') === true,
+    restoreMoved: flags.get('restore-moved') === true,
+    ...(liteSummary !== undefined ? { liteSummary: resolve(liteSummary) } : {}),
+    ...(importLite !== undefined ? { importLite: resolve(importLite) } : {}),
+    ...(importPlan !== undefined ? { importPlan: resolve(importPlan) } : {}),
     ...(maxInboxes !== undefined ? { maxInboxes } : {}),
     googleOAuth:
       googleClientId && googleClientSecret

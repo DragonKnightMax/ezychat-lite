@@ -160,3 +160,26 @@ describe('standalone server lifecycle', () => {
     expect(server.state).toBe('stopped');
   });
 });
+
+describe('moved data folder and port takeover', () => {
+  it('does not restart after exit 4 and reports it as the last exit code', async () => {
+    expect(server.lastExitCode).toBeNull();
+    server.start();
+    const running = server.waitRunning(5000);
+    children[0]!.emit('exit', 4);
+    expect(await running).toBe(false);
+    expect(server.lastExitCode).toBe(4);
+    expect(server.logs.some((line) => line.includes('moved to another edition'))).toBe(true);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mock.spawn).toHaveBeenCalledOnce();
+  });
+
+  it('starts on the port set while stopped and refuses a change while running', async () => {
+    server.setPort(7431);
+    expect(server.port).toBe(7431);
+    server.start();
+    const args = mock.spawn.mock.calls[0]![1] as string[];
+    expect(args[args.indexOf('--port') + 1]).toBe('7431');
+    expect(() => server.setPort(7500)).toThrow(/Stop the server/);
+  });
+});

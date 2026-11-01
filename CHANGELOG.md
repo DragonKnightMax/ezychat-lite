@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Move to EzyChat Enterprise in one step.** Your team keeps everything when you upgrade: the same WhatsApp link
+  (no new QR scan), chats and media, teammates and their passwords, AI agents, settings and remote access.
+  - **In EzyChat Lite:** Upgrade → **Install EzyChat Enterprise** downloads the installer, checks it and starts it
+    (only in the desktop app on the computer that runs EzyChat).
+  - **In EzyChat Enterprise:** the first screen offers **Bring from EzyChat Lite**. It asks you to close EzyChat Lite,
+    copies your data and starts on Lite's address, so phones and bookmarks keep working. Sign in with your Lite
+    password. Lite's data stays on the computer, untouched.
+  - **Already on Enterprise?** Admin → Inboxes → **Add a number from EzyChat Lite** brings a Lite number in as one more
+    inbox, with its chats, customers, team and AI agent. A checklist helps Lite's team sign in at the new address.
+  - **EzyChat Lite afterwards** shows "This WhatsApp number now runs in EzyChat Enterprise" instead of starting, so the
+    number is never answered twice. **Use EzyChat Lite again** is there if you need it.
+  - When EzyChat's address changed, Settings → Integrations shows the new address for AI assistants (Claude, ChatGPT).
+
 ## [0.1.66] - 2026-11-01
 
 ### Added

@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { chmod, lstat, mkdir, open, rename, unlink, type FileHandle } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type { DesktopRelease } from '../../../../packages/shared/src/desktop-updates.js';
-import { activeProduct, updateFeedOf } from '../product.js';
+import { activeProduct, escapeRegExp, updateFeedOf } from '../product.js';
 
 export const MAX_UPDATE_BYTES = 1024 * 1024 * 1024;
 const TIMEOUT_MS = 10 * 60 * 1000;
@@ -29,7 +29,18 @@ export interface DownloadOptions {
   onProgress?: (progress: DownloadProgress) => void;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  /**
+   * 'product' (default): an update of this product (its artifact names and feed).
+   * 'installer-feed': another edition's installer from the product's upgradeInstallerFeed manifest
+   * (upgrade/): any https address and an installer-shaped name; the manifest's SHA-256 and size are the
+   * trust anchor, exactly as for a private edition's own URL feed.
+   */
+  source?: DownloadSource;
 }
+
+export type DownloadSource = 'product' | 'installer-feed';
+
+const INSTALLER_SUFFIXES = ['win-x64.exe', 'mac-x64.dmg', 'mac-arm64.dmg'];
 
 interface DownloadSpec {
   version: string;
@@ -54,7 +65,7 @@ function httpsAddress(value: string): boolean {
   }
 }
 
-function specFor(release: DesktopRelease): DownloadSpec {
+function specFor(release: DesktopRelease, source: DownloadSource = 'product'): DownloadSpec {
   const product = activeProduct();
   const REPOSITORIES = product.releaseRepositories;
   const { version, assetName, downloadUrl, assetSize, assetSha256 } = release;
@@ -79,15 +90,21 @@ function specFor(release: DesktopRelease): DownloadSpec {
   ) {
     throw new Error('Invalid update version.');
   }
-  const names = product.artifactPrefixes.flatMap((prefix) =>
-    ['win-x64.exe', 'mac-x64.dmg', 'mac-arm64.dmg'].map(
-      (suffix) => `${prefix}-${version}-${suffix}`,
-    ),
-  );
-  if (!assetName || !names.includes(assetName) || !downloadUrl)
-    throw new Error('Invalid update installer.');
+  if (source === 'installer-feed') {
+    const shape = new RegExp(
+      `^[A-Za-z0-9][A-Za-z0-9._-]{0,62}-${escapeRegExp(version)}-(?:${INSTALLER_SUFFIXES.map(escapeRegExp).join('|')})$`,
+    );
+    if (!assetName || !shape.test(assetName) || assetName.includes('..') || !downloadUrl)
+      throw new Error('Invalid update installer.');
+  } else {
+    const names = product.artifactPrefixes.flatMap((prefix) =>
+      INSTALLER_SUFFIXES.map((suffix) => `${prefix}-${version}-${suffix}`),
+    );
+    if (!assetName || !names.includes(assetName) || !downloadUrl)
+      throw new Error('Invalid update installer.');
+  }
   const feed = updateFeedOf(product);
-  if (feed.kind === 'url') {
+  if (source === 'installer-feed' || feed.kind === 'url') {
     // A private edition's manifest names the installer by its https URL; the trusted digest and
     // size above (from that fixed-address manifest) are what make the download verifiable.
     if (!httpsAddress(downloadUrl) || basename(new URL(downloadUrl).pathname) === '')
@@ -235,9 +252,9 @@ async function hashFile(path: string, size: number, signal?: AbortSignal): Promi
 export async function verifyDownloadedRelease(
   artifact: DownloadedRelease,
   release: DesktopRelease,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; source?: DownloadSource } = {},
 ): Promise<void> {
-  const spec = specFor(release);
+  const spec = specFor(release, options.source);
   if (
     artifact.version !== spec.version ||
     artifact.assetName !== spec.assetName ||
@@ -267,7 +284,7 @@ export function downloadRelease(
 ): Promise<DownloadedRelease> {
   try {
     options.signal?.throwIfAborted();
-    const spec = specFor(release);
+    const spec = specFor(release, options.source);
     if (!isAbsolute(options.directory)) throw new Error('Invalid update staging directory.');
     const directory = resolve(options.directory);
     const key = join(directory, `${spec.sha256}-${spec.assetName}`);
@@ -331,7 +348,7 @@ async function performDownload(
       if (!cached.isFile() || cached.isSymbolicLink() || cached.nlink !== 1)
         throw new Error('Unsafe cached installer link.');
       try {
-        await verifyDownloadedRelease(artifact, release, { signal });
+        await verifyDownloadedRelease(artifact, release, { signal, source: options.source });
       } catch (error) {
         if (!signal.aborted) await unlink(artifact.filePath);
         throw error;
@@ -404,7 +421,7 @@ async function performDownload(
     signal.throwIfAborted();
     await rename(partial, artifact.filePath);
     createdReady = true;
-    await verifyDownloadedRelease(artifact, release, { signal });
+    await verifyDownloadedRelease(artifact, release, { signal, source: options.source });
     progress({ receivedBytes: received, totalBytes: spec.size });
     return artifact;
   } catch (error) {

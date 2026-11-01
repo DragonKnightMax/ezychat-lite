@@ -73,6 +73,7 @@ import { QuickRepliesPage } from './QuickRepliesPage';
 import { SettingsPage } from './SettingsPage';
 import { TunnelPage } from './TunnelPage';
 import { WhatsAppPage } from './WhatsAppPage';
+import { LiteImportPage } from '../lite-import/LiteImportPage';
 
 /**
  * Every core admin section. `labelKey` is a translation key in the `admin` namespace. WhatsApp and
@@ -449,6 +450,14 @@ export function AdminLayout() {
             <Route path="connectors/:id" element={<ConnectorDetailPage />} />
             <Route path="whatsapp" element={<WhatsAppRoute />} />
             <Route path="inboxes" element={<InboxesRoute />} />
+            <Route
+              path="inboxes/lite"
+              element={
+                <ErrorBoundary>
+                  <LiteImportPage />
+                </ErrorBoundary>
+              }
+            />
             <Route path="tunnel" element={<TunnelPage />} />
             <Route path="settings/*" element={<SettingsPage />} />
             <Route path="audit" element={<AuditPage />} />

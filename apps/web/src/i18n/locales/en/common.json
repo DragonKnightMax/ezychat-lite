@@ -78,7 +78,27 @@
     "cta": "Upgrade to Enterprise",
     "agents": "Need more AI agents? EzyChat Enterprise has one AI agent for each WhatsApp number.",
     "numbers": "Need more WhatsApp numbers? EzyChat Enterprise links several numbers to one team inbox.",
-    "about": "More WhatsApp numbers and AI agents, with support from Anchor Sprint."
+    "about": "More WhatsApp numbers and AI agents, with support from Anchor Sprint.",
+    "dialog": {
+      "title": "Upgrade to EzyChat Enterprise",
+      "numbersValue": "10",
+      "numbers": "WhatsApp numbers",
+      "agentsValue": "10",
+      "agents": "AI agents",
+      "apiValue": "API",
+      "api": "Business API",
+      "keeps": "Chats, team and WhatsApp come with you",
+      "trial": "7-day free trial",
+      "install": "Install EzyChat Enterprise",
+      "retry": "Try again",
+      "learnMore": "Learn more",
+      "cancel": "Cancel",
+      "downloading": "Downloading",
+      "progress": "{{done}} of {{total}}",
+      "error": "The download did not finish. Check your connection and try again.",
+      "startedTitle": "Installer started",
+      "startedBody": "Finish it, then EzyChat Enterprise brings your data over."
+    }
   },
   "tips": {
     "guide": "Full guide",

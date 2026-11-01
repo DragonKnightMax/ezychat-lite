@@ -203,5 +203,19 @@
     "copyLink": "Salin alamat pautan",
     "addToDictionary": "Tambah ke kamus",
     "noSuggestions": "Tiada cadangan ejaan"
+  },
+  "liteImport": {
+    "busy": "Membawa data anda…",
+    "supportSaved": "Fail sokongan disimpan"
+  },
+  "moved": {
+    "title": "Nombor WhatsApp ini kini berjalan dalam {{target}}.",
+    "body": "{{product}} kekal dimatikan supaya pelanggan tidak menerima dua balasan.",
+    "open": "Buka {{target}}",
+    "useLite": "Guna {{product}} semula",
+    "confirmTitle": "Guna {{product}} semula?",
+    "confirmDetail": "Mesej baharu sejak pemindahan hanya ada dalam {{target}}.\nWhatsApp perlu imbasan QR baharu.\nHentikan {{target}} pada nombor ini dahulu.",
+    "restoring": "Menghidupkan semula {{product}}…",
+    "restoreFailed": "Tidak dapat menghidupkan semula {{product}}"
   }
 }

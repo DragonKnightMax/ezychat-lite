@@ -34,7 +34,10 @@ describe('LITE_PRODUCT upgrade contracts', () => {
       releaseRepositories: ['ossmalaysia/ezychat-lite', 'ossmalaysia/wa-team-inbox'],
       artifactPrefixes: ['EzyChat-Lite', 'WA-Team-Inbox'],
       executableNames: ['EzyChat Lite', 'WA Team Inbox'],
+      upgradeInstallerFeed: 'https://dl.ezychat.ai/enterprise/latest.json',
     });
+    // Lite adopts no other product's data; only Enterprise passes adoptFrom: LITE_PRODUCT.
+    expect(LITE_PRODUCT.adoptFrom).toBeUndefined();
   });
 
   it('is frozen and passes its own validation', () => {
@@ -233,5 +236,43 @@ describe('another edition flows through the identity consumers', () => {
     );
     expect(lite.eligible).toBe(false);
     expect(lite.reason).toContain('EzyChat Enterprise');
+  });
+});
+
+describe('Lite → Enterprise fields', () => {
+  it('keeps adoptFrom as a validated, frozen copy of another edition', () => {
+    const p = defineProduct({ ...enterprise, adoptFrom: LITE_PRODUCT });
+    expect({ ...p.adoptFrom }).toEqual({ ...LITE_PRODUCT });
+    expect(Object.isFrozen(p.adoptFrom)).toBe(true);
+    expect(defineProduct(enterprise).adoptFrom).toBeUndefined();
+  });
+
+  it('refuses adopting from itself, a chain or an invalid product', () => {
+    expect(() => defineProduct({ ...enterprise, adoptFrom: enterprise })).toThrow(
+      /another edition/,
+    );
+    expect(() =>
+      defineProduct({ ...enterprise, adoptFrom: { ...LITE_PRODUCT, adoptFrom: LITE_PRODUCT } }),
+    ).toThrow(/cannot adopt/);
+    expect(() =>
+      defineProduct({ ...enterprise, adoptFrom: { ...LITE_PRODUCT, serviceId: '' } }),
+    ).toThrow(/serviceId/);
+    expect(() => defineProduct({ ...enterprise, adoptFrom: 'lite' as unknown as Product })).toThrow(
+      /adoptFrom/,
+    );
+  });
+
+  it('takes an https upgradeInstallerFeed or null and refuses anything else', () => {
+    expect(defineProduct({ ...enterprise, upgradeInstallerFeed: null }).upgradeInstallerFeed).toBe(
+      null,
+    );
+    expect(
+      defineProduct({ ...enterprise, upgradeInstallerFeed: 'https://dl.example.com/x.json' })
+        .upgradeInstallerFeed,
+    ).toBe('https://dl.example.com/x.json');
+    for (const bad of ['http://dl.example.com/x.json', 'https://u:p@x.com/a', 'nope', 42])
+      expect(() => defineProduct({ ...enterprise, upgradeInstallerFeed: bad as string })).toThrow(
+        /upgradeInstallerFeed/,
+      );
   });
 });

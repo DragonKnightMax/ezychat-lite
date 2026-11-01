@@ -342,3 +342,52 @@ describe('URL feed downloads (private editions)', () => {
     );
   });
 });
+
+describe('another edition’s installer (upgradeInstallerFeed)', () => {
+  const name = 'EzyChat-Enterprise-1.4.0-win-x64.exe';
+  const installer: DesktopRelease = {
+    ...release,
+    version: '1.4.0',
+    name,
+    releaseUrl: '',
+    assetName: name,
+    downloadUrl: `https://dl.ezychat.ai/enterprise/1.4.0/${name}`,
+  };
+
+  it('downloads an installer-shaped name from any https address and verifies it', async () => {
+    const fetch = fetcher();
+    const artifact = await downloadRelease(installer, {
+      directory,
+      fetch,
+      source: 'installer-feed',
+    });
+    expect(artifact.assetName).toBe(name);
+    expect(fetch).toHaveBeenCalledWith(installer.downloadUrl, expect.any(Object));
+    await expect(
+      verifyDownloadedRelease(artifact, installer, { source: 'installer-feed' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('is refused as an update of this product, and needs digest, shape and https', async () => {
+    await expect(downloadRelease(installer, { directory, fetch: fetcher() })).rejects.toThrow(
+      /Invalid update installer/,
+    );
+    for (const bad of [
+      { assetName: 'EzyChat-Enterprise-1.4.1-win-x64.exe' },
+      { assetName: '../EzyChat-Enterprise-1.4.0-win-x64.exe' },
+      { assetName: 'EzyChat-Enterprise-1.4.0-linux-x64.AppImage' },
+      { downloadUrl: `http://dl.ezychat.ai/${name}` },
+      { assetSha256: null },
+    ])
+      await expect(
+        downloadRelease(
+          { ...installer, ...bad },
+          {
+            directory,
+            fetch: fetcher(),
+            source: 'installer-feed',
+          },
+        ),
+      ).rejects.toThrow();
+  });
+});

@@ -20,6 +20,7 @@ import { WaLinkStep } from './WaLinkStep';
 import { AiAssistantStep } from './AiAssistantStep';
 import { usernameFrom, usernameFromName } from './username';
 import { WhatsAppStepChoice } from './WhatsAppStepChoice';
+import { LiteSetupStart } from '../lite-import/LiteSetupStart';
 
 /** Account → WhatsApp → AI assistant (skippable) → Ready. */
 type Step = 'account' | 'whatsapp' | 'ai' | 'ready';
@@ -246,7 +247,7 @@ function ReadyStep({ aiOn }: { aiOn: boolean }) {
 }
 
 /** First-run wizard: account → link WhatsApp → AI assistant (skippable) → ready. */
-export function SetupWizard() {
+function NewSetupWizard() {
   const { t } = useTranslation('auth');
   const status = useSetupStatus();
   const [step, setStep] = useState<Step>('account');
@@ -302,6 +303,14 @@ export function SetupWizard() {
       {step === 'ready' && <ReadyStep aiOn={aiOn} />}
     </AuthShell>
   );
+}
+
+/**
+ * The setup page. In the desktop app, when EzyChat Lite data is on this PC, a Start step offers to bring
+ * it over first (`lite-import/LiteSetupStart.tsx`); otherwise it is the wizard above, unchanged.
+ */
+export function SetupWizard() {
+  return <LiteSetupStart startNew={<NewSetupWizard />} />;
 }
 
 export default SetupWizard;

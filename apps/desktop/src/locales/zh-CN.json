@@ -203,5 +203,19 @@
     "copyLink": "复制链接地址",
     "addToDictionary": "添加到词典",
     "noSuggestions": "没有拼写建议"
+  },
+  "liteImport": {
+    "busy": "正在迁移您的数据…",
+    "supportSaved": "支持文件已保存"
+  },
+  "moved": {
+    "title": "此 WhatsApp 号码现在在 {{target}} 中运行。",
+    "body": "{{product}} 保持关闭，客户不会收到两条回复。",
+    "open": "打开 {{target}}",
+    "useLite": "重新使用 {{product}}",
+    "confirmTitle": "重新使用 {{product}}？",
+    "confirmDetail": "迁移后的新消息只在 {{target}} 中。\nWhatsApp 需要重新扫描二维码。\n请先在 {{target}} 中停止此号码。",
+    "restoring": "正在重新开启 {{product}}…",
+    "restoreFailed": "无法重新开启 {{product}}"
   }
 }

@@ -2127,5 +2127,178 @@
       "done": "Disemak"
     },
     "teamLocked": "Kunci menghalang setiap cubaan. Tiada sesiapa membuka fail berisiko."
+  },
+  "liteImport": {
+    "entry": "Tambah nombor dari EzyChat Lite",
+    "pageTitle": "Tambah nombor dari EzyChat Lite",
+    "backInboxes": "‹ Peti masuk",
+    "cancel": "Batal",
+    "progress": "Langkah",
+    "scanning": "Mencari EzyChat Lite…",
+    "readFailed": "Status pemindahan tidak dapat dibaca. Tutup halaman ini dan buka semula.",
+    "actionFailed": "Tidak berjaya. Cuba lagi.",
+    "step": {
+      "found": "Dijumpai",
+      "checks": "Semak",
+      "review": "Semak semula",
+      "running": "Pindah",
+      "done": "Selesai"
+    },
+    "fig": {
+      "lite": "EzyChat Lite",
+      "enterprise": "{{product}}",
+      "newInbox": "Peti masuk baharu",
+      "sameInbox": "Nombor sama",
+      "noNumber": "Tiada nombor dipaut"
+    },
+    "tile": {
+      "chats": "chat",
+      "customers": "pelanggan",
+      "team": "rakan pasukan",
+      "agent": "ejen AI",
+      "size": "untuk disalin",
+      "address": "alamat",
+      "quickReplies": "balasan pantas",
+      "reports": "laporan",
+      "inbox": "peti masuk"
+    },
+    "found": {
+      "titleMerge": "EzyChat Lite dijumpai",
+      "titleCopy": "Bawa data EzyChat Lite anda?",
+      "kept": "Data Lite disimpan, tidak dipadam",
+      "noQr": "Tiada imbasan QR baharu",
+      "continueMerge": "Tambah nombor ini",
+      "continueCopy": "Bawa data saya"
+    },
+    "none": {
+      "title": "Tiada data EzyChat Lite pada PC ini",
+      "body": "EzyChat Lite tidak dijumpai pada komputer ini. Tambah nombor dengan imbasan QR."
+    },
+    "check": {
+      "title": "Semakan pantas",
+      "liteRunning": "Tutup EzyChat Lite dahulu",
+      "liteStopped": "Lite sudah berhenti",
+      "liteService": "Lite berjalan sebagai servis. Hentikan dahulu (perlu admin).",
+      "liteNewer": "Lite lebih baharu. Kemas kini EzyChat Enterprise dahulu.",
+      "versionOk": "Versi OK",
+      "update": "Kemas kini",
+      "updateFailed": "Kemas kini tidak dapat disemak. Cuba lagi dari menu dulang.",
+      "diskLow": "Perlu {{need}} ruang cakera kosong",
+      "diskOk": "Ruang cakera OK",
+      "again": "Semak lagi",
+      "sameNumber": "Nombor ini sudah ada di sini",
+      "newNumber": "Nombor baharu",
+      "noSlot": "Tiada peti masuk kosong. Buang satu dahulu.",
+      "slotOk": "{{used}} daripada {{max}} peti masuk digunakan",
+      "openInboxes": "Peti masuk",
+      "continue": "Teruskan"
+    },
+    "review": {
+      "addedTitle": "Apa yang dibawa",
+      "inboxValue": "Peti masuk baharu",
+      "reportsValue": "Digabung",
+      "teamTitle": "Pasukan",
+      "teamIntro": "Siapa siapa?",
+      "actionLabel": "Apa dibuat dengan {{name}}",
+      "match": "Orang sama dengan",
+      "add": "Tambah sebagai baharu",
+      "skip": "Jangan bawa",
+      "matchLabel": "Orang sama untuk {{name}}",
+      "roleLabel": "Peranan untuk {{name}}",
+      "renamed": "Log masuk sebagai {{username}}",
+      "seesEveryInbox": "Nampak semua peti masuk",
+      "staysTitle": "Enterprise kekalkan miliknya",
+      "stays": {
+        "aiConnection": "Sambungan AI",
+        "timezone": "Zon waktu",
+        "address": "Alamat"
+      },
+      "redoTitle": "Sediakan semula",
+      "redo": {
+        "address": "Alamat Lite",
+        "signIn": "Log masuk dan amaran telefon",
+        "mcp": "Pembantu AI (MCP)",
+        "tokens": "Pembantu AI yang disambung ke Lite"
+      },
+      "merge": "Gabung sekarang"
+    },
+    "role": {
+      "admin": "Admin",
+      "agent": "Ahli pasukan"
+    },
+    "run": {
+      "title": "Sedang memindah…",
+      "intro": "Biarkan PC ini hidup.",
+      "stop": "Hentikan Lite",
+      "copy": "Salin data",
+      "migrate": "Kemas kini data",
+      "merge": "Tambah peti masuk",
+      "verify": "Semak",
+      "handover": "Serah nombor",
+      "start": "Mula"
+    },
+    "fail": {
+      "title": "Pemindahan gagal",
+      "safe": "Tiada yang berubah. Lite berjalan semula.",
+      "retry": "Cuba lagi",
+      "support": "Simpan fail sokongan",
+      "saved": "Fail sokongan disimpan (tiada mesej atau nama)",
+      "codes": {
+        "own_server_stop": "EzyChat tidak dapat berhenti seketika untuk pemindahan. Tutup tetingkap EzyChat lain dan cuba lagi.",
+        "summary_failed": "EzyChat tidak dapat membaca data EzyChat Lite.",
+        "no_lite_data": "Data EzyChat Lite tiada lagi di komputer ini.",
+        "other": "Sesuatu tidak kena semasa memindahkan."
+      }
+    },
+    "done": {
+      "titleMerge": "Nombor ditambah",
+      "titleCopy": "Data anda sudah di sini",
+      "openInbox": "Buka peti masuk",
+      "toInboxes": "Peti masuk",
+      "signInLite": "Log masuk dengan kata laluan EzyChat Lite anda",
+      "signIn": "Log masuk",
+      "agentOff": "Ejen AI Lite masuk dalam keadaan mati: tiada ejen AI kosong.",
+      "renamed": "Balasan pantas dinamakan semula: {{shortcuts}}"
+    },
+    "list": {
+      "title": "Lengkapkan untuk pasukan Lite",
+      "intro": "Nombor Lite kini {{inbox}}. {{done}} daripada {{total}} selesai",
+      "share": "Kongsi alamat dengan {{n}} rakan pasukan",
+      "signin": "Mereka log masuk semula",
+      "notifications": "Mereka hidupkan amaran telefon",
+      "mcp": "Sambung semula pembantu AI",
+      "copyAddress": "Salin alamat",
+      "dismiss": "Tutup"
+    },
+    "mcp": {
+      "title": "Alamat EzyChat telah berubah",
+      "body": "Pembantu AI yang disambung ke EzyChat Lite perlu disambung semula.",
+      "newAddress": "Alamat baharu",
+      "noAddress": "Hidupkan Akses telefon untuk dapatkan alamat baharu",
+      "tokens": "Disambung ke EzyChat Lite",
+      "quickHint": "Alamat pantas berubah. Guna domain sendiri supaya kekal bersambung.",
+      "dismiss": "Tutup"
+    },
+    "desktopOnly": {
+      "title": "Hanya pada komputer EzyChat",
+      "pc": "Buka {{product}} pada PC tempat ia berjalan",
+      "admin": "Admin sahaja"
+    },
+    "setup": {
+      "title": "Selamat datang ke {{product}}",
+      "subtitle": "EzyChat Lite dijumpai pada PC ini",
+      "bring": "Bawa dari EzyChat Lite",
+      "bringChats": "{{chats}} chat dan pelanggan",
+      "bringTeam": "{{n}} rakan pasukan, kata laluan sama",
+      "new": "Mula baharu",
+      "newAccount": "Cipta admin baharu",
+      "newQr": "Imbas QR untuk paut WhatsApp",
+      "onlyHere": "Hanya dalam aplikasi desktop pada PC ini",
+      "steps": {
+        "start": "Mula",
+        "bring": "Bawa data",
+        "ready": "Sedia"
+      }
+    }
   }
 }
