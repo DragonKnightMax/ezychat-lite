@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.68] - 2026-11-01
+
 ### Fixed
 
 - **Move to EzyChat Enterprise when EzyChat Lite runs as a background service.** Enterprise said "No EzyChat Lite

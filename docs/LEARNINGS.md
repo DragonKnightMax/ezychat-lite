@@ -780,7 +780,9 @@ into AGENTS.md.
   whole import. Make the irreversible step impossible there (test data, or a build that refuses it) instead.
 - A Lite marked moved (`moved.json`) while its service is installed cannot start (exit 4, the service stays
   stopped), and the "Use EzyChat Lite again" screen appears only in standalone mode. Restore order: Remove
-  service → open Lite → Use EzyChat Lite again → install the service again.
+  service → open Lite → Use EzyChat Lite again → install the service again. A copy import took Lite's port,
+  so the restored Lite saved the next free one (7421): find the real port from the service process's
+  listening socket before calling Lite down, and tell the owner to set it back for LAN bookmarks.
 - An elevated script that writes into a user-writable folder (data moved back to the profile, then
   `icacls /reset /T`) must refuse first when that folder or any folder above it is a link (junction, symlink),
   and check every "would stop halfway" condition (target already has app.db) before it touches the service.
