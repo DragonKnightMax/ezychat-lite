@@ -17,7 +17,8 @@ import { api } from './client';
 export const safetyKeys = {
   state: ['safety'] as const,
   chat: (jid: string) => ['safety', 'chat', jid] as const,
-  report: (days: ReportPeriod) => ['safety', 'report', days] as const,
+  report: (days: ReportPeriod, inbox: number | null = null) =>
+    ['safety', 'report', days, inbox] as const,
 };
 
 export function useSafety() {
@@ -37,10 +38,13 @@ export function useSafetyChat(jid: string) {
   });
 }
 
-export function useSafetyReport(days: ReportPeriod) {
+/** `inbox` null = every inbox together. */
+export function useSafetyReport(days: ReportPeriod, inbox: number | null = null) {
+  const scope = inbox === null ? '' : `&inbox=${inbox}`;
   return useQuery({
-    queryKey: safetyKeys.report(days),
-    queryFn: ({ signal }) => api(`/reports/safety?days=${days}`, { schema: SafetyReport, signal }),
+    queryKey: safetyKeys.report(days, inbox),
+    queryFn: ({ signal }) =>
+      api(`/reports/safety?days=${days}${scope}`, { schema: SafetyReport, signal }),
     staleTime: 60_000,
   });
 }

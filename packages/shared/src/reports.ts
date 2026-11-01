@@ -9,9 +9,10 @@ export const REPORT_PERIODS = [7, 30, 90] as const;
 export const ReportPeriod = z.union([z.literal(7), z.literal(30), z.literal(90)]);
 export type ReportPeriod = z.infer<typeof ReportPeriod>;
 
-/** `GET /api/reports?days=` */
+/** `GET /api/reports?days=&inbox=` (also `/api/reports/safety`): `inbox` omitted = every inbox. */
 export const ReportQuery = z.object({
   days: z.coerce.number().pipe(ReportPeriod).default(30),
+  inbox: z.coerce.number().int().positive().optional(),
 });
 
 /** A new customer with no reply after this long counts as missed. */
@@ -58,6 +59,8 @@ export type ReportTeamRow = z.infer<typeof ReportTeamRow>;
 
 export const Report = z.object({
   days: ReportPeriod,
+  /** The one inbox counted; `null` = every inbox together. */
+  inboxId: z.number().int().positive().nullable().default(null),
   timeZone: z.string(),
   /** Local date of the first stored message (`null` = none yet). */
   firstDate: z.string().nullable(),

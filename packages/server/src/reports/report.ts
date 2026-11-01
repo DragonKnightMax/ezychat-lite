@@ -159,6 +159,7 @@ export function computeReport(db: DB, opts: Options): Report {
 
   return {
     days,
+    inboxId: opts.inboxIds?.length === 1 ? opts.inboxIds[0]! : null,
     timeZone,
     firstDate: firstAt === null ? null : localDate(firstAt, timeZone),
     linkedDate: linked === null ? null : localDate(linked, timeZone),

@@ -15,6 +15,7 @@ import { requireAdmin, requireUser } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import { errors, parse } from '../http/errors.js';
 import { clientIp } from '../http/client-ip.js';
+import { reportInboxScope } from '../reports/scope.js';
 import { computeSafetyReport } from '../reports/safety.js';
 import { chatJidParam } from './chats.js';
 
@@ -69,9 +70,10 @@ export default async function safetyRoutes(app: FastifyInstance, ctx: AppContext
     '/reports/safety',
     { preHandler: requireAdmin(ctx) },
     async (req): Promise<SafetyReport> => {
-      const { days } = parse(ReportQuery, req.query ?? {});
+      const { days, inbox } = parse(ReportQuery, req.query ?? {});
       return computeSafetyReport(ctx.db, {
         days,
+        inboxIds: reportInboxScope(ctx.db, inbox),
         timeZone: resolveAiTimeZone(ctx.settings.get<unknown>(AI_TIMEZONE_SETTING, null)),
         now: Date.now(),
         enabled: safety().settings().enabled,

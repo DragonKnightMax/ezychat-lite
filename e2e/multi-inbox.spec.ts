@@ -128,6 +128,32 @@ test('one customer writing to both numbers is two chats in one list', async () =
   ).toBeVisible();
 });
 
+test('Reports count every number together or one number', async () => {
+  const report = (inbox: string) =>
+    admin.waitForResponse(
+      (r) => r.url().includes('/api/reports?days=30') && r.url().includes(inbox),
+    );
+  const all = admin.waitForResponse((r) => /\/api\/reports\?days=30$/.test(r.url()));
+  await admin.goto('/admin/reports');
+  const together = await (await all).json();
+  expect(together.inboxId).toBeNull();
+  const picker = admin.getByRole('combobox', { name: 'Inbox' });
+  await expect(picker).toHaveText(/^All inboxes/);
+
+  const catering = report('inbox=2');
+  await picker.click();
+  await admin.getByRole('option', { name: /^Catering/ }).click();
+  const one = await (await catering).json();
+  expect(one.inboxId).toBe(2);
+  expect(one.totals.messagesIn).toBe(1);
+  expect(together.totals.messagesIn).toBeGreaterThan(one.totals.messagesIn);
+  await expect(admin.getByTestId('report-totals')).toBeVisible();
+
+  await picker.click();
+  await admin.getByRole('option', { name: /^All inboxes/ }).click();
+  await expect(picker).toHaveText(/^All inboxes/);
+});
+
 test('an agent sees only the chats of their inboxes', async ({ browser }) => {
   const daniel = await signInAgent(browser, DANIEL);
   await expect(chatItem(daniel, CUSTOMER)).toBeVisible();

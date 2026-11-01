@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Reports per WhatsApp number.** With two or more numbers, Admin → Reports has an inbox choice next to the period:
+  **All inboxes** shows every number together (as before), or pick one number to see only its customers, replies,
+  AI hand-offs and WhatsApp Safety findings.
+
 ## [0.1.68] - 2026-11-01
 
 ### Fixed

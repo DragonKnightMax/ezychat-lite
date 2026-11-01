@@ -343,8 +343,10 @@ only on a critical rule from a number that is not an existing customer, never in
 message over (`sensitive`). Routes `/api/safety*` (admins), `/api/safety/chats/:jid` (inbox access),
 `/api/reports/safety`. Web: `inbox/SafetyMessage.tsx`, `admin/SafetyPage.tsx`, `admin/SafetyReport.tsx`.
 
-**Reports.** Design `docs/features/reports/design.md`. `GET /api/reports?days=7|30|90` (admins, every inbox;
-zod `Report` in `packages/shared/src/reports.ts`) is counted on request by `reports/report.ts` (direct chats
+**Reports.** Design `docs/features/reports/design.md`. `GET /api/reports?days=7|30|90[&inbox=<id>]` (admins; no
+`inbox` = every inbox together, else that one inbox, removed ones included, unknown 404 through `reports/scope.ts`; the
+page's inbox choice shows with 2+ visible inboxes and also scopes `/api/reports/safety`; zod `Report` in
+`packages/shared/src/reports.ts`) is counted on request by `reports/report.ts` (direct chats
 only, business time zone `ai_timezone`; wait and reply times reuse `chats/activity.ts`). A new customer is a
 chat whose first message is the customer's and is not older than WhatsApp's link time (the inbox's first stored
 `created_at`, i.e. the history import); missed = no reply within `MISSED_LEAD_MS` (1 h); "waiting after AI

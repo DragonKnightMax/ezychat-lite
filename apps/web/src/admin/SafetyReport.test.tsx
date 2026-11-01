@@ -20,7 +20,7 @@ const totals = {
 let report: SafetyReport;
 let client: QueryClient;
 const fetcher = vi.fn(async (url: string) => {
-  if (url === '/api/reports/safety?days=7')
+  if (url === '/api/reports/safety?days=7' || url === '/api/reports/safety?days=7&inbox=2')
     return new Response(JSON.stringify(report), {
       headers: { 'content-type': 'application/json' },
     });
@@ -30,6 +30,7 @@ const fetcher = vi.fn(async (url: string) => {
 beforeEach(() => {
   report = {
     days: 7,
+    inboxId: null,
     enabled: true,
     totals,
     previous: { ...totals, dangerousFiles: 2, scamMessages: 6 },
@@ -114,4 +115,16 @@ it('says when nothing was flagged, and when Safety is off', async () => {
   report = { ...report, enabled: false };
   show();
   expect(await screen.findByText('WhatsApp Safety is off, so nothing was checked.')).toBeTruthy();
+});
+
+it('counts only the inbox the page picked', async () => {
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <SafetyReportSection days={7} inbox={2} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByTestId('safety-totals');
+  expect(fetcher.mock.calls.map(([url]) => url)).toContain('/api/reports/safety?days=7&inbox=2');
 });

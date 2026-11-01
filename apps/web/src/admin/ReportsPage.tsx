@@ -4,12 +4,21 @@ import { ArrowDownRight, ArrowUpRight, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { Report, ReportPeriod, ReportTotals } from '@ezychat/shared';
+import type { Inbox, Report, ReportPeriod, ReportTotals } from '@ezychat/shared';
 import { useReport } from '../api/queries';
+import { useVisibleInboxes } from '../inbox/useVisibleInboxes';
+import { formatPhone } from '../lib/jid';
 import { Banner, PageHeader, SegmentedControl } from '@/components/app';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ErrorState } from './adminUi';
@@ -45,13 +54,18 @@ const isKnownReason = (reason: string): reason is HandoffReason =>
 /**
  * Admin → Reports (design: docs/features/reports/design.md): how busy the WhatsApp numbers are
  * (busy days, busy times, new customers) and how fast the team and the AI answer, for 7, 30 or 90
- * days. Counted from this computer's database only; nothing is sent anywhere.
+ * days. Counted from this computer's database only; nothing is sent anywhere. With two or more
+ * WhatsApp numbers the admin sees them all together or picks one.
  */
 export function ReportsPage() {
   const { t } = useTranslation('admin');
   const [days, setDays] = useState<ReportPeriod>(30);
+  const [picked, setPicked] = useState<number | null>(null);
+  const inboxes = useVisibleInboxes();
+  // An inbox that was removed (or is no longer listed) falls back to every inbox together.
+  const inbox = picked !== null && inboxes.some((i) => i.id === picked) ? picked : null;
   const periodId = useId();
-  const report = useReport(days);
+  const report = useReport(days, inbox);
   return (
     <div className="flex flex-col gap-4" data-testid="reports-page">
       <PageHeader
@@ -60,6 +74,7 @@ export function ReportsPage() {
         description={t('reports.description')}
         actions={
           <>
+            <ReportInboxPicker inboxes={inboxes} value={inbox} onChange={setPicked} />
             <span id={periodId} className="sr-only">
               {t('reports.period')}
             </span>
@@ -78,12 +93,55 @@ export function ReportsPage() {
       />
       {report.isPending && <ReportSkeleton />}
       {report.isError && <ErrorState error={report.error} onRetry={() => void report.refetch()} />}
-      {report.isSuccess && <ReportBody report={report.data} />}
+      {report.isSuccess && <ReportBody report={report.data} inbox={inbox} />}
     </div>
   );
 }
 
-function ReportBody({ report }: { report: Report }) {
+const ALL_INBOXES = 'all';
+
+/** Every inbox together or one of them; shown only with two or more WhatsApp numbers. */
+function ReportInboxPicker({
+  inboxes,
+  value,
+  onChange,
+}: {
+  inboxes: readonly Inbox[];
+  value: number | null;
+  onChange(inbox: number | null): void;
+}) {
+  const { t } = useTranslation('inbox');
+  if (inboxes.length < 2) return null;
+  return (
+    <Select
+      value={value === null ? ALL_INBOXES : String(value)}
+      onValueChange={(v) => onChange(v === ALL_INBOXES ? null : Number(v))}
+    >
+      <SelectTrigger
+        aria-label={t('inboxFilter.label')}
+        data-testid="reports-inbox"
+        className="h-11! w-full min-w-0 bg-surface text-base *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate sm:w-64 md:text-sm"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        <SelectItem value={ALL_INBOXES} className="min-h-11 md:min-h-8">
+          {t('inboxFilter.all', { total: inboxes.length })}
+        </SelectItem>
+        {inboxes.map((i) => {
+          const number = formatPhone({ phone: i.number });
+          return (
+            <SelectItem key={i.id} value={String(i.id)} className="min-h-11 md:min-h-8">
+              {number ? t('inboxFilter.option', { name: i.name, number }) : i.name}
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ReportBody({ report, inbox }: { report: Report; inbox: number | null }) {
   const { t } = useTranslation('admin');
   const f = useReportFormat();
   if (!report.daily.some((d) => d.inbound > 0 || d.outbound > 0))
@@ -231,7 +289,7 @@ function ReportBody({ report }: { report: Report }) {
         </ChartCard>
       </div>
       <Team report={report} />
-      <SafetyReportSection days={report.days} />
+      <SafetyReportSection days={report.days} inbox={inbox} />
     </>
   );
 }

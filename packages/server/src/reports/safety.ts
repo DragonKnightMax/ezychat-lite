@@ -5,7 +5,7 @@ import type {
   SafetyReportTotals,
   SafetyRule,
 } from '@ezychat/shared';
-import { localDate, localMidnight } from '../chats/stats.js';
+import { inboxCondition, localDate, localMidnight } from '../chats/stats.js';
 import type { DB } from '../db/index.js';
 
 const DAY_MS = 86_400_000;
@@ -44,20 +44,33 @@ interface Row {
   created_at: number;
 }
 
-function totals(db: DB, from: number, to: number): SafetyReportTotals {
+/**
+ * `items` limits `safety_items i` to the report's inboxes. Numbers are shared by inboxes: one inbox
+ * counts a blocked number only when that number has a chat in it.
+ */
+function totals(
+  db: DB,
+  from: number,
+  to: number,
+  inboxIds: readonly number[] | undefined,
+): SafetyReportTotals {
+  const items = inboxCondition('i', inboxIds);
+  const numbers = inboxIds
+    ? `AND EXISTS (SELECT 1 FROM chats c WHERE c.wa_jid = safety_numbers.wa_jid AND ${inboxCondition('c', inboxIds)})`
+    : '';
   const rows = db
-    .prepare('SELECT * FROM safety_items WHERE created_at >= ? AND created_at < ?')
+    .prepare(`SELECT * FROM safety_items i WHERE created_at >= ? AND created_at < ? AND ${items}`)
     .all(from, to) as Row[];
   const downloads = db
     .prepare(
       `SELECT d.allowed, COUNT(*) AS n FROM safety_downloads d JOIN safety_items i ON i.id = d.item_id
-        WHERE i.level = 'high' AND d.at >= ? AND d.at < ? GROUP BY d.allowed`,
+        WHERE i.level = 'high' AND d.at >= ? AND d.at < ? AND ${items} GROUP BY d.allowed`,
     )
     .all(from, to) as Array<{ allowed: number; n: number }>;
   const blocked = db
     .prepare(
       `SELECT COUNT(*) AS n, COALESCE(SUM(blocked_auto), 0) AS auto FROM safety_numbers
-        WHERE blocked_at >= ? AND blocked_at < ?`,
+        WHERE blocked_at >= ? AND blocked_at < ? ${numbers}`,
     )
     .get(from, to) as { n: number; auto: number };
   const high = rows.filter((r) => r.level === 'high');
@@ -78,13 +91,22 @@ function totals(db: DB, from: number, to: number): SafetyReportTotals {
 
 /**
  * Admin → Reports → WhatsApp Safety for the last `days` local days (business time zone), counted on
- * request from `safety_items`, `safety_downloads` and `safety_numbers`. Every inbox (admins only).
+ * request from `safety_items`, `safety_downloads` and `safety_numbers`. Every inbox together, or
+ * only `inboxIds` (admins only).
  */
 export function computeSafetyReport(
   db: DB,
-  opts: { days: ReportPeriod; timeZone: string; now: number; enabled: boolean },
+  opts: {
+    days: ReportPeriod;
+    timeZone: string;
+    now: number;
+    enabled: boolean;
+    /** Only these inboxes; omitted = every inbox. */
+    inboxIds?: readonly number[];
+  },
 ): SafetyReport {
-  const { days, timeZone, now } = opts;
+  const { days, timeZone, now, inboxIds } = opts;
+  const items = inboxCondition('i', inboxIds);
   const today = localMidnight(localDate(now, timeZone), timeZone);
   const starts = [today];
   for (let i = 1; i < days; i++)
@@ -95,7 +117,8 @@ export function computeSafetyReport(
 
   const rows = db
     .prepare(
-      'SELECT * FROM safety_items WHERE created_at >= ? AND created_at < ? ORDER BY created_at',
+      `SELECT * FROM safety_items i WHERE created_at >= ? AND created_at < ? AND ${items}
+        ORDER BY created_at`,
     )
     .all(from, end) as Row[];
   const bounds = [...starts, end];
@@ -125,7 +148,7 @@ export function computeSafetyReport(
          LEFT JOIN chats c ON c.jid = i.chat_jid
          LEFT JOIN customer_profiles p ON p.chat_jid = i.chat_jid
          LEFT JOIN safety_numbers s ON s.wa_jid = c.wa_jid
-        WHERE i.level != 'none' AND i.created_at >= ? AND i.created_at < ? AND c.type = 'dm'
+        WHERE i.level != 'none' AND i.created_at >= ? AND i.created_at < ? AND c.type = 'dm' AND ${items}
         GROUP BY i.chat_jid ORDER BY n DESC, MAX(i.created_at) DESC LIMIT 5`,
     )
     .all(from, end) as Array<{
@@ -146,16 +169,17 @@ export function computeSafetyReport(
     .prepare(
       `SELECT u.display_name AS name, SUM(d.allowed) AS risky, SUM(1 - d.allowed) AS refused
          FROM safety_downloads d JOIN safety_items i ON i.id = d.item_id JOIN users u ON u.id = d.user_id
-        WHERE i.level = 'high' AND d.at >= ? AND d.at < ?
+        WHERE i.level = 'high' AND d.at >= ? AND d.at < ? AND ${items}
         GROUP BY d.user_id ORDER BY risky DESC, refused DESC, u.display_name`,
     )
     .all(from, end) as Array<{ name: string; risky: number; refused: number }>;
 
   return {
     days,
+    inboxId: inboxIds?.length === 1 ? inboxIds[0]! : null,
     enabled: opts.enabled,
-    totals: totals(db, from, end),
-    previous: totals(db, before, from),
+    totals: totals(db, from, end, inboxIds),
+    previous: totals(db, before, from, inboxIds),
     daily,
     kinds: [...kinds].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
     senders: senders.map((s) => ({

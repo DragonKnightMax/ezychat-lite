@@ -256,4 +256,46 @@ describe('GET /api/reports', () => {
     expect(body).toMatchObject({ days: 90, timeZone: 'Asia/Kuala_Lumpur', daily: [] });
     expect(Report.parse((await get('/api/reports', admin.cookie)).json()).days).toBe(30);
   });
+
+  it('counts every inbox together or one inbox, and refuses an unknown inbox', async () => {
+    const admin = await createUserAndLogin(t, { role: 'admin' });
+    const get = (url: string) =>
+      t.app.inject({ method: 'GET', url, headers: authHeaders(admin.cookie) });
+    const db = t.ctx.db;
+    db.prepare(
+      "INSERT INTO inboxes (id, name, tone, auth_dir, created_at, removed_at) VALUES (2, 'Catering', 'info', 'x', 0, NULL)",
+    ).run();
+    const now = Date.now();
+    const add = (jid: string, inboxId: number, n: number) => {
+      db.prepare(
+        `INSERT INTO chats (jid, type, name, unread_count, status, updated_at, inbox_id)
+         VALUES (?, 'dm', ?, 0, 'open', 0, ?)`,
+      ).run(jid, jid, inboxId);
+      for (let i = 0; i < n; i++)
+        db.prepare(
+          `INSERT INTO messages (id, chat_jid, from_me, type, body, status, timestamp, created_at)
+           VALUES (?, ?, 0, 'text', 'x', 'sent', ?, ?)`,
+        ).run(`${jid}-${i}`, jid, now - 3_600_000 - i, now - 86_400_000 * 10);
+    };
+    add('a@s.whatsapp.net', 1, 2);
+    add('b@s.whatsapp.net#2', 2, 3);
+
+    const all = Report.parse((await get('/api/reports?days=7')).json());
+    expect([all.inboxId, all.totals.messagesIn]).toEqual([null, 5]);
+    const one = Report.parse((await get('/api/reports?days=7&inbox=1')).json());
+    expect([one.inboxId, one.totals.messagesIn]).toEqual([1, 2]);
+    const two = Report.parse((await get('/api/reports?days=7&inbox=2')).json());
+    expect([two.inboxId, two.totals.messagesIn]).toEqual([2, 3]);
+    // A removed inbox keeps its report (its chats stay for admins).
+    db.prepare('UPDATE inboxes SET removed_at = 1 WHERE id = 2').run();
+    expect(Report.parse((await get('/api/reports?days=30&inbox=2')).json()).totals.messagesIn).toBe(
+      3,
+    );
+
+    const unknown = await get('/api/reports?inbox=9');
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.json().error.code).toBe('not_found');
+    expect((await get('/api/reports?inbox=0')).statusCode).toBe(400);
+    expect((await get('/api/reports?inbox=x')).statusCode).toBe(400);
+  });
 });

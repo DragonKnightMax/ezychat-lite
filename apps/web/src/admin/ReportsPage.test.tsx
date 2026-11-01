@@ -2,21 +2,50 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import type { Report, ReportDay } from '@ezychat/shared';
+import {
+  DEFAULT_INBOX_CAPABILITIES,
+  type Inbox,
+  type Report,
+  type ReportDay,
+} from '@ezychat/shared';
 import { ReportsPage, busiestBlock } from './ReportsPage';
 
 const query = vi.hoisted(() => ({
   current: {} as Record<string, unknown>,
   days: [] as number[],
+  inboxes: [] as Array<number | null>,
+  safetyInboxes: [] as Array<number | null | undefined>,
+  visible: [] as unknown[],
 }));
 // The WhatsApp Safety section has its own test (SafetyReport.test.tsx).
-vi.mock('./SafetyReport', () => ({ SafetyReportSection: () => null }));
+vi.mock('./SafetyReport', () => ({
+  SafetyReportSection: ({ inbox }: { inbox?: number | null }) => {
+    query.safetyInboxes.push(inbox);
+    return null;
+  },
+}));
 vi.mock('../api/queries', () => ({
-  useReport: (days: number) => {
+  useReport: (days: number, inbox: number | null) => {
     query.days.push(days);
+    query.inboxes.push(inbox);
     return query.current;
   },
 }));
+vi.mock('../inbox/useVisibleInboxes', () => ({ useVisibleInboxes: () => query.visible }));
+
+function inbox(id: number, name: string, number: string | null): Inbox {
+  return {
+    id,
+    name,
+    tone: 'primary',
+    number,
+    removed: false,
+    aiAgentId: null,
+    type: 'linked_phone',
+    capabilities: DEFAULT_INBOX_CAPABILITIES,
+    status: { state: 'open', me: null, qr: null, lastError: null },
+  };
+}
 
 const DAY = 86_400_000;
 const NOW = Date.now();
@@ -43,6 +72,7 @@ function hours(): number[][] {
 function report(overrides: Partial<Report> = {}): Report {
   return {
     days: 30,
+    inboxId: null,
     timeZone: 'Asia/Kuala_Lumpur',
     firstDate: '2026-10-05',
     linkedDate: '2026-10-05',
@@ -115,6 +145,9 @@ function renderPage() {
 
 beforeEach(() => {
   query.days = [];
+  query.inboxes = [];
+  query.safetyInboxes = [];
+  query.visible = [];
 });
 afterEach(cleanup);
 
@@ -219,6 +252,63 @@ describe('ReportsPage', () => {
     renderPage();
     await userEvent.setup().click(screen.getByText('7 days'));
     expect(query.days.at(-1)).toBe(7);
+  });
+
+  it('has no inbox choice with one WhatsApp number: everything together', () => {
+    query.current = ready(report());
+    query.visible = [inbox(1, 'Kopi Apong', '60123456789')];
+    renderPage();
+    expect(screen.queryByTestId('reports-inbox')).toBeNull();
+    expect(query.inboxes.at(-1)).toBeNull();
+  });
+
+  it('shows every inbox together or one of them, the Safety section too', async () => {
+    // Radix Select needs pointer capture and scrolling, which jsdom lacks.
+    const proto = Element.prototype as unknown as Record<string, unknown>;
+    proto.hasPointerCapture ??= () => false;
+    proto.setPointerCapture ??= () => {};
+    proto.releasePointerCapture ??= () => {};
+    proto.scrollIntoView ??= () => {};
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    query.current = ready(report());
+    query.visible = [inbox(1, 'Kopi Apong', '60123456789'), inbox(2, 'Catering', null)];
+    const u = userEvent.setup();
+    const view = renderPage();
+    const trigger = screen.getByRole('combobox', { name: 'Inbox' });
+    expect(trigger.textContent).toBe('All inboxes (2)');
+    expect(query.inboxes.at(-1)).toBeNull();
+    expect(query.safetyInboxes.at(-1)).toBeNull();
+
+    await u.click(trigger);
+    const options = await screen.findAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual([
+      'All inboxes (2)',
+      'Kopi Apong · +60123456789',
+      'Catering',
+    ]);
+    await u.click(screen.getByRole('option', { name: 'Catering' }));
+    expect(query.inboxes.at(-1)).toBe(2);
+    expect(query.safetyInboxes.at(-1)).toBe(2);
+    // The period keeps the inbox.
+    await u.click(screen.getByText('7 days'));
+    expect([query.days.at(-1), query.inboxes.at(-1)]).toEqual([7, 2]);
+
+    // The chosen inbox is removed: back to every inbox together.
+    query.visible = [inbox(1, 'Kopi Apong', '60123456789'), inbox(3, 'Events', null)];
+    view.rerender(
+      <MemoryRouter>
+        <ReportsPage />
+      </MemoryRouter>,
+    );
+    expect(query.inboxes.at(-1)).toBeNull();
+
+    await u.click(screen.getByRole('combobox', { name: 'Inbox' }));
+    await u.click(await screen.findByRole('option', { name: 'All inboxes (2)' }));
+    expect(query.inboxes.at(-1)).toBeNull();
   });
 
   it('draws a single day as one narrow bar and labels it once', () => {

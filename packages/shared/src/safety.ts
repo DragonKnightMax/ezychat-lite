@@ -191,9 +191,11 @@ export const SafetyReportTotals = z.object({
 });
 export type SafetyReportTotals = z.infer<typeof SafetyReportTotals>;
 
-/** `GET /api/reports/safety?days=` (admins): Admin → Reports → WhatsApp Safety. */
+/** `GET /api/reports/safety?days=&inbox=` (admins): Admin → Reports → WhatsApp Safety. */
 export const SafetyReport = z.object({
   days: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+  /** The one inbox counted; `null` = every inbox together. */
+  inboxId: z.number().int().positive().nullable().default(null),
   enabled: z.boolean(),
   totals: SafetyReportTotals,
   previous: SafetyReportTotals,

@@ -1150,6 +1150,8 @@ into AGENTS.md.
 
 ## Desktop and web UI
 
+- A page that counts across inboxes (Reports, its Safety section) takes one optional `inbox` query param and the page's
+  picker passes the same choice to every section; a section left on "all" next to a one-inbox total misleads.
 - A UAC prompt started by the hidden runner (`runElevatedWindows`: `Start-Process -Verb RunAs` from a
   windowless PowerShell) can open behind the app window: the owner saw only "Waiting for Windows". Every
   screen that waits for it says where to look (taskbar shield, Alt+Tab).

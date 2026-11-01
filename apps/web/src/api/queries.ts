@@ -87,7 +87,7 @@ export const qk = {
   chats: (f: ChatFilters) => ['chats', f] as const,
   chatsAll: ['chats'] as const,
   openChatCount: ['open-chat-count'] as const,
-  report: (days: number) => ['report', days] as const,
+  report: (days: number, inbox: number | null = null) => ['report', days, inbox] as const,
   chat: (jid: string) => ['chat', jid] as const,
   messages: (jid: string) => ['messages', jid] as const,
   notes: (jid: string) => ['notes', jid] as const,
@@ -482,10 +482,12 @@ export function useChat(jid: string | null | undefined) {
 }
 
 /** Admin → Reports for the last 7, 30 or 90 days (admins only). */
-export function useReport(days: ReportPeriod) {
+/** `inbox` null = every inbox together. */
+export function useReport(days: ReportPeriod, inbox: number | null = null) {
+  const scope = inbox === null ? '' : `&inbox=${inbox}`;
   return useQuery({
-    queryKey: qk.report(days),
-    queryFn: ({ signal }) => api(`/reports?days=${days}`, { schema: Report, signal }),
+    queryKey: qk.report(days, inbox),
+    queryFn: ({ signal }) => api(`/reports?days=${days}${scope}`, { schema: Report, signal }),
     staleTime: 60_000,
   });
 }

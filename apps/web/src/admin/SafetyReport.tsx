@@ -12,11 +12,19 @@ import { ChartCard, NumberTable, RankedBars, useReportFormat } from './ReportCha
 /**
  * Admin → Reports → WhatsApp Safety (docs/features/whatsapp-safety/design.md): what reached the
  * team (dangerous files, scam messages), what the team did with it (risky downloads, blocks) and
- * whether the checks are set right (false alarms), for the same 7 / 30 / 90 days as the page.
+ * whether the checks are set right (false alarms), for the same 7 / 30 / 90 days and inbox as
+ * the page.
  */
-export function SafetyReportSection({ days }: { days: ReportPeriod }) {
+export function SafetyReportSection({
+  days,
+  inbox = null,
+}: {
+  days: ReportPeriod;
+  /** The page's inbox choice; null = every inbox together. */
+  inbox?: number | null;
+}) {
   const { t } = useTranslation('admin');
-  const { data } = useSafetyReport(days);
+  const { data } = useSafetyReport(days, inbox);
   if (!data) return null;
   return (
     <section

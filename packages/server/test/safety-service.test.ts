@@ -424,6 +424,48 @@ describe('Reports → WhatsApp Safety', () => {
     ).toHaveLength(30);
   });
 
+  it('counts every inbox together or one inbox', async () => {
+    const { id } = await incoming(LURE, { text: LURE_TEXT, file: lureZip() });
+    await download(id, agent.cookie);
+    const item = (await state()).items.find((i) => i.chatJid === LURE)!;
+    await act(item.id, 'report', { block: true });
+    // A second inbox with one scam message from another number.
+    const db = t.ctx.db;
+    db.prepare(
+      "INSERT INTO inboxes (id, name, tone, auth_dir, created_at, removed_at) VALUES (2, 'Catering', 'info', 'x', 0, NULL)",
+    ).run();
+    const other = '60199999999@s.whatsapp.net#2';
+    db.prepare(
+      `INSERT INTO chats (jid, wa_jid, type, name, unread_count, status, updated_at, inbox_id)
+       VALUES (?, '60199999999@s.whatsapp.net', 'dm', 'X', 0, 'open', 0, 2)`,
+    ).run(other);
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO safety_items (message_id, chat_jid, inbox_id, rules, score, rule_level, critical,
+         level, status, existing_customer, has_file, created_at, updated_at)
+       VALUES ('m-x', ?, 2, '["financeUrgency"]', 50, 'warning', 0, 'warning', 'open', 0, 0, ?, ?)`,
+    ).run(other, now, now);
+    const get = async (url: string) => {
+      const r = await t.app.inject({ method: 'GET', url, headers: authHeaders(admin.cookie) });
+      return r.statusCode === 200 ? SafetyReport.parse(r.json()) : r.statusCode;
+    };
+    const pick = (r: SafetyReport | number) =>
+      typeof r === 'number'
+        ? r
+        : [
+            r.inboxId,
+            r.totals.flagged,
+            r.totals.refusedDownloads,
+            r.totals.numbersBlocked,
+            r.senders.length,
+          ];
+    expect(pick(await get('/api/reports/safety?days=7'))).toEqual([null, 2, 1, 1, 2]);
+    expect(pick(await get('/api/reports/safety?days=7&inbox=1'))).toEqual([1, 1, 1, 1, 1]);
+    // The blocked number has no chat in inbox 2, so inbox 2 counts no block.
+    expect(pick(await get('/api/reports/safety?days=7&inbox=2'))).toEqual([2, 1, 0, 0, 1]);
+    expect(await get('/api/reports/safety?days=7&inbox=9')).toBe(404);
+  });
+
   it('names each finding by its most telling kind', () => {
     expect(kindOf(['scamNumber'], null, false)).toBe('scamNumber');
     expect(kindOf(['doubleExtension'], null, true)).toBe('hiddenProgram');
