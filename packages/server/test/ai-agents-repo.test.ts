@@ -35,11 +35,14 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A database as release `version` left it (migrations 001..version applied). */
+/**
+ * A database as release `version` left it (migrations 001..version applied). In memory: every
+ * migration on a file synced to disk took > 30 s on a busy Windows CI runner.
+ */
 function dbAt(version: number): { db: DB; settings: SettingsStore } {
   const dir = mkdtempSync(join(tmpdir(), 'wati-agents-'));
   dirs.push(dir);
-  const db = new Database(join(dir, 'app.db'));
+  const db = new Database(':memory:');
   dbs.push(db);
   db.pragma('foreign_keys = ON');
   const files = readdirSync(migrationsDir())

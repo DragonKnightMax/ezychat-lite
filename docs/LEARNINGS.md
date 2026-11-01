@@ -323,6 +323,9 @@ into AGENTS.md.
   (`D:\dev\test-env\lite\start.ps1`) also loads `@ezychat/shared` from `dist/`: after adding a shared export,
   `npm run build:core` first, or the server stops with "does not provide an export named …". A test that is ~0.4 s on `main` and
   times out on a branch is a branch regression (load, not flakiness): compare per-test times first.
+- A test that runs every migration on a fresh SQLite file costs ~1 s per test locally and timed out (> 30 s)
+  on `windows-latest` (disk sync per migration on a busy runner): build migration-only test databases with
+  `new Database(':memory:')` unless the test reopens the file.
 - Push a Lite API change before the Enterprise commit that uses it: Enterprise CI builds the Lite branch
   as pushed at that moment (`LITE_REF`), so the reverse order fails its typecheck.
 - Private repositories (e.g. `anchorsprint/ezychat-enterprise`) run CI only on the org's self-hosted
