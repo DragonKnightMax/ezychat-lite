@@ -337,6 +337,9 @@ into AGENTS.md.
   plugin-injected CLAUDE.md block out of commits. One path that no longer exists (e.g. a folder whose deletion
   is already staged) makes `git add` stage nothing: chain `git add … && git commit`, never with `;`, and read
   `git show --stat HEAD` after the commit.
+- A release PR opened before later merges is rebuilt on a fresh `origin/main` (bump, `version:sync`, lockfile,
+  changelog heading), never rebased; copy a single new `dev-build-checks.md` row by hand: `git apply --3way`
+  of a table row garbled the whole file. Before a release, check `main`'s own CI and run e2e + links on it.
 - A red check on a release (version-only) PR: read `gh run view --log-failed`, compare with `main`'s run
   on the same code, then `gh run rerun <id> --failed`; fix the flaky test in its own PR. A mac DMG job
   failing with `hdiutil: couldn't eject … Resource busy` is a runner glitch: re-run that job, it adds

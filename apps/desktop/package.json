@@ -1,7 +1,7 @@
 {
   "name": "@ezychat/desktop",
   "productName": "EzyChat Lite",
-  "version": "0.1.65",
+  "version": "0.1.66",
   "type": "module",
   "license": "MIT",
   "description": "EzyChat core: the Electron desktop shell (window, tray, status window, OS service, updater).",

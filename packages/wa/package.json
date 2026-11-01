@@ -1,6 +1,6 @@
 {
   "name": "@ezychat/wa",
-  "version": "0.1.65",
+  "version": "0.1.66",
   "type": "module",
   "description": "EzyChat core: WhatsApp adapter interface, Baileys adapter and fake adapter.",
   "license": "MIT",
@@ -37,7 +37,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ezychat/shared": "0.1.65",
+    "@ezychat/shared": "0.1.66",
     "baileys": "^7.0.0-rc14",
     "pino": "^10.4.0",
     "qrcode": "^1.5.4"

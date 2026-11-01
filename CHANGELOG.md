@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.66] - 2026-11-01
+
 ### Added
 
 - **Tag people in WhatsApp groups.** In a group chat, type `@` in the reply box and pick a member from **Tag a
