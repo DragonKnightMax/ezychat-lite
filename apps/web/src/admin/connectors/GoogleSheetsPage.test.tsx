@@ -65,8 +65,8 @@ describe('Google Sheets: gallery and Overview', () => {
       'Settings',
       'Activity',
     ]);
-    expect(screen.getByText('Read rows')).toBeTruthy();
-    expect(screen.getByText('Add leads')).toBeTruthy();
+    expect(screen.getByText('Answer questions from the sheet')).toBeTruthy();
+    expect(screen.getByText('Save interested customers (leads)')).toBeTruthy();
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Connect Google Sheets' }));
     await waitFor(() =>
@@ -132,7 +132,9 @@ describe('Google Sheets: Settings', () => {
     const user = userEvent.setup();
     // Add leads needs a sheet first.
     expect(
-      (await screen.findByRole('switch', { name: 'Add leads' })).hasAttribute('disabled'),
+      (
+        await screen.findByRole('switch', { name: 'Save interested customers (leads)' })
+      ).hasAttribute('disabled'),
     ).toBe(true);
     await user.click(screen.getByTestId('sheets-choose'));
     await waitFor(() =>
@@ -152,7 +154,7 @@ describe('Google Sheets: Settings', () => {
     expect(screen.getByTestId('sheets-lookup-tab').textContent).toContain('Menu');
     expect(screen.getByTestId('sheets-choose').textContent).toContain('Choose another sheet');
 
-    await user.click(screen.getByRole('switch', { name: 'Add leads' }));
+    await user.click(screen.getByRole('switch', { name: 'Save interested customers (leads)' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(screen.getByText('Choose a tab.')).toBeTruthy();
     await user.click(screen.getByTestId('sheets-leads-tab'));
@@ -229,7 +231,7 @@ describe('Google Sheets: Settings', () => {
     );
     expect(screen.getByTestId('sheets-lookup-tab').textContent).toContain('Old tab');
     const user = userEvent.setup();
-    await user.click(screen.getByRole('switch', { name: 'Read rows' }));
+    await user.click(screen.getByRole('switch', { name: 'Answer questions from the sheet' }));
     expect(screen.queryByTestId('sheets-lookup-tab')).toBeNull();
   });
 });
@@ -281,9 +283,12 @@ describe('Google Sheets: Activity and the agent page', () => {
   });
 
   it.each([
-    [{ lookupTab: 'Menu' }, 'Reads the sheet'],
-    [{ lookupTab: 'Menu', addLeads: true, leadsTab: 'Leads' }, 'Reads the sheet and adds leads'],
-    [{ lookup: false, addLeads: true, leadsTab: 'Leads' }, 'Adds leads'],
+    [{ lookupTab: 'Menu' }, 'Answers from the sheet'],
+    [
+      { lookupTab: 'Menu', addLeads: true, leadsTab: 'Leads' },
+      'Answers from the sheet and saves leads',
+    ],
+    [{ lookup: false, addLeads: true, leadsTab: 'Leads' }, 'Saves leads'],
     [{ lookup: false }, 'Off for this agent'],
   ])('sums up the agent’s Google Sheets on the agent page', async (patch, summary) => {
     stubServer(

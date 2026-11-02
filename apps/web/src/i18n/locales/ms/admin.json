@@ -1535,9 +1535,9 @@
       "off": "Dimatikan untuk ejen ini",
       "none": "Belum ada penyambung.",
       "browse": "Lihat penyambung",
-      "sheetsReadAndLeads": "Membaca helaian dan menambah prospek",
-      "sheetsRead": "Membaca helaian",
-      "sheetsLeads": "Menambah prospek"
+      "sheetsReadAndLeads": "Menjawab daripada helaian dan menyimpan prospek",
+      "sheetsRead": "Menjawab daripada helaian",
+      "sheetsLeads": "Menyimpan prospek"
     },
     "settingsPointerTitle": "Penyambung",
     "settingsPointer": "Google Calendar dan sistem lain yang digunakan oleh ejen AI anda ada di Pentadbir → Penyambung.",
@@ -1546,10 +1546,10 @@
       "checkFreeHint": "Membaca bila kalendar yang dipilih sibuk.",
       "book": "Tempah janji temu",
       "bookHint": "Menambah acara selepas pelanggan mengesahkan masa.",
-      "readRows": "Baca baris",
-      "readRowsHint": "Mencari baris yang sepadan dengan soalan pelanggan.",
-      "addLead": "Tambah prospek",
-      "addLeadHint": "Menambah nama, nombor dan permintaan pelanggan sebagai satu baris."
+      "readRows": "Jawab soalan daripada helaian",
+      "readRowsHint": "Mencari harga, stok atau fakta lain dalam tab anda sebelum menjawab.",
+      "addLead": "Simpan pelanggan berminat (prospek)",
+      "addLeadHint": "Menambah pelanggan yang mahu membeli sebagai satu baris, supaya pasukan anda boleh membuat susulan."
     },
     "items": {
       "google-calendar": {
@@ -1566,7 +1566,7 @@
       },
       "google-sheets": {
         "name": "Google Sheets",
-        "short": "Baca harga atau stok daripada helaian; tambah prospek baharu.",
+        "short": "Jawab daripada senarai harga anda, dan simpan pelanggan berminat sebagai prospek.",
         "long": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan ejen AI anda membacanya. Jika anda benarkan, AI juga menambah setiap prospek baharu sebagai satu baris. Log masuk dengan Google, kemudian pilih helaian itu.",
         "privacy": "{{product}} hanya boleh membuka hamparan yang anda pilih, hanya membaca tab yang anda pilih dan hanya menulis baris prospek yang ditambahnya: tarikh, nama pelanggan, nombor WhatsApp, e-mel dan satu baris ringkas tentang kehendak mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini."
       }
@@ -1863,18 +1863,18 @@
     },
     "sheets": {
       "title": "Google Sheet",
-      "description": "Helaian yang dibaca oleh {{name}}, dan sama ada ia menambah prospek baharu.",
+      "description": "{{name}} boleh menggunakan helaian ini dalam dua cara. Hidupkan satu atau kedua-duanya.",
       "notConnected": "Sambungkan akaun Google pada tab Gambaran Keseluruhan dahulu.",
       "spreadsheet": "Hamparan",
       "open": "Buka dalam Google Sheets",
       "chooseTab": "Pilih tab",
       "tabRequired": "Pilih tab.",
-      "readHint": "AI mencari baris yang sepadan dengan pertanyaan pelanggan. Baris pertama mesti mengandungi nama lajur.",
-      "lookupTab": "Tab untuk dibaca",
-      "leadsHint": "Apabila pelanggan menyatakan kehendak mereka, AI menambah satu baris: tarikh, nama, nombor WhatsApp, e-mel dan permintaan mereka.",
-      "leadsTab": "Tab untuk prospek baharu",
-      "leadsTabHint": "Tab kosong paling sesuai: nama lajur ditambah pada prospek pertama.",
-      "changesSheet": "Mengubah helaian anda",
+      "readHint": "Letakkan perkara yang ditanya pelanggan dalam satu tab: harga, stok, waktu operasi atau Soalan Lazim. Baris 1 mengandungi nama lajur, contohnya Produk, Harga, Stok. AI menyemak di situ sebelum menjawab: pelanggan bertanya “Berapa harga house blend?” dan AI menjawab “RM22”.",
+      "lookupTab": "Tab dengan jawapan",
+      "leadsHint": "Apabila pelanggan menyatakan apa yang mahu dibeli, AI menambah mereka sebagai satu baris supaya pasukan anda boleh membuat susulan: tarikh, nama, nombor WhatsApp, e-mel dan permintaan mereka. AI tidak mengambil pesanan atau bayaran: pasukan anda yang melakukannya.",
+      "leadsTab": "Tab untuk senarai prospek",
+      "leadsTabHint": "Gunakan tab kosong: nama lajur ditambah bersama prospek pertama.",
+      "changesSheet": "Menambah baris pada helaian anda",
       "rulesTitle": "Perkara yang sentiasa disemak oleh {{product}}",
       "rule1": "AI hanya membaca tab yang dipilih: 1,000 baris pertama dan lajur A hingga Z.",
       "rule2": "Ia menambah paling banyak satu baris prospek bagi setiap pelanggan sehari, dan hanya daripada sembang terus, bukan kumpulan.",

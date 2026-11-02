@@ -88,14 +88,14 @@
       {
         "name": "read_sheet_rows",
         "title": {
-          "en": "Read rows",
-          "ms": "Baca baris",
-          "zh-CN": "读取行"
+          "en": "Answer questions from the sheet",
+          "ms": "Jawab soalan daripada helaian",
+          "zh-CN": "根据表格回答问题"
         },
         "description": {
-          "en": "Looks up the rows that match the customer's question.",
-          "ms": "Mencari baris yang sepadan dengan soalan pelanggan.",
-          "zh-CN": "查找与客户问题匹配的行。"
+          "en": "Looks up prices, stock or other facts in your tab before it answers.",
+          "ms": "Mencari harga, stok atau fakta lain dalam tab anda sebelum menjawab.",
+          "zh-CN": "回答前先在您的工作表中查找价格、库存或其他信息。"
         },
         "access": "read"
       },
@@ -107,9 +107,9 @@
           "zh-CN": "添加潜在客户"
         },
         "description": {
-          "en": "Adds the customer's name, number and request as a row.",
-          "ms": "Menambah nama, nombor dan permintaan pelanggan sebagai satu baris.",
-          "zh-CN": "将客户的姓名、号码和需求添加为一行。"
+          "en": "Adds a customer who wants to buy as one row, so your team can follow up.",
+          "ms": "Menambah pelanggan yang mahu membeli sebagai satu baris, supaya pasukan anda boleh membuat susulan.",
+          "zh-CN": "把想购买的客户添加为一行，方便您的团队跟进。"
         },
         "access": "write"
       }

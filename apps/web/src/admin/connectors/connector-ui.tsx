@@ -187,7 +187,7 @@ export function GoogleCalendarLink({
 }
 
 /**
- * One switch of a connector's per-agent settings ("Check free times", "Read rows"): label, an
+ * One switch of a connector's per-agent settings ("Check free times", "Answer questions from the sheet"): label, an
  * optional badge (e.g. "Changes your calendar"), a hint and a 44 px switch target; `children` shows
  * under it (e.g. the tab to read).
  */

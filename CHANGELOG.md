@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Google Sheets connector (Beta).** Admin → Connectors → **Google Sheets**: sign in with Google, choose a
-  spreadsheet in Google's own file picker (EzyChat can open only the sheets you choose) and pick a tab. The AI agent then answers prices, stock, opening hours or FAQ questions from
-  that tab (**Read rows**). Turn on **Add leads** and choose a second tab, and the AI adds each new customer who
-  says what they want as one row (date, name, WhatsApp number, email, request), at most once a day per customer
-  and never from a group. It never changes or deletes existing rows, and a formula a customer types is saved as
-  plain text. Google Sheets has its own Google sign-in, separate from Google Calendar.
+  spreadsheet in Google's own file picker (EzyChat can open only the sheets you choose) and pick a tab. With
+  **Answer questions from the sheet**, the AI agent answers prices, stock, opening hours or FAQ questions from that
+  tab. Turn on **Save interested customers (leads)** and choose a second tab, and the AI adds each customer who says
+  what they want to buy as one row (date, name, WhatsApp number, email, request) so your team can follow up; a
+  question alone is not a lead, and the AI never takes the order or the payment. At most one row a day per
+  customer, never from a group. It never changes or deletes existing rows, and a formula a customer types is saved
+  as plain text. Google Sheets has its own Google sign-in, separate from Google Calendar.
 
 ## [0.1.70] - 2026-11-02
 

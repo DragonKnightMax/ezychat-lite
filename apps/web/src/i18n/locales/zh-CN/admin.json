@@ -1534,9 +1534,9 @@
       "off": "此代理已关闭",
       "none": "尚无连接器。",
       "browse": "浏览连接器",
-      "sheetsReadAndLeads": "读取表格并添加潜在客户",
-      "sheetsRead": "读取表格",
-      "sheetsLeads": "添加潜在客户"
+      "sheetsReadAndLeads": "根据表格回答并保存潜在客户",
+      "sheetsRead": "根据表格回答",
+      "sheetsLeads": "保存潜在客户"
     },
     "settingsPointerTitle": "连接器",
     "settingsPointer": "Google Calendar 及 AI 代理使用的其他系统位于 管理 → 连接器。",
@@ -1545,10 +1545,10 @@
       "checkFreeHint": "读取所选日历的忙碌时间。",
       "book": "预约",
       "bookHint": "客户确认时间后添加日程。",
-      "readRows": "读取行",
-      "readRowsHint": "查找与客户问题匹配的行。",
-      "addLead": "添加潜在客户",
-      "addLeadHint": "将客户的姓名、号码和需求添加为一行。"
+      "readRows": "根据表格回答问题",
+      "readRowsHint": "回答前先在您的工作表中查找价格、库存或其他信息。",
+      "addLead": "保存有意向的客户（潜在客户）",
+      "addLeadHint": "把想购买的客户添加为一行，方便您的团队跟进。"
     },
     "items": {
       "google-calendar": {
@@ -1565,7 +1565,7 @@
       },
       "google-sheets": {
         "name": "Google Sheets",
-        "short": "从表格读取价格或库存；添加新的潜在客户。",
+        "short": "根据您的价目表回答，并把有意向的客户保存为潜在客户。",
         "long": "把价格、库存或常见问题放在 Google 表格中，让 AI 代理读取。如果您允许，AI 还会把每个新的潜在客户添加为一行。使用 Google 登录，然后选择表格。",
         "privacy": "{{product}} 只能打开您选择的电子表格，只读取您选的工作表，只写入它添加的潜在客户行：日期、客户姓名、WhatsApp 号码、电子邮件，以及一句简短的需求说明。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
       }
@@ -1862,18 +1862,18 @@
     },
     "sheets": {
       "title": "Google 表格",
-      "description": "{{name}} 读取哪个表格，以及是否添加新的潜在客户。",
+      "description": "{{name}} 可以用两种方式使用这个表格。可开启其中一种或两种。",
       "notConnected": "请先在“概览”标签页连接 Google 账号。",
       "spreadsheet": "电子表格",
       "open": "在 Google Sheets 中打开",
       "chooseTab": "选择工作表",
       "tabRequired": "请选择工作表。",
-      "readHint": "AI 会查找与客户提问匹配的行。第一行必须是列名。",
-      "lookupTab": "要读取的工作表",
-      "leadsHint": "当客户说明需求时，AI 会添加一行：日期、姓名、WhatsApp 号码、电子邮件和需求。",
-      "leadsTab": "新潜在客户的工作表",
-      "leadsTabHint": "最好使用空白工作表：添加第一个潜在客户时会自动加上列名。",
-      "changesSheet": "会修改您的表格",
+      "readHint": "把客户常问的内容放在一个工作表中：价格、库存、营业时间或常见问题。第 1 行是列名，例如 产品、价格、库存。AI 回答前会先查这里：客户问“house blend 多少钱？”，AI 回答“RM22”。",
+      "lookupTab": "存放答案的工作表",
+      "leadsHint": "当客户说明想买什么时，AI 会把他们添加为一行，方便您的团队跟进：日期、姓名、WhatsApp 号码、电子邮件和需求。AI 不会接单或收款，这些由您的团队处理。",
+      "leadsTab": "潜在客户列表所在的工作表",
+      "leadsTabHint": "请使用空白工作表：添加第一个潜在客户时会写入列名。",
+      "changesSheet": "会在您的表格中添加行",
       "rulesTitle": "{{product}} 始终检查的事项",
       "rule1": "AI 只读取所选工作表：前 1,000 行以及 A 到 Z 列。",
       "rule2": "每位客户每天最多添加一行潜在客户，且只来自私聊，绝不来自群组。",

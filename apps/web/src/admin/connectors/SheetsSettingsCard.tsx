@@ -50,7 +50,7 @@ const TAB_TEST_IDS = { lookup: 'sheets-lookup-tab', leads: 'sheets-leads-tab' } 
 
 /**
  * Connectors → Google Sheets → Settings, for one AI agent: the spreadsheet (picked in Google's
- * file picker), Read rows with its tab (on by default) and Add leads with its tab (off until an
+ * file picker), "Answer questions" with its tab (on by default) and "Save leads" with its tab (off until an
  * admin turns it on).
  */
 export function SheetsSettingsCard({

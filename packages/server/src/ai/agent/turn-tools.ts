@@ -24,7 +24,7 @@ import {
 
 /**
  * Every look-up source an agent may use besides its Business context: core connectors (Google
- * Calendar with Check free times on, Google Sheets with Read rows on) and extension look-ups (`hasAgentLookups`).
+ * Calendar with Check free times on, Google Sheets with "Answer questions" on) and extension look-ups (`hasAgentLookups`).
  */
 export function agentLookupsAvailable(
   ctx: AppContext,

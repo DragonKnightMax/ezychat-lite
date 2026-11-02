@@ -1544,9 +1544,9 @@
       "off": "Off for this agent",
       "none": "No connector yet.",
       "browse": "Browse connectors",
-      "sheetsReadAndLeads": "Reads the sheet and adds leads",
-      "sheetsRead": "Reads the sheet",
-      "sheetsLeads": "Adds leads"
+      "sheetsReadAndLeads": "Answers from the sheet and saves leads",
+      "sheetsRead": "Answers from the sheet",
+      "sheetsLeads": "Saves leads"
     },
     "settingsPointerTitle": "Connectors",
     "settingsPointer": "Google Calendar and other systems your AI agents use are in Admin → Connectors.",
@@ -1555,10 +1555,10 @@
       "checkFreeHint": "Reads when the chosen calendar is busy.",
       "book": "Book appointments",
       "bookHint": "Adds an event after the customer confirms a time.",
-      "readRows": "Read rows",
-      "readRowsHint": "Looks up the rows that match the customer's question.",
-      "addLead": "Add leads",
-      "addLeadHint": "Adds the customer's name, number and request as a row."
+      "readRows": "Answer questions from the sheet",
+      "readRowsHint": "Looks up prices, stock or other facts in your tab before it answers.",
+      "addLead": "Save interested customers (leads)",
+      "addLeadHint": "Adds a customer who wants to buy as one row, so your team can follow up."
     },
     "items": {
       "google-calendar": {
@@ -1575,7 +1575,7 @@
       },
       "google-sheets": {
         "name": "Google Sheets",
-        "short": "Read prices or stock from a sheet; add new leads.",
+        "short": "Answer from your price list, and save interested customers as leads.",
         "long": "Keep prices, stock or a FAQ in a Google Sheet and let your AI agent read it. If you allow it, the AI also adds each new lead as a row. Sign in with Google, then choose the sheet.",
         "privacy": "{{product}} can open only the spreadsheets you choose, reads only the tab you pick and writes only the lead rows it adds: date, the customer’s name, WhatsApp number, email and a short line on what they want. No chat history goes to Google. The sign-in is stored encrypted on this computer."
       }
@@ -1879,18 +1879,18 @@
     },
     "sheets": {
       "title": "Google Sheet",
-      "description": "Which sheet {{name}} reads, and whether it adds new leads.",
+      "description": "{{name}} can use this sheet in two ways. Turn on one or both.",
       "notConnected": "Connect a Google account on the Overview tab first.",
       "spreadsheet": "Spreadsheet",
       "open": "Open in Google Sheets",
       "chooseTab": "Choose a tab",
       "tabRequired": "Choose a tab.",
-      "readHint": "The AI looks up rows that match what the customer asks. The first row must hold the column names.",
-      "lookupTab": "Tab to read",
-      "leadsHint": "When a customer says what they want, the AI adds one row: date, name, WhatsApp number, email and their request.",
-      "leadsTab": "Tab for new leads",
-      "leadsTabHint": "An empty tab works best: the column names are added on the first lead.",
-      "changesSheet": "Changes your sheet",
+      "readHint": "Put what customers ask about in a tab: prices, stock, opening hours or a FAQ. Row 1 holds the column names, for example Product, Price, Stock. The AI looks there before it answers: a customer asks “How much is the house blend?” and it answers “RM22”.",
+      "lookupTab": "Tab with the answers",
+      "leadsHint": "When a customer says what they want to buy, the AI adds them as one row so your team can follow up: date, name, WhatsApp number, email and what they asked for. The AI does not take the order or the payment: your team does.",
+      "leadsTab": "Tab for the lead list",
+      "leadsTabHint": "Use an empty tab: the column names are added with the first lead.",
+      "changesSheet": "Adds rows to your sheet",
       "rulesTitle": "What {{product}} always checks",
       "rule1": "The AI reads only the chosen tab: the first 1,000 rows and columns A to Z.",
       "rule2": "It adds at most one lead row per customer a day, and only from a direct chat, never a group.",

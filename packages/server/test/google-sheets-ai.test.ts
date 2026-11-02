@@ -121,7 +121,7 @@ describe('Google Sheets AI tools', () => {
     // A second look-up in the same minute reads the cached tab.
     await call(tools.tools, 'read_sheet_rows', { query: 'teh' });
     expect(t.ctx.services.googleSheets!.fake!.calls.filter((c) => c === 'values')).toHaveLength(1);
-    expect(tools.used()).toEqual([{ title: 'Read rows', sourceLabel: 'Google Sheets' }]);
+    expect(tools.used()).toEqual([{ title: 'your sheet', sourceLabel: 'Google Sheets' }]);
     expect(tools.calls().map((c) => [c.tool, c.ok])).toEqual([
       ['read_sheet_rows', true],
       ['read_sheet_rows', true],
@@ -140,6 +140,11 @@ describe('Google Sheets AI tools', () => {
     await customerSays('m1', 'I want catering for 20 on Saturday, my email is mei@example.com');
     const tools = await turn(jid);
     expect(Object.keys(tools.tools).sort()).toEqual(['add_lead_row', 'read_sheet_rows']);
+    // A price question alone added a lead in a Dev Build: the description names the trigger and the exclusion.
+    expect(tools.tools.add_lead_row?.description).toMatch(/want to buy or book/);
+    expect(tools.tools.add_lead_row?.description).toMatch(
+      /question alone \(price.*\) is not a lead/,
+    );
     const out = await call(tools.tools, 'add_lead_row', {
       request: 'Catering for 20 on Saturday',
       email: 'mei@example.com',

@@ -18,10 +18,10 @@ export const ADD_LEAD_ROW = 'add_lead_row';
 export const SHEETS_TOOL_NAMES = [READ_SHEET_ROWS, ADD_LEAD_ROW] as const;
 const SOURCE = 'google-sheets';
 const SOURCE_LABEL = 'Google Sheets';
-const READ_TITLE = 'Read rows';
+const READ_TITLE = 'your sheet';
 const LEAD_TITLE = 'Add a lead';
 
-/** True when this agent's sheet counts as a source of facts (connected and Read rows on). */
+/** True when this agent's sheet counts as a source of facts (connected and "Answer questions" on). */
 export function sheetsLookupsAvailable(ctx: AppContext, agentId?: number | null): boolean {
   return !!ctx.services.googleSheets?.usable(agentId)?.lookupTab;
 }
@@ -152,9 +152,10 @@ export function sheetsAgentTools(
     tools[ADD_LEAD_ROW] = tool({
       description:
         "Add this customer as a new lead (one row) to the business's Google Sheet: date, name, WhatsApp " +
-        'number, email and a short summary of what they want. When this tool is offered, the business ' +
-        'wants every customer with a real buying interest added once; call it when the customer has said ' +
-        'what they want. Leave name and email out to use the saved contact, or pass exactly what the ' +
+        'number, email and a short summary of what they want. Call it once, when the customer says they ' +
+        'want to buy or book something (a product, a quantity, a date or a quote). A question alone (price, ' +
+        'stock, opening hours, how something works) is not a lead: answer it and do not call this tool. ' +
+        'Leave name and email out to use the saved contact, or pass exactly what the ' +
         'customer wrote in this chat; never invent them. Do not tell the customer about the sheet.',
       inputSchema: z.object({
         request: z
