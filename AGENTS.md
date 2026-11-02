@@ -323,6 +323,17 @@ using it and hands booking chats over. Chat lines are `ai_tool_used` events with
 when, never chat text. `--fake-wa` swaps in the fake Google (`fake.ts`, `/api/dev/fake-google/*`,
 `/api/dev/fake-google-calendar`); tests never call Google.
 
+**Google Sheets** (design `docs/features/google-sheets/design.md`). Core built-in connector like Google Calendar,
+with its own Google sign-in (`connectors/google-account.ts`: the calendar's PKCE/loopback flow made generic; tokens in
+the encrypted `google_sheets_tokens` setting; scope `drive.file`: only files picked in Google's file picker, whose page
+`picker-page.ts` is host-only with its own CSP and needs `GOOGLE_PICKER_API_KEY`/`_APP_ID`). `connectors/google-sheets/`
+(`repo.ts` is its only SQL, migration 030, routes `/api/connectors/google-sheets/*`, admins): per agent one spreadsheet
+(picked, checked with Google), Read rows (`read_sheet_rows`, one tab, A1:Z1000, `match.ts` picks ≤ 20 rows) and Add leads
+(`add_lead_row`, off by default; one row per chat and spreadsheet in 24 h, direct chats only, never Try it or a group
+answer, name/email only saved or written by the customer, values appended with `valueInputOption=RAW`). Activity and
+logs keep who and when only, never row values. `--fake-wa` without a Google app uses `FakeGoogleSheets`
+(`/api/dev/fake-google-sheets*`, demo sheet `FAKE_SPREADSHEET_ID`).
+
 **Connector list** (design `docs/features/connector-list/design.md`). The gallery comes from a signed list published
 by the public repo `anchorsprint/ezychat-connectors` (one folder per connector: `connector.yaml`, `skill.md`,
 `icon.svg`; its CI validates, builds `list-v1.json`, signs it with Ed25519 and uploads it with the icons to

@@ -4,11 +4,24 @@ import {
   CalendarCheck,
   CalendarSearch,
   MessageSquare,
+  TableProperties,
   TriangleAlert,
+  UserPlus,
   UserRound,
 } from 'lucide-react';
-import type { CalendarActivity, CalendarBooking, ConnectorEntry } from '@ezychat/shared';
-import { useCalendarActivity, useCalendarBookings, useGoogleCalendar } from '../../api/connectors';
+import type {
+  CalendarActivity,
+  CalendarBooking,
+  ConnectorEntry,
+  SheetsActivity,
+} from '@ezychat/shared';
+import {
+  useCalendarActivity,
+  useCalendarBookings,
+  useGoogleCalendar,
+  useGoogleSheets,
+  useSheetsActivity,
+} from '../../api/connectors';
 import { encodeJid } from '../../lib/jid';
 import { EmptyState } from '@/components/app';
 import { UpgradeButton } from '@/components/app/UpgradeEnterprise';
@@ -32,17 +45,21 @@ import {
   useConnectorLinks,
 } from './connector-ui';
 import { GoogleCalendarAccountCard } from './GoogleCalendarAccountCard';
+import { GoogleSheetsAccountCard } from './GoogleSheetsAccountCard';
+import { SheetsSettingsCard } from './SheetsSettingsCard';
 import { ListConnectorPage } from './PartnerConnectorPage';
 
 const TABS = ['overview', 'settings', 'activity', 'bookings'] as const;
 type Tab = (typeof TABS)[number];
-const isTab = (value: string | null): value is Tab =>
-  (TABS as readonly string[]).includes(value ?? '');
+/** Google Sheets has no Bookings tab. */
+const SHEETS_TABS = ['overview', 'settings', 'activity'] as const;
+const isTab = (value: string | null, tabs: readonly Tab[] = TABS): value is Tab =>
+  (tabs as readonly string[]).includes(value ?? '');
 
 /**
  * `/admin/connectors/:id`: one page per connector. The app's own connectors come first: Google
  * Calendar has Overview (what it does, the Google account, your data), Settings (per AI agent),
- * Activity and Bookings tabs (`?tab=`, `&agent=`); the custom connector needs Enterprise. Every
+ * Activity and Bookings tabs (`?tab=`, `&agent=`); Google Sheets the same without Bookings; the custom connector needs Enterprise. Every
  * other page is built from the connector's entry in the connector list. A connector an extension
  * provides opens the extension's page.
  */
@@ -57,11 +74,16 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
   const { t } = useTranslation('admin');
   const links = useConnectorLinks();
   const google = useGoogleCalendar(c.id === 'google-calendar');
+  const sheets = useGoogleSheets(c.id === 'google-sheets');
   // The connector list may mark the app's own connector Beta and add a notice (e.g. Google review).
   const entry = useBuiltinEntry(c.id);
   const link = links[c.id];
   if (link) return <Navigate to={link} replace />;
-  const status = connectorStatus(c, google.data?.state, undefined);
+  const status = connectorStatus(
+    c,
+    c.id === 'google-sheets' ? sheets.data?.state : google.data?.state,
+    undefined,
+  );
   const name = t(`connectors.items.${c.id}.name`);
 
   return (
@@ -84,6 +106,8 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
 
       {c.id === 'google-calendar' ? (
         <GoogleCalendarTabs c={c} entry={entry} />
+      ) : c.id === 'google-sheets' ? (
+        <GoogleSheetsTabs c={c} entry={entry} />
       ) : (
         <div className="flex flex-col gap-4">
           {status === 'enterprise' && (
@@ -108,17 +132,7 @@ function GoogleCalendarTabs({
   entry,
 }: Readonly<{ c: CatalogConnector; entry: ConnectorEntry | null }>) {
   const { t } = useTranslation('admin');
-  const [params, setParams] = useSearchParams();
-  const tabParam = params.get('tab');
-  const tab: Tab = isTab(tabParam) ? tabParam : 'overview';
-  const setTab = (next: string) =>
-    setParams(
-      (p) => {
-        p.set('tab', next);
-        return p;
-      },
-      { replace: true },
-    );
+  const [tab, setTab] = useTabParam(TABS);
   return (
     <Tabs value={tab} onValueChange={setTab}>
       <div className="-mx-4 scroll-px-4 overflow-x-auto px-4 pb-1">
@@ -144,6 +158,55 @@ function GoogleCalendarTabs({
       </TabsContent>
       <TabsContent value="bookings" className="flex flex-col gap-4">
         <Bookings />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function useTabParam(tabs: readonly Tab[]) {
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get('tab');
+  const tab: Tab = isTab(tabParam, tabs) ? tabParam : 'overview';
+  const setTab = (next: string) =>
+    setParams(
+      (p) => {
+        p.set('tab', next);
+        return p;
+      },
+      { replace: true },
+    );
+  return [tab, setTab] as const;
+}
+
+/** Google Sheets: Overview (what it does, the Google account, your data), Settings, Activity. */
+function GoogleSheetsTabs({
+  c,
+  entry,
+}: Readonly<{ c: CatalogConnector; entry: ConnectorEntry | null }>) {
+  const { t } = useTranslation('admin');
+  const [tab, setTab] = useTabParam(SHEETS_TABS);
+  return (
+    <Tabs value={tab} onValueChange={setTab}>
+      <div className="-mx-4 scroll-px-4 overflow-x-auto px-4 pb-1">
+        <TabsList variant="line" className="w-max justify-start">
+          {SHEETS_TABS.map((id) => (
+            <TabsTrigger key={id} value={id} className="min-h-11 flex-none px-3 md:min-h-9">
+              {t(`connectors.tabs.${id}`)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
+      <TabsContent value="overview" className="flex flex-col gap-4">
+        <About c={c} />
+        <ConnectorNotice entry={entry} />
+        <GoogleSheetsAccountCard onOpenSettings={() => setTab('settings')} />
+        <Privacy c={c} />
+      </TabsContent>
+      <TabsContent value="settings" className="flex flex-col gap-4">
+        <SheetsAgentSettings onConnect={() => setTab('overview')} />
+      </TabsContent>
+      <TabsContent value="activity" className="flex flex-col gap-4">
+        <SheetsActivityList />
       </TabsContent>
     </Tabs>
   );
@@ -215,6 +278,75 @@ function AgentSettings({ onConnect }: { onConnect: () => void }) {
         />
       )}
     />
+  );
+}
+
+/** Google Sheets Settings tab: one AI agent at a time, like Google Calendar's. */
+function SheetsAgentSettings({ onConnect }: { onConnect: () => void }) {
+  const sheets = useGoogleSheets();
+  if (sheets.isPending) return <ListSkeleton rows={3} />;
+  if (sheets.error)
+    return <ErrorState error={sheets.error} onRetry={() => void sheets.refetch()} />;
+  return (
+    <AgentPicker
+      render={(agent) => (
+        <SheetsSettingsCard
+          key={agent.id}
+          agentId={agent.id}
+          name={agent.displayName}
+          status={sheets.data}
+          onConnect={onConnect}
+        />
+      )}
+    />
+  );
+}
+
+const SHEETS_ICON = {
+  looked_up: TableProperties,
+  lead_added: UserPlus,
+  failed: TriangleAlert,
+} as const;
+
+/** Google Sheets Activity tab: what the AI looked up and added (who and when, never values). */
+function SheetsActivityList() {
+  const { t } = useTranslation('admin');
+  const query = useSheetsActivity();
+  if (query.isPending) return <ListSkeleton rows={3} />;
+  if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  const rows = query.data.activity;
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title={t('connectors.activityEmpty')}
+        description={t('connectors.sheetsAct.hint')}
+      />
+    );
+  const line = (r: SheetsActivity) =>
+    t(`connectors.sheetsAct.${r.kind}`, { agent: r.agentName, customer: r.customer });
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle>{t('connectors.activityTitle')}</CardTitle>
+        <CardDescription>{t('connectors.sheetsAct.hint')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-col divide-y" data-testid="sheets-activity">
+          {rows.map((r) => {
+            const Icon = SHEETS_ICON[r.kind];
+            return (
+              <li key={r.id} className="flex items-start gap-3 py-3 first:pt-0">
+                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm break-words">{line(r)}</span>
+                  <span className="text-xs text-muted-foreground">{formatRelative(r.at)}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 

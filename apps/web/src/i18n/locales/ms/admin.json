@@ -1534,7 +1534,10 @@
       "checkOnly": "Menyemak masa lapang; pasukan anda menempah",
       "off": "Dimatikan untuk ejen ini",
       "none": "Belum ada penyambung.",
-      "browse": "Lihat penyambung"
+      "browse": "Lihat penyambung",
+      "sheetsReadAndLeads": "Membaca helaian dan menambah prospek",
+      "sheetsRead": "Membaca helaian",
+      "sheetsLeads": "Menambah prospek"
     },
     "settingsPointerTitle": "Penyambung",
     "settingsPointer": "Google Calendar dan sistem lain yang digunakan oleh ejen AI anda ada di Pentadbir → Penyambung.",
@@ -1542,7 +1545,11 @@
       "checkFree": "Semak masa lapang",
       "checkFreeHint": "Membaca bila kalendar yang dipilih sibuk.",
       "book": "Tempah janji temu",
-      "bookHint": "Menambah acara selepas pelanggan mengesahkan masa."
+      "bookHint": "Menambah acara selepas pelanggan mengesahkan masa.",
+      "readRows": "Baca baris",
+      "readRowsHint": "Mencari baris yang sepadan dengan soalan pelanggan.",
+      "addLead": "Tambah prospek",
+      "addLeadHint": "Menambah nama, nombor dan permintaan pelanggan sebagai satu baris."
     },
     "items": {
       "google-calendar": {
@@ -1556,6 +1563,12 @@
         "short": "Sambungkan mana-mana sistem yang menawarkan pelayan MCP.",
         "long": "Untuk sistem anda sendiri: tampal pautan pelayan MCP, log masuk, dan pilih untuk setiap ejen AI alat mana yang boleh digunakan oleh AI. Alat yang mengubah data bermula dalam keadaan mati.",
         "privacy": "{{product}} hanya menghantar kepada sistem itu apa yang diminta oleh alat dalam satu giliran sembang."
+      },
+      "google-sheets": {
+        "name": "Google Sheets",
+        "short": "Baca harga atau stok daripada helaian; tambah prospek baharu.",
+        "long": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan ejen AI anda membacanya. Jika anda benarkan, AI juga menambah setiap prospek baharu sebagai satu baris. Log masuk dengan Google, kemudian pilih helaian itu.",
+        "privacy": "{{product}} hanya boleh membuka hamparan yang anda pilih, hanya membaca tab yang anda pilih dan hanya menulis baris prospek yang ditambahnya: tarikh, nama pelanggan, nombor WhatsApp, e-mel dan satu baris ringkas tentang kehendak mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini."
       }
     },
     "gc": {
@@ -1831,6 +1844,69 @@
         "needs_sign_in": "{{publisher}} tidak lagi menerima log masuk. AI menyerahkan sembang kepada pasukan anda."
       },
       "agentCardTools_other": "{{count}} daripada {{total}} alat dihidupkan"
+    },
+    "gs": {
+      "accountDescription": "Akaun Google yang digunakan oleh {{product}} untuk Google Sheets. Satu akaun untuk seluruh pasukan; ia boleh berbeza daripada akaun Google Calendar.",
+      "what1": "AI menjawab daripada tab yang anda pilih: harga, stok, waktu operasi atau soalan lazim.",
+      "what2": "Ia menambah prospek baharu sebagai satu baris hanya jika anda menghidupkannya.",
+      "what3": "Ia tidak pernah mengubah atau memadam baris yang sudah ada dalam helaian.",
+      "connect": "Sambungkan Google Sheets",
+      "connectHint": "Anda log masuk dengan Google dan membenarkan {{product}} membuka hanya hamparan yang anda pilih. Anda boleh memutuskan sambungan pada bila-bila masa.",
+      "connectedToast": "Google Sheets disambungkan",
+      "expiredBody": "Sehingga anda log masuk semula, AI tidak membaca helaian atau menambah prospek; ia menyerahkan sembang tersebut kepada pasukan anda.",
+      "unavailableTitle": "Tidak dapat menghubungi Google Sheets",
+      "unavailableBody": "{{product}} mencuba semula dengan sendirinya. Sementara itu AI menyerahkan sembang yang memerlukan helaian kepada pasukan anda.",
+      "perAgent": "Pilih hamparan dan tab untuk setiap ejen AI dalam Tetapan.",
+      "disconnectTitle": "Putuskan sambungan Google Sheets?",
+      "disconnectBody": "AI berhenti membaca helaian dan menambah prospek serta-merta. Baris yang sudah ada dalam helaian anda kekal. Tetapan disimpan untuk apabila anda menyambung semula.",
+      "disconnected": "Sambungan Google Sheets diputuskan"
+    },
+    "sheets": {
+      "title": "Google Sheet",
+      "description": "Helaian yang dibaca oleh {{name}}, dan sama ada ia menambah prospek baharu.",
+      "notConnected": "Sambungkan akaun Google pada tab Gambaran Keseluruhan dahulu.",
+      "spreadsheet": "Hamparan",
+      "open": "Buka dalam Google Sheets",
+      "chooseTab": "Pilih tab",
+      "tabRequired": "Pilih tab.",
+      "readHint": "AI mencari baris yang sepadan dengan pertanyaan pelanggan. Baris pertama mesti mengandungi nama lajur.",
+      "lookupTab": "Tab untuk dibaca",
+      "leadsHint": "Apabila pelanggan menyatakan kehendak mereka, AI menambah satu baris: tarikh, nama, nombor WhatsApp, e-mel dan permintaan mereka.",
+      "leadsTab": "Tab untuk prospek baharu",
+      "leadsTabHint": "Tab kosong paling sesuai: nama lajur ditambah pada prospek pertama.",
+      "changesSheet": "Mengubah helaian anda",
+      "rulesTitle": "Perkara yang sentiasa disemak oleh {{product}}",
+      "rule1": "AI hanya membaca tab yang dipilih: 1,000 baris pertama dan lajur A hingga Z.",
+      "rule2": "Ia menambah paling banyak satu baris prospek bagi setiap pelanggan sehari, dan hanya daripada sembang terus, bukan kumpulan.",
+      "rule3": "Ia tidak pernah mengubah atau memadam baris yang sudah ada.",
+      "rule4": "Teks disimpan sebagai teks biasa: formula yang ditaip oleh pelanggan tidak pernah dijalankan.",
+      "save": "Simpan",
+      "saved": "Tetapan Google Sheets disimpan",
+      "paused": {
+        "expired": "Dijeda: log masuk ke Google semula",
+        "unavailable": "Dijeda: tidak dapat menghubungi Google Sheets"
+      },
+      "pausedBody": "{{name}} tidak menggunakan helaian sehingga ia berfungsi semula.",
+      "choose": "Pilih helaian",
+      "chooseAnother": "Pilih helaian lain",
+      "chooseHint": "Pemilih fail Google dibuka dalam tetingkap baharu. {{product}} hanya boleh membuka helaian yang anda pilih di situ.",
+      "sheetRequired": "Pilih helaian dahulu.",
+      "picking": "Menunggu pemilih fail Google…",
+      "pickingHint": "Pilih helaian dalam tetingkap yang dibuka. Halaman ini dikemas kini dengan sendirinya.",
+      "pickBlocked": "Pelayar anda menyekat tetingkap itu. Buka pemilih fail untuk teruskan.",
+      "openPicker": "Buka pemilih fail",
+      "pickError": {
+        "cancelled": "Tiada helaian dipilih.",
+        "failed": "{{product}} tidak dapat membuka helaian itu. Pilih semula.",
+        "expired": "Pemilih fail mengambil masa terlalu lama. Cuba lagi."
+      },
+      "pickSameComputer": "Pemilih fail hanya berfungsi dalam pelayar pada komputer yang menjalankan {{product}}."
+    },
+    "sheetsAct": {
+      "hint": "Apa yang AI cari dan tambah. Hanya siapa dan bila: tidak pernah nilai atau sembang.",
+      "looked_up": "{{agent}} mencari dalam helaian untuk {{customer}}",
+      "lead_added": "{{agent}} menambah {{customer}} sebagai prospek",
+      "failed": "{{agent}} tidak dapat menghubungi Google Sheets untuk {{customer}}"
     }
   },
   "reports": {

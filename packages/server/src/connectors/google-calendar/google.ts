@@ -53,7 +53,7 @@ export class GoogleError extends Error {
     readonly kind: GoogleErrorKind,
     readonly status: number | null = null,
   ) {
-    super(`Google Calendar ${kind}${status ? ` (${status})` : ''}`);
+    super(`Google ${kind}${status ? ` (${status})` : ''}`);
   }
 }
 
@@ -121,12 +121,18 @@ export class GoogleClient {
     private readonly fetchImpl: FetchFn = fetch,
   ) {}
 
-  authorizationUrl(input: { redirectUri: string; state: string; challenge: string }): string {
+  /** Google's sign-in page; `scopes` defaults to the calendar's (another Google connector passes its own). */
+  authorizationUrl(input: {
+    redirectUri: string;
+    state: string;
+    challenge: string;
+    scopes?: readonly string[];
+  }): string {
     const url = new URL(this.endpoints.auth);
     url.searchParams.set('client_id', this.app.clientId);
     url.searchParams.set('redirect_uri', input.redirectUri);
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', GOOGLE_SCOPES.join(' '));
+    url.searchParams.set('scope', (input.scopes ?? GOOGLE_SCOPES).join(' '));
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
     url.searchParams.set('include_granted_scopes', 'true');
@@ -137,7 +143,7 @@ export class GoogleClient {
   }
 
   /** One request with a 10 s timeout, no redirects, a bounded body; errors mapped to GoogleError. */
-  private async request(
+  protected async request(
     url: string,
     init: RequestInit,
     expiredOn401 = true,
@@ -222,7 +228,7 @@ export class GoogleClient {
     }
   }
 
-  private api(path: string, token: string, init: RequestInit = {}) {
+  protected api(path: string, token: string, init: RequestInit = {}) {
     return this.request(`${this.endpoints.api}${path}`, {
       ...init,
       headers: {

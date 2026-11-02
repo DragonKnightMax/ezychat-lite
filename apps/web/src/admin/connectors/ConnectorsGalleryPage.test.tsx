@@ -56,8 +56,9 @@ describe('Connectors gallery', () => {
     cleanup();
     stubServer(world({ google: status('disconnected') }));
     gallery();
-    await screen.findByText('Not connected');
+    await screen.findAllByText('Not connected');
     expect(within(card('google-calendar')).getByText('Not connected')).toBeTruthy();
+    expect(within(card('google-sheets')).getByText('Not connected')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Your connectors' })).toBeNull();
   });
 

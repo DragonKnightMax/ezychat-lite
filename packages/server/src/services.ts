@@ -48,6 +48,9 @@ initializers.push(initPhrases);
 import { initGoogleCalendar } from './connectors/google-calendar/service.js';
 initializers.push(initGoogleCalendar);
 
+import { initGoogleSheets } from './connectors/google-sheets/service.js';
+initializers.push(initGoogleSheets);
+
 import { initConnectorList } from './connectors/list/service.js';
 initializers.push(initConnectorList);
 

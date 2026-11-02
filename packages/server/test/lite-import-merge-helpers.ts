@@ -123,7 +123,9 @@ export interface Target {
 }
 
 /** An Enterprise data folder with data: 2 inboxes, users, an AI agent, chats and a shared contact. */
-export function seedTarget(opts: { inboxes?: number; googleAccount?: string } = {}): Target {
+export function seedTarget(
+  opts: { inboxes?: number; googleAccount?: string; sheetsAccount?: string } = {},
+): Target {
   const dir = tempDir('lite-merge-target-');
   const secret = SecretBox.loadOrCreate(join(dir, 'secret.key'));
   const db = openDb(join(dir, 'app.db'));
@@ -155,6 +157,13 @@ export function seedTarget(opts: { inboxes?: number; googleAccount?: string } = 
       ),
     );
   }
+  if (opts.sheetsAccount) {
+    db.prepare("INSERT INTO settings (key, value) VALUES ('google_sheets_tokens', ?)").run(
+      secret.encrypt(
+        JSON.stringify({ account: opts.sheetsAccount, refreshToken: 'r', accessToken: 'a' }),
+      ),
+    );
+  }
   db.close();
   return { dir, bossId, amyId };
 }
@@ -169,7 +178,9 @@ export const LITE_CHAT = '60999@s.whatsapp.net';
 export const LITE_GROUP = '1203@g.us';
 
 /** A Lite data folder: overlapping username, the same contact, the same shortcut, an AI agent. */
-export function seedLite(opts: { ownJid?: string; googleAccount?: string } = {}): Lite {
+export function seedLite(
+  opts: { ownJid?: string; googleAccount?: string; sheetsAccount?: string } = {},
+): Lite {
   const dir = tempDir('lite-merge-lite-');
   const secret = SecretBox.loadOrCreate(join(dir, 'secret.key'));
   const db = openDb(join(dir, 'app.db'));
@@ -302,6 +313,13 @@ export function seedLite(opts: { ownJid?: string; googleAccount?: string } = {})
       ),
     );
   }
+  if (opts.sheetsAccount) {
+    db.prepare("INSERT INTO settings (key, value) VALUES ('google_sheets_tokens', ?)").run(
+      secret.encrypt(
+        JSON.stringify({ account: opts.sheetsAccount, refreshToken: 'r', accessToken: 'a' }),
+      ),
+    );
+  }
   db.prepare(
     "INSERT INTO calendar_agent_settings (agent_id, settings, updated_at) VALUES (?, '{}', ?)",
   ).run(agent, NOW);
@@ -311,6 +329,16 @@ export function seedLite(opts: { ownJid?: string; googleAccount?: string } = {})
   ).run(agent, LITE_CHAT, NOW + 1e6, NOW + 2e6, NOW);
   db.prepare(
     "INSERT INTO calendar_activity (kind, agent_id, chat_jid, at) VALUES ('booked', ?, ?, ?)",
+  ).run(agent, LITE_CHAT, NOW);
+  // Google Sheets per-agent settings, a lead row and an activity line
+  db.prepare(
+    "INSERT INTO sheets_agent_settings (agent_id, settings, updated_at) VALUES (?, '{}', ?)",
+  ).run(agent, NOW);
+  db.prepare(
+    "INSERT INTO sheets_leads (agent_id, chat_jid, spreadsheet_id, created_at) VALUES (?, ?, 'sheet1', ?)",
+  ).run(agent, LITE_CHAT, NOW);
+  db.prepare(
+    "INSERT INTO sheets_activity (kind, agent_id, chat_jid, at) VALUES ('lead_added', ?, ?, ?)",
   ).run(agent, LITE_CHAT, NOW);
   // Safety finding on M4, with a download record
   const item = Number(

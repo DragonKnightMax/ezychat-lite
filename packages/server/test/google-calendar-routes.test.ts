@@ -8,6 +8,12 @@ import {
 import { FakeGoogle } from '../src/connectors/google-calendar/fake.js';
 import { addActivity, insertBooking } from '../src/connectors/google-calendar/repo.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
+import {
+  CALENDAR_PATHS,
+  connectThroughFake,
+  expectAdminOnly,
+  expectCallbackHostOnly,
+} from './google-connector-helpers.js';
 import { makeTestApp, type TestApp } from './helpers.js';
 
 let t: TestApp;
@@ -47,34 +53,13 @@ const post = (url: string, cookie: string, payload: unknown = {}) =>
 const put = (url: string, cookie: string, payload: unknown) =>
   t.app.inject({ method: 'PUT', url, headers: authHeaders(cookie), payload: payload as object });
 
-/** Runs the whole sign-in on the fake: connect, the consent page's Allow, Google's redirect. */
-async function connect(cookie: string, choice: 'allow' | 'cancel' = 'allow') {
-  const start = await post('/api/connectors/google-calendar/connect', cookie);
-  expect(start.statusCode).toBe(200);
-  const { requestId, authorizationUrl } = start.json() as {
-    requestId: string;
-    authorizationUrl: string;
-  };
-  const consentUrl = new URL(authorizationUrl);
-  expect(consentUrl.pathname).toBe('/api/dev/fake-google/consent');
-  const consent = await t.app.inject({
-    method: 'GET',
-    url: consentUrl.pathname + consentUrl.search,
-  });
-  expect(consent.statusCode).toBe(200);
-  const href = new RegExp(`id="${choice}" href="([^"]+)"`)
-    .exec(consent.body)![1]!
-    .replaceAll('&#38;', '&');
-  const target = new URL(href);
-  expect(target.pathname).toBe('/api/connectors/google-calendar/callback');
-  const callback = await t.app.inject({ method: 'GET', url: target.pathname + target.search });
-  return { requestId, callback, target };
-}
+const connect = (cookie: string, choice: 'allow' | 'cancel' = 'allow') =>
+  connectThroughFake(t, CALENDAR_PATHS, cookie, choice);
 
 describe('Google Calendar routes', () => {
   it('are admin only', async () => {
     const { agent, agentId } = await setUp();
-    const urls = [
+    await expectAdminOnly(t, agent, [
       ['GET', '/api/connectors/google-calendar'],
       ['POST', '/api/connectors/google-calendar/connect'],
       ['GET', '/api/connectors/google-calendar/connect/0123456789abcdef01234567'],
@@ -84,23 +69,7 @@ describe('Google Calendar routes', () => {
       ['GET', '/api/connectors/google-calendar/activity'],
       ['GET', '/api/connectors/google-calendar/bookings'],
       ['POST', '/api/dev/fake-google-calendar'],
-    ] as const;
-    for (const [method, url] of urls) {
-      const anonymous = await t.app.inject({
-        method,
-        url,
-        headers: { origin: 'http://localhost', host: 'localhost' },
-        payload: method === 'GET' ? undefined : {},
-      });
-      expect(anonymous.statusCode, url).toBe(401);
-      const asAgent = await t.app.inject({
-        method,
-        url,
-        headers: authHeaders(agent),
-        payload: method === 'GET' ? undefined : {},
-      });
-      expect(asAgent.statusCode, url).toBe(403);
-    }
+    ]);
   });
 
   it('connects through the fake Google, lists calendars and shows the account', async () => {
@@ -168,21 +137,10 @@ describe('Google Calendar routes', () => {
       authorizationUrl: string;
     };
     const state = new URL(start.authorizationUrl).searchParams.get('state')!;
-    const url = `/api/connectors/google-calendar/callback?state=${state}&code=x`;
-    const lan = await t.app.inject({ method: 'GET', url, remoteAddress: '192.168.1.20' });
-    expect(lan.statusCode).toBe(403);
-    const tunnel = await t.app.inject({
-      method: 'GET',
-      url,
-      headers: { 'cf-connecting-ip': '203.0.113.9' },
-    });
-    expect(tunnel.statusCode).toBe(403);
-    const rebind = await t.app.inject({
-      method: 'GET',
-      url,
-      headers: { host: '192.168.1.2:7420' },
-    });
-    expect(rebind.statusCode).toBe(403);
+    await expectCallbackHostOnly(
+      t,
+      `/api/connectors/google-calendar/callback?state=${state}&code=x`,
+    );
   });
 
   it('refuses unknown, reused and PKCE-mismatched callbacks', async () => {

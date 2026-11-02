@@ -15,7 +15,7 @@ import type { ConnectorEntry, GoogleCalendarState } from '@ezychat/shared';
  * Admin → Connectors: what the app itself provides next to the connector list (design
  * docs/features/connector-list/design.md). The list (server, `GET /api/connectors/list`) gives
  * every partner and coming-soon connector; the app keeps only its own features here: the built-in
- * Google Calendar (its pages and tabs live in the app) and the custom MCP connector (Enterprise,
+ * Google Calendar and Google Sheets (their pages and tabs live in the app) and the custom MCP connector (Enterprise,
  * linked by its web extension through `connectorLinks`). Texts are catalog keys under
  * `connectors.items.<id>` and `connectors.tools.<tool>` (admin namespace).
  */
@@ -55,10 +55,10 @@ export const CATEGORY_ICON: Record<ConnectorCategory, LucideIcon> = {
   other: Puzzle,
 };
 
-/** What the AI may do with the built-in Google Calendar. */
-export type ConnectorTool = 'checkFree' | 'book';
+/** What the AI may do with the built-in Google Calendar and Google Sheets. */
+export type ConnectorTool = 'checkFree' | 'book' | 'readRows' | 'addLead';
 
-export const CONNECTOR_IDS = ['google-calendar', 'custom-mcp'] as const;
+export const CONNECTOR_IDS = ['google-calendar', 'google-sheets', 'custom-mcp'] as const;
 export type ConnectorId = (typeof CONNECTOR_IDS)[number];
 
 export interface CatalogConnector {
@@ -80,6 +80,16 @@ export const CONNECTORS: readonly CatalogConnector[] = [
     tools: [
       { key: 'checkFree', access: 'read' },
       { key: 'book', access: 'write' },
+    ],
+  },
+  {
+    id: 'google-sheets',
+    icon: Table2,
+    category: 'data',
+    edition: 'core',
+    tools: [
+      { key: 'readRows', access: 'read' },
+      { key: 'addLead', access: 'write' },
     ],
   },
   { id: 'custom-mcp', icon: Plug, category: 'custom', edition: 'enterprise', tools: [] },
@@ -104,6 +114,7 @@ export type ConnectorStatus =
   | 'needsUpdate'
   | 'delisted';
 
+/** `google`: the sign-in state of this connector (Google Calendar's or Google Sheets'). */
 export function connectorStatus(
   c: CatalogConnector,
   google: GoogleCalendarState | undefined,
@@ -111,7 +122,7 @@ export function connectorStatus(
 ): ConnectorStatus {
   if (extensionLink) return 'linked';
   if (c.edition === 'enterprise') return 'enterprise';
-  if (c.id === 'google-calendar') {
+  if (c.id === 'google-calendar' || c.id === 'google-sheets') {
     if (google === 'connected') return 'connected';
     if (google === 'expired' || google === 'unavailable') return 'attention';
   }

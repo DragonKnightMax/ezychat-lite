@@ -31,4 +31,23 @@ describe('googleOAuthDefine', () => {
       googleOAuthDefine({ GOOGLE_OAUTH_CLIENT_ID: 'x', GOOGLE_OAUTH_CLIENT_SECRET: 'GOCSPX-test' }),
     ).toThrow(/^GOOGLE_OAUTH_CLIENT_ID is not a Google OAuth client id$/);
   });
+
+  it("adds Google's file picker key and project number when both are set", () => {
+    const base = { GOOGLE_OAUTH_CLIENT_ID: id, GOOGLE_OAUTH_CLIENT_SECRET: 'GOCSPX-test' };
+    const define = googleOAuthDefine({
+      ...base,
+      GOOGLE_PICKER_API_KEY: ' AIza-test ',
+      GOOGLE_PICKER_APP_ID: '123456789012',
+    });
+    expect(JSON.parse(define.__EZYCHAT_GOOGLE_OAUTH__)).toMatchObject({
+      pickerApiKey: 'AIza-test',
+      pickerAppId: '123456789012',
+    });
+    expect(() => googleOAuthDefine({ ...base, GOOGLE_PICKER_API_KEY: 'AIza-test' })).toThrow(
+      'or neither',
+    );
+    expect(() =>
+      googleOAuthDefine({ ...base, GOOGLE_PICKER_API_KEY: 'k', GOOGLE_PICKER_APP_ID: 'abc' }),
+    ).toThrow(/^GOOGLE_PICKER_APP_ID is not a Google Cloud project number$/);
+  });
 });

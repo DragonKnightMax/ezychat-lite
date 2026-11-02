@@ -2,7 +2,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plug } from 'lucide-react';
 import { useConnectorGallery, useConnectorsAgentSettings } from '../../api/connector-list';
-import { useBookingSettings, useGoogleCalendar } from '../../api/connectors';
+import {
+  useBookingSettings,
+  useGoogleCalendar,
+  useGoogleSheets,
+  useSheetsSettings,
+} from '../../api/connectors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { findConnector } from './catalog';
@@ -25,6 +30,23 @@ export function AgentConnectorsCard({
   const state = google.data?.state;
   const connected = state === 'connected' || state === 'expired' || state === 'unavailable';
   const booking = useBookingSettings(agentId, connected);
+  const sheets = useGoogleSheets();
+  const sheetsState = sheets.data?.state;
+  const sheetsLinked =
+    sheetsState === 'connected' || sheetsState === 'expired' || sheetsState === 'unavailable';
+  const sheetSettings = useSheetsSettings(agentId, sheetsLinked).data;
+  const gs = findConnector('google-sheets')!;
+  const reads = !!sheetSettings?.spreadsheetId && sheetSettings.lookup && !!sheetSettings.lookupTab;
+  const leads = !!sheetSettings?.spreadsheetId && sheetSettings.addLeads;
+  const sheetsSummary = !sheetSettings
+    ? null
+    : reads && leads
+      ? t('connectors.agentCard.sheetsReadAndLeads')
+      : reads
+        ? t('connectors.agentCard.sheetsRead')
+        : leads
+          ? t('connectors.agentCard.sheetsLeads')
+          : t('connectors.agentCard.off');
   const gallery = useConnectorGallery();
   const partners = (gallery.data?.connectors ?? []).filter(
     (c) => c.entry.kind === 'mcp' && isLinked(c.connection),
@@ -65,6 +87,25 @@ export function AgentConnectorsCard({
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           </Link>
         )}
+        {sheetsLinked && (
+          <Link
+            to={`/admin/connectors/google-sheets?tab=settings&agent=${agentId}`}
+            className={ROW}
+            data-testid="agent-connector-google-sheets"
+          >
+            <ConnectorIcon c={gs} />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex flex-wrap items-center gap-2 font-medium">
+                {t('connectors.items.google-sheets.name')}
+                {sheetsState !== 'connected' && <ConnectorStatusBadge status="attention" />}
+              </span>
+              {sheetsSummary && (
+                <span className="text-sm text-muted-foreground">{sheetsSummary}</span>
+              )}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
+        )}
         {partners.map((c, i) => {
           const tools = c.entry.tools ?? [];
           const saved = partnerSettings[i]?.data;
@@ -97,7 +138,7 @@ export function AgentConnectorsCard({
             </Link>
           );
         })}
-        {!connected && partners.length === 0 && (
+        {!connected && !sheetsLinked && partners.length === 0 && (
           <p className="text-sm text-muted-foreground">{t('connectors.agentCard.none')}</p>
         )}
         <Button asChild variant="outline" size="touch" className="self-start">

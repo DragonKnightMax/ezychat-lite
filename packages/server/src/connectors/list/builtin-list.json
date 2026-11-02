@@ -64,8 +64,9 @@
     "id": "google-sheets",
     "schemaVersion": 1,
     "minAppVersion": "0.0.0",
-    "kind": "coming_soon",
+    "kind": "builtin",
     "editions": ["lite", "enterprise"],
+    "builtinId": "google-sheets",
     "name": "Google Sheets",
     "summary": {
       "en": "Read prices or stock from a sheet; add new leads.",
@@ -73,19 +74,19 @@
       "zh-CN": "从表格读取价格或库存；添加新的潜在客户。"
     },
     "description": {
-      "en": "Keep prices, stock or a FAQ in a Google Sheet and let the AI read it. It can also add each new lead as a row.",
-      "ms": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan AI membacanya. Ia juga boleh menambah setiap prospek baharu sebagai satu baris.",
-      "zh-CN": "把价格、库存或常见问题放在 Google 表格中，让 AI 读取。它还可以把每个新的潜在客户添加为一行。"
+      "en": "Keep prices, stock or a FAQ in a Google Sheet and let your AI agent read it. If you allow it, the AI also adds each new lead as a row. Sign in with Google, then choose the sheet.",
+      "ms": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan ejen AI anda membacanya. Jika anda benarkan, AI juga menambah setiap prospek baharu sebagai satu baris. Log masuk dengan Google, kemudian pilih helaian itu.",
+      "zh-CN": "把价格、库存或常见问题放在 Google 表格中，让 AI 代理读取。如果您允许，AI 还会把每个新的潜在客户添加为一行。使用 Google 登录，然后选择表格。"
     },
     "category": "spreadsheets",
     "privacy": {
-      "en": "EzyChat reads only the sheet you choose and writes only the lead rows it adds.",
-      "ms": "EzyChat hanya membaca helaian yang anda pilih dan hanya menulis baris prospek yang ditambahnya.",
-      "zh-CN": "EzyChat 只读取您选择的表格，只写入它添加的潜在客户行。"
+      "en": "EzyChat can open only the spreadsheets you choose, reads only the tab you pick and writes only the lead rows it adds: date, the customer’s name, WhatsApp number, email and a short line on what they want. No chat history goes to Google. The sign-in is stored encrypted on this computer.",
+      "ms": "EzyChat hanya boleh membuka hamparan yang anda pilih, hanya membaca tab yang anda pilih dan hanya menulis baris prospek yang ditambahnya: tarikh, nama pelanggan, nombor WhatsApp, e-mel dan satu baris ringkas tentang kehendak mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini.",
+      "zh-CN": "EzyChat 只能打开您选择的电子表格，只读取您选的工作表，只写入它添加的潜在客户行：日期、客户姓名、WhatsApp 号码、电子邮件，以及一句简短的需求说明。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
     },
     "tools": [
       {
-        "name": "read_rows",
+        "name": "read_sheet_rows",
         "title": {
           "en": "Read rows",
           "ms": "Baca baris",
@@ -99,7 +100,7 @@
         "access": "read"
       },
       {
-        "name": "add_row",
+        "name": "add_lead_row",
         "title": {
           "en": "Add a lead",
           "ms": "Tambah prospek",
@@ -113,10 +114,11 @@
         "access": "write"
       }
     ],
-    "vote": {
-      "en": "Hi EzyChat team, please add the Google Sheets connector. We would use it for:",
-      "ms": "Hai pasukan EzyChat, sila tambah penyambung Google Sheets. Kami akan menggunakannya untuk:",
-      "zh-CN": "您好 EzyChat 团队，请添加 Google Sheets 连接器。我们会用它来："
+    "stage": "beta",
+    "notice": {
+      "en": "Google is still reviewing this connector. When you sign in, Google shows a warning that the app is not verified: click Advanced, then Go to EzyChat, to continue. Your sheet data still goes only between your computer and Google.",
+      "ms": "Google masih menyemak penyambung ini. Semasa anda log masuk, Google memaparkan amaran bahawa aplikasi belum disahkan: klik Lanjutan, kemudian Pergi ke EzyChat, untuk teruskan. Data helaian anda tetap hanya bergerak antara komputer anda dan Google.",
+      "zh-CN": "Google 仍在审核此连接器。登录时，Google 会提示该应用尚未验证：点击“高级”，然后点击“转至 EzyChat”即可继续。您的表格数据仍只在您的电脑和 Google 之间传输。"
     }
   },
   {

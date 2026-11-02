@@ -38,6 +38,9 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   calendar_offers: { merged: true },
   calendar_bookings: { merged: true },
   calendar_activity: { merged: true },
+  sheets_agent_settings: { merged: true },
+  sheets_leads: { merged: true },
+  sheets_activity: { merged: true },
   connector_connections: { merged: true },
   connector_agent_settings: { merged: true },
   connector_activity: { merged: true },
@@ -133,11 +136,14 @@ function reseal(blob: unknown, input: MergeInput): string | null {
   }
 }
 
-function googleAccount(db: DB, box: SecretBox | null): string | null {
+function googleAccount(
+  db: DB,
+  box: SecretBox | null,
+  key: 'google_calendar_tokens' | 'google_sheets_tokens' = 'google_calendar_tokens',
+): string | null {
   if (!box) return null;
-  const row = db
-    .prepare("SELECT value FROM settings WHERE key = 'google_calendar_tokens'")
-    .get() as { value: string } | undefined;
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+    { value: string } | undefined;
   if (!row) return null;
   try {
     const account = (JSON.parse(box.decrypt(row.value)) as { account?: unknown }).account;
@@ -332,6 +338,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
 
   // ── Connectors: connections (target wins), per-agent settings, Google Calendar settings ────
   let sameGoogle = false;
+  let sameSheets = false;
   phase(() => {
     const addConnection = inserter(target, 'connector_connections');
     const has = target.prepare('SELECT 1 FROM connector_connections WHERE connector_id = ?');
@@ -359,6 +366,18 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       for (const s of rows(lite, 'SELECT * FROM calendar_agent_settings')) {
         const agentId = maps.agent(s.agent_id);
         if (agentId !== null) addCal({ ...s, agent_id: agentId });
+      }
+    }
+    // Google Sheets: the chosen spreadsheets belong to Lite's Google account (same rule).
+    const liteSheets = googleAccount(lite, input.liteSecret, 'google_sheets_tokens');
+    sameSheets =
+      liteSheets !== null &&
+      liteSheets === googleAccount(target, input.targetSecret, 'google_sheets_tokens');
+    if (sameSheets) {
+      const addSheets = inserter(target, 'sheets_agent_settings');
+      for (const s of rows(lite, 'SELECT * FROM sheets_agent_settings')) {
+        const agentId = maps.agent(s.agent_id);
+        if (agentId !== null) addSheets({ ...s, agent_id: agentId });
       }
     }
   });
@@ -521,6 +540,8 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       byChatAndAgent('calendar_bookings', true);
     }
     byChatAndAgent('calendar_activity', false);
+    if (sameSheets) byChatAndAgent('sheets_leads', true);
+    byChatAndAgent('sheets_activity', false);
     byChatAndAgent('connector_activity', false);
     byChatAndAgent('connector_calls', false);
     byChatAndAgent('connector_values', false);

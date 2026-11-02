@@ -5,6 +5,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
   DEFAULT_BOOKING_SETTINGS,
+  DEFAULT_SHEETS_SETTINGS,
+  googleSheetUrl,
+  spreadsheetIdFromLink,
+  type GoogleSheetsStatus,
+  type SheetsActivity,
+  type SheetsAgentSettings,
+  type SheetsPickerProgress,
+  type SpreadsheetInfo,
   type AiAgentSummary,
   type BookingSettings,
   type CalendarActivity,
@@ -53,6 +61,27 @@ export const status = (
   problemSince: null,
   ...patch,
 });
+
+export const sheetsStatus = (state: GoogleSheetsStatus['state']): GoogleSheetsStatus => ({
+  state,
+  account:
+    state === 'connected' || state === 'expired' || state === 'unavailable'
+      ? 'kopiapong@gmail.com'
+      : null,
+  connectedAt: null,
+  problemSince: null,
+});
+
+export const SHEET_ID = 'kopiapong-prices-000000000000000000';
+export const SHEET: SpreadsheetInfo = {
+  id: SHEET_ID,
+  name: 'Kopi Apong prices',
+  tabs: [
+    { title: 'Menu', rows: 1000 },
+    { title: 'Leads', rows: 1000 },
+  ],
+  url: googleSheetUrl(SHEET_ID),
+};
 
 export const agent = (id: number, displayName: string): AiAgentSummary => ({
   id,
@@ -175,6 +204,14 @@ export const gallery = (
 /** The server as the connector pages see it; every write is recorded. */
 export interface World {
   google: GoogleCalendarStatus;
+  /** Google Sheets: its own sign-in, settings per agent, activity and the sheets Google knows. */
+  sheets: GoogleSheetsStatus;
+  sheetsProgress: GoogleCalendarConnectProgress[];
+  sheetSettings: Record<number, SheetsAgentSettings>;
+  sheetsActivity: SheetsActivity[];
+  spreadsheets: Record<string, SpreadsheetInfo>;
+  /** Answers to the file picker polls, in order (the last one repeats). */
+  pickerProgress: SheetsPickerProgress[];
   agents: AiAgentSummary[];
   bookings: Record<number, BookingSettings>;
   activity: CalendarActivity[];
@@ -205,6 +242,12 @@ export interface World {
 export function world(patch: Partial<World> = {}): World {
   return {
     google: status('connected'),
+    sheets: sheetsStatus('disconnected'),
+    sheetsProgress: [{ status: 'done', error: null }],
+    sheetSettings: {},
+    sheetsActivity: [],
+    spreadsheets: { [SHEET_ID]: SHEET },
+    pickerProgress: [{ status: 'done', sheet: SHEET }],
     agents: [agent(1, 'Aina')],
     bookings: {},
     activity: [],
@@ -300,6 +343,65 @@ function mcpRoute(w: World, method: string, path: string, init?: RequestInit): R
   return null;
 }
 
+/** The Google Sheets routes of the fake server. */
+function sheetsRoute(w: World, method: string, path: string, init?: RequestInit): Response | null {
+  if (!path.startsWith('/connectors/google-sheets')) return null;
+  const rest = path.slice('/connectors/google-sheets'.length);
+  if (rest === '') return json(w.sheets);
+  if (rest === '/connect' && method === 'POST')
+    return json({
+      requestId: 'req-s',
+      authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth?s=1',
+    });
+  if (rest.startsWith('/connect/')) {
+    const next = w.sheetsProgress.length > 1 ? w.sheetsProgress.shift()! : w.sheetsProgress[0]!;
+    if (next.status === 'done') w.sheets = sheetsStatus('connected');
+    return json(next);
+  }
+  if (rest === '/disconnect' && method === 'POST') {
+    w.sheets = sheetsStatus('disconnected');
+    return json(w.sheets);
+  }
+  if (rest === '/picker' && method === 'POST')
+    return json({
+      requestId: 'pick-1',
+      pickerUrl: 'http://127.0.0.1:7420/api/connectors/google-sheets/picker-page?token=t',
+    });
+  if (rest.startsWith('/picker/'))
+    return json(w.pickerProgress.length > 1 ? w.pickerProgress.shift()! : w.pickerProgress[0]!);
+  if (rest === '/spreadsheet' && method === 'POST') {
+    const { link } = JSON.parse(String(init!.body)) as { link: string };
+    const found = w.spreadsheets[spreadsheetIdFromLink(link) ?? ''];
+    return found
+      ? json(found)
+      : json(
+          {
+            error: {
+              code: 'validation',
+              message: 'The connected Google account cannot open this spreadsheet.',
+            },
+          },
+          400,
+        );
+  }
+  const agentMatch = /^\/agents\/(\d+)$/.exec(rest);
+  if (agentMatch) {
+    const id = Number(agentMatch[1]);
+    if (method === 'PUT') {
+      const body = JSON.parse(String(init!.body)) as SheetsAgentSettings;
+      w.sheetSettings[id] = {
+        ...body,
+        spreadsheetName: body.spreadsheetId
+          ? (w.spreadsheets[body.spreadsheetId]?.name ?? null)
+          : null,
+      };
+    }
+    return json(w.sheetSettings[id] ?? DEFAULT_SHEETS_SETTINGS);
+  }
+  if (rest === '/activity') return json({ activity: w.sheetsActivity });
+  return null;
+}
+
 export function stubServer(w: World) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -315,6 +417,8 @@ export function stubServer(w: World) {
     }
     const mcp = mcpRoute(w, method, path, init);
     if (mcp) return mcp;
+    const sheets = sheetsRoute(w, method, path, init);
+    if (sheets) return sheets;
     if (path === '/connectors/google-calendar') return json(w.google);
     if (path === '/connectors/google-calendar/connect' && method === 'POST')
       return json({

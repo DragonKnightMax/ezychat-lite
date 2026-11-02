@@ -6,6 +6,12 @@ import {
   GoogleCalendarConnectProgress,
   GoogleCalendarConnectStart,
   GoogleCalendarStatus,
+  GoogleSheetsStatus,
+  SheetsActivityList,
+  SheetsAgentSettings,
+  SheetsPickerProgress,
+  SheetsPickerStart,
+  SpreadsheetInfo,
 } from '@ezychat/shared';
 import { api } from './client';
 
@@ -98,5 +104,121 @@ export function useCalendarActivity(enabled = true) {
     queryFn: ({ signal }) =>
       api('/connectors/google-calendar/activity', { signal, schema: CalendarActivityList }),
     enabled,
+  });
+}
+
+/** Admin → Connectors → Google Sheets (admins only). Tokens never reach the browser. */
+export const googleSheetsKey = ['connectors', 'google-sheets'] as const;
+export const sheetsSettingsKey = (agentId: number) =>
+  [...googleSheetsKey, 'agent', agentId] as const;
+export const sheetsActivityKey = [...googleSheetsKey, 'activity'] as const;
+
+export function useGoogleSheets(enabled = true) {
+  return useQuery({
+    queryKey: googleSheetsKey,
+    queryFn: ({ signal }) =>
+      api('/connectors/google-sheets', { signal, schema: GoogleSheetsStatus }),
+    enabled,
+  });
+}
+
+/** Starts Google's sign-in for Google Sheets (its own sign-in, separate from the calendar's). */
+export function useGoogleSheetsConnect() {
+  return useMutation({
+    mutationFn: () =>
+      api('/connectors/google-sheets/connect', {
+        method: 'POST',
+        schema: GoogleCalendarConnectStart,
+      }),
+  });
+}
+
+/** Polls a Google Sheets sign-in every 2 s until it is done or failed. */
+export function useGoogleSheetsProgress(requestId: string | null) {
+  return useQuery({
+    queryKey: [...googleSheetsKey, 'connect', requestId] as const,
+    queryFn: ({ signal }) =>
+      api(`/connectors/google-sheets/connect/${encodeURIComponent(requestId ?? '')}`, {
+        signal,
+        schema: GoogleCalendarConnectProgress,
+      }),
+    enabled: requestId !== null,
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 2000 : false),
+    gcTime: 0,
+  });
+}
+
+export function useGoogleSheetsDisconnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api('/connectors/google-sheets/disconnect', { method: 'POST' }),
+    onSettled: () => void qc.invalidateQueries({ queryKey: googleSheetsKey }),
+  });
+}
+
+/** The spreadsheet behind a pasted link: its name and tabs (checked with Google). */
+export function useSpreadsheetLookup() {
+  return useMutation({
+    mutationFn: (link: string) =>
+      api('/connectors/google-sheets/spreadsheet', {
+        method: 'POST',
+        body: { link },
+        schema: SpreadsheetInfo,
+      }),
+  });
+}
+
+/** One AI agent's Google Sheets settings (the defaults until an admin saves them). */
+export function useSheetsSettings(agentId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: sheetsSettingsKey(agentId ?? 0),
+    queryFn: ({ signal }) =>
+      api(`/connectors/google-sheets/agents/${agentId}`, { signal, schema: SheetsAgentSettings }),
+    enabled: enabled && agentId !== null,
+  });
+}
+
+export function useSaveSheetsSettings(agentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SheetsAgentSettings) =>
+      api(`/connectors/google-sheets/agents/${agentId}`, {
+        method: 'PUT',
+        body,
+        schema: SheetsAgentSettings,
+      }),
+    onSuccess: (saved) => qc.setQueryData(sheetsSettingsKey(agentId), saved),
+  });
+}
+
+export function useSheetsActivity(enabled = true) {
+  return useQuery({
+    queryKey: sheetsActivityKey,
+    queryFn: ({ signal }) =>
+      api('/connectors/google-sheets/activity', { signal, schema: SheetsActivityList }),
+    enabled,
+  });
+}
+
+/** Opens Google's file picker (a page on the computer that runs EzyChat). */
+export function useSheetsPicker() {
+  return useMutation({
+    mutationFn: () =>
+      api('/connectors/google-sheets/picker', { method: 'POST', schema: SheetsPickerStart }),
+  });
+}
+
+/** Polls the picker every 2 s until the admin picked a sheet, cancelled, or it expired. */
+export function useSheetsPickerProgress(requestId: string | null) {
+  return useQuery({
+    queryKey: [...googleSheetsKey, 'picker', requestId] as const,
+    queryFn: ({ signal }) =>
+      api(`/connectors/google-sheets/picker/${encodeURIComponent(requestId ?? '')}`, {
+        signal,
+        schema: SheetsPickerProgress,
+      }),
+    enabled: requestId !== null,
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 2000 : false),
+    gcTime: 0,
   });
 }

@@ -15,6 +15,7 @@ export * from './reply-suggestions.js';
 export * from './reply-phrases.js';
 export * from './fix-english.js';
 export * from './connectors.js';
+export * from './google-sheets.js';
 export * from './connector-list.js';
 export * from './reports.js';
 export * from './ask-ezy.js';

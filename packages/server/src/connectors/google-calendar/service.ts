@@ -6,7 +6,7 @@
  * Logs carry counts, ids and states only: never tokens, codes, URLs with codes, event text, names
  * or phone numbers.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import {
   BookingSettings,
   googleCalendarUrl,
@@ -14,15 +14,13 @@ import {
   type CalendarBooking,
   type CalendarBookingList,
   type Chat,
-  type GoogleCalendarConnectProgress,
-  type GoogleCalendarConnectStart,
   type GoogleCalendarItem,
   type GoogleCalendarStatus,
 } from '@ezychat/shared';
 import { agentById } from '../../ai/agents.js';
 import { AI_TIMEZONE_SETTING, resolveAiTimeZone } from '../../ai/prompt.js';
-import { createPkce } from '../../ai/chatgpt-oauth.js';
 import type { AppContext } from '../../context.js';
+import { createGoogleAccount } from '../google-account.js';
 import { audit } from '../../db/audit.js';
 import { HttpError, errors } from '../../http/errors.js';
 import { getChats } from '../../wa-bridge/index.js';
@@ -37,10 +35,8 @@ import {
   GOOGLE_ENDPOINTS,
   GOOGLE_SCOPES,
   GoogleClient,
-  GoogleError,
   REQUIRED_SCOPES,
   type GoogleCalendarEntry,
-  type GoogleTokens,
 } from './google.js';
 import {
   addActivity,
@@ -76,39 +72,8 @@ declare module '../../context.js' {
 
 export const TOKENS_SETTING = 'google_calendar_tokens';
 export const PROBLEM_SETTING = 'google_calendar_problem';
-export const CONNECT_TTL_MS = 10 * 60_000;
-const MAX_PENDING = 20;
+export { CONNECT_TTL_MS, type CallbackPage } from '../google-account.js';
 const CALENDARS_TTL_MS = 5 * 60_000;
-/** Refresh this long before the access token runs out. */
-const REFRESH_EARLY_MS = 60_000;
-
-interface StoredTokens extends GoogleTokens {
-  connectedAt: number;
-}
-
-interface Problem {
-  state: 'expired' | 'unavailable';
-  since: number;
-}
-
-interface Pending {
-  requestId: string;
-  verifier: string;
-  challenge: string;
-  redirectUri: string;
-  createdAt: number;
-  userId: number;
-  ip: string | null;
-  status: GoogleCalendarConnectProgress['status'];
-  error: GoogleCalendarConnectProgress['error'];
-  used: boolean;
-}
-
-export interface CallbackPage {
-  status: number;
-  title: string;
-  message: string;
-}
 
 export type BookResult =
   | { ok: true; start: number; end: number; already: boolean }
@@ -175,119 +140,32 @@ export function createGoogleCalendarService(
           ? new GoogleClient(ctx.config.googleOAuth, GOOGLE_ENDPOINTS)
           : null;
 
-  const pending = new Map<string, Pending>(); // by state hash
-  const byRequest = new Map<string, string>(); // requestId → state hash
+  const account = createGoogleAccount(ctx, {
+    key: 'google_calendar',
+    label: 'Google Calendar',
+    tokensSetting: TOKENS_SETTING,
+    problemSetting: PROBLEM_SETTING,
+    scopes: GOOGLE_SCOPES,
+    requiredScopes: REQUIRED_SCOPES,
+    client,
+    fake,
+    fakeConsentPath: '/api/dev/fake-google/consent',
+    now,
+  });
   let calendars: { at: number; list: GoogleCalendarEntry[] } | null = null;
-  let refreshing: Promise<StoredTokens> | null = null;
-
-  const loadTokens = (): StoredTokens | null => {
-    const raw = ctx.settings.getSecret(TOKENS_SETTING);
-    if (!raw) return null;
-    try {
-      const value = JSON.parse(raw) as StoredTokens;
-      return value.accessToken && value.refreshToken ? value : null;
-    } catch {
-      return null;
-    }
-  };
-  const saveTokens = (tokens: StoredTokens | null) =>
-    ctx.settings.setSecret(TOKENS_SETTING, tokens ? JSON.stringify(tokens) : null);
-  const problem = (): Problem | null => ctx.settings.get<Problem | null>(PROBLEM_SETTING, null);
-
-  function markProblem(error: unknown) {
-    if (!(error instanceof GoogleError) || error.kind === 'rejected') return;
-    const current = problem();
-    if (error.kind === 'unavailable' && current?.state === 'expired') return;
-    const since = current?.state === error.kind ? current.since : now();
-    if (current?.state !== error.kind) {
-      log.warn(
-        { event: 'google_calendar_problem', state: error.kind, status: error.status },
-        'Google Calendar problem',
-      );
-      ctx.settings.set(PROBLEM_SETTING, { state: error.kind, since });
-    }
-  }
-  function clearProblem() {
-    if (problem()) {
-      ctx.settings.set(PROBLEM_SETTING, null);
-      log.info(
-        { event: 'google_calendar_problem', state: 'connected' },
-        'Google Calendar works again',
-      );
-    }
-  }
-
-  async function refreshNow(tokens: StoredTokens): Promise<StoredTokens> {
-    if (!refreshing)
-      refreshing = (async () => {
-        try {
-          const fresh = await client!.refresh(tokens.refreshToken);
-          const next: StoredTokens = {
-            ...fresh,
-            account: fresh.account ?? tokens.account,
-            scope: fresh.scope.length ? fresh.scope : tokens.scope,
-            connectedAt: tokens.connectedAt,
-          };
-          // A disconnect while refreshing wins.
-          if (loadTokens()) saveTokens(next);
-          return next;
-        } finally {
-          refreshing = null;
-        }
-      })();
-    return refreshing;
-  }
-
-  /** Runs one Google call with a valid access token; records problems and recoveries. */
-  async function withToken<T>(fn: (token: string) => Promise<T>): Promise<T> {
-    if (!client) throw new GoogleError('rejected');
-    let tokens = loadTokens();
-    if (!tokens) throw new GoogleError('rejected');
-    try {
-      let refreshed = false;
-      if (tokens.expiresAt - REFRESH_EARLY_MS <= now()) {
-        tokens = await refreshNow(tokens);
-        refreshed = true;
-      }
-      let result: T;
-      try {
-        result = await fn(tokens.accessToken);
-      } catch (error) {
-        // An access token Google no longer accepts: refresh once and try again.
-        if (refreshed || !(error instanceof GoogleError) || error.status !== 401) throw error;
-        tokens = await refreshNow(tokens);
-        result = await fn(tokens.accessToken);
-      }
-      clearProblem();
-      return result;
-    } catch (error) {
-      markProblem(error);
-      throw error;
-    }
-  }
+  account.onChange(() => {
+    calendars = null;
+  });
+  const loadTokens = account.tokens;
+  const withToken = account.withToken;
+  const state = account.state;
+  const configured = account.configured;
 
   async function loadCalendars(force = false): Promise<GoogleCalendarEntry[]> {
     if (!force && calendars && now() - calendars.at < CALENDARS_TTL_MS) return calendars.list;
     const list = await withToken((token) => client!.calendarList(token));
     calendars = { at: now(), list };
     return list;
-  }
-
-  const configured = () => client !== null;
-
-  function state(): GoogleCalendarStatus['state'] {
-    if (!configured()) return 'not_configured';
-    if (!loadTokens()) return 'disconnected';
-    return problem()?.state ?? 'connected';
-  }
-
-  function prune() {
-    const at = now();
-    for (const [hash, entry] of pending)
-      if (at - entry.createdAt > CONNECT_TTL_MS) {
-        pending.delete(hash);
-        byRequest.delete(entry.requestId);
-      }
   }
 
   function timeZone(): string {
@@ -345,7 +223,7 @@ export function createGoogleCalendarService(
     async status(): Promise<GoogleCalendarStatus> {
       const tokens = configured() ? loadTokens() : null;
       let list: GoogleCalendarEntry[] = [];
-      if (tokens && problem()?.state !== 'expired') {
+      if (tokens && account.state() !== 'expired') {
         try {
           list = await loadCalendars();
         } catch {
@@ -358,156 +236,15 @@ export function createGoogleCalendarService(
         account: tokens?.account ?? null,
         calendars: current === 'not_configured' || !tokens ? [] : list.map((c) => toItem(c)),
         connectedAt: tokens?.connectedAt ?? null,
-        problemSince:
-          current === 'expired' || current === 'unavailable' ? (problem()?.since ?? null) : null,
+        problemSince: account.problemSince(),
       };
     },
 
-    /** Starts a sign-in: Google (or, with --fake-wa, the local consent page) opens in a new window. */
-    startConnect(
-      redirectUri: string,
-      actor: { userId: number; ip: string | null },
-    ): GoogleCalendarConnectStart {
-      if (!client)
-        throw new HttpError(409, 'not_configured', 'Google sign-in is not set up in this build');
-      prune();
-      while (pending.size >= MAX_PENDING) {
-        const oldest = pending.keys().next().value!;
-        byRequest.delete(pending.get(oldest)!.requestId);
-        pending.delete(oldest);
-      }
-      const state = randomBytes(24).toString('base64url');
-      const { verifier, challenge } = createPkce();
-      const requestId = randomBytes(12).toString('hex');
-      const hash = sha(state);
-      pending.set(hash, {
-        requestId,
-        verifier,
-        challenge,
-        redirectUri,
-        createdAt: now(),
-        userId: actor.userId,
-        ip: actor.ip,
-        status: 'pending',
-        error: null,
-        used: false,
-      });
-      byRequest.set(requestId, hash);
-      let authorizationUrl: string;
-      if (fake) {
-        const url = new URL('/api/dev/fake-google/consent', redirectUri);
-        url.searchParams.set('state', state);
-        url.searchParams.set('code_challenge', challenge);
-        authorizationUrl = url.toString();
-      } else authorizationUrl = client.authorizationUrl({ redirectUri, state, challenge });
-      log.info({ event: 'google_calendar_connect_start' }, 'Google sign-in started');
-      return { requestId, authorizationUrl };
-    },
-
-    progress(requestId: string): GoogleCalendarConnectProgress | null {
-      const hash = byRequest.get(requestId);
-      const entry = hash ? pending.get(hash) : undefined;
-      if (!entry) return null;
-      if (entry.status === 'pending' && now() - entry.createdAt > CONNECT_TTL_MS)
-        return { status: 'failed', error: 'expired' };
-      return { status: entry.status, error: entry.error };
-    },
-
-    /** The redirect from Google: one-time `state`, PKCE verifier, code exchange, tokens saved. */
-    async callback(query: Record<string, unknown>): Promise<CallbackPage> {
-      const expiredPage: CallbackPage = {
-        status: 400,
-        title: 'Sign-in link expired',
-        message: 'Start the Google sign-in again from EzyChat.',
-      };
-      const stateParam = typeof query.state === 'string' ? query.state : '';
-      const entry = stateParam ? pending.get(sha(stateParam)) : undefined;
-      // A forged, reused or stale callback never changes the real sign-in.
-      if (!entry || entry.used) return expiredPage;
-      if (now() - entry.createdAt > CONNECT_TTL_MS) {
-        entry.used = true;
-        entry.status = 'failed';
-        entry.error = 'expired';
-        return expiredPage;
-      }
-      entry.used = true;
-      const fail = (error: 'denied' | 'error', title: string): CallbackPage => {
-        entry.status = 'failed';
-        entry.error = error;
-        log.info(
-          { event: 'google_calendar_connect_failed', reason: error },
-          'Google sign-in failed',
-        );
-        return {
-          status: 400,
-          title,
-          message: 'You can close this window and try again from EzyChat.',
-        };
-      };
-      if (typeof query.error === 'string' && query.error)
-        return fail(query.error === 'access_denied' ? 'denied' : 'error', 'Sign-in cancelled');
-      const code = typeof query.code === 'string' ? query.code : '';
-      if (!code || code.length > 2048) return fail('error', 'Sign-in failed');
-      let tokens: GoogleTokens;
-      try {
-        tokens = await client!.exchangeCode(code, entry.verifier, entry.redirectUri);
-      } catch (error) {
-        log.warn(
-          {
-            event: 'google_calendar_exchange_failed',
-            status: (error as GoogleError)?.status ?? null,
-          },
-          'Google sign-in exchange failed',
-        );
-        return fail('error', 'Sign-in failed');
-      }
-      if (!REQUIRED_SCOPES.every((scope) => tokens.scope.includes(scope))) {
-        await client!.revoke(tokens.refreshToken);
-        return fail('error', 'Calendar access was not allowed');
-      }
-      saveTokens({ ...tokens, connectedAt: now() });
-      ctx.settings.set(PROBLEM_SETTING, null);
-      calendars = null;
-      entry.status = 'done';
-      audit(ctx.db, {
-        userId: entry.userId,
-        action: 'google_calendar.connect',
-        ip: entry.ip,
-        meta: { scopes: tokens.scope.length },
-      });
-      log.info(
-        { event: 'google_calendar_connected', scopes: tokens.scope.length },
-        'Google Calendar connected',
-      );
-      return {
-        status: 200,
-        title: 'Google Calendar connected',
-        message: 'You can close this window and return to EzyChat.',
-      };
-    },
-
-    /** Fake consent page (--fake-wa only): where Allow / Cancel lead, always our own callback. */
-    fakeConsent(stateParam: string, allow: boolean): string | null {
-      if (!fake) return null;
-      const entry = pending.get(sha(stateParam));
-      if (!entry || entry.used) return null;
-      const url = new URL(entry.redirectUri);
-      url.searchParams.set('state', stateParam);
-      if (allow)
-        url.searchParams.set('code', fake.issueCode(entry.challenge, GOOGLE_SCOPES.join(' ')));
-      else url.searchParams.set('error', 'access_denied');
-      return url.toString();
-    },
-
-    async disconnect(actor: { userId: number; ip: string | null }): Promise<void> {
-      const tokens = loadTokens();
-      saveTokens(null);
-      ctx.settings.set(PROBLEM_SETTING, null);
-      calendars = null;
-      if (tokens && client) await client.revoke(tokens.refreshToken);
-      audit(ctx.db, { userId: actor.userId, action: 'google_calendar.disconnect', ip: actor.ip });
-      log.info({ event: 'google_calendar_disconnected' }, 'Google Calendar disconnected');
-    },
+    startConnect: account.startConnect,
+    progress: account.progress,
+    callback: account.callback,
+    fakeConsent: account.fakeConsent,
+    disconnect: account.disconnect,
 
     getSettings(agentId: number): BookingSettings {
       if (!agentById(ctx.db, agentId)) throw errors.notFound('Agent');
@@ -708,8 +445,7 @@ export function createGoogleCalendarService(
 
     shutdown() {
       ctx.bus.off('ai:handoff', onHandoff);
-      pending.clear();
-      byRequest.clear();
+      account.shutdown();
     },
   };
   return service;

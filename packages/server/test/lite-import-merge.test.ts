@@ -314,6 +314,13 @@ describe('mergeLiteInbox', () => {
         agent_id: agentId,
         chat_jid: `${LITE_CHAT}#3`,
       });
+      // Google Sheets likewise: no settings or lead records, activity kept
+      expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_agent_settings').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_leads').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT agent_id, chat_jid FROM sheets_activity').get()).toEqual({
+        agent_id: agentId,
+        chat_jid: `${LITE_CHAT}#3`,
+      });
 
       // Safety finding follows its message
       const item = db
@@ -464,6 +471,25 @@ describe('mergeLiteInbox', () => {
       expect(after.prepare('SELECT paused FROM ai_chat_state').get()).toEqual({ paused: 1 });
     } finally {
       after.close();
+    }
+  });
+
+  it('brings Google Sheets settings and lead records only when both use the same Google account', async () => {
+    const t = seedTarget({ sheetsAccount: 'Owner@Example.com' });
+    const lite = seedLite({ sheetsAccount: 'owner@example.com' });
+    await merge(t.dir, lite.dir);
+    const db = open(t.dir);
+    try {
+      expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_agent_settings').get()).toEqual({ n: 1 });
+      expect(db.prepare('SELECT chat_jid FROM sheets_leads').get()).toEqual({
+        chat_jid: `${LITE_CHAT}#3`,
+      });
+      // The Calendar sign-in differs (none): its settings stay behind.
+      expect(db.prepare('SELECT COUNT(*) AS n FROM calendar_agent_settings').get()).toEqual({
+        n: 0,
+      });
+    } finally {
+      db.close();
     }
   });
 
@@ -673,8 +699,12 @@ describe('mergeLiteInbox refusals and rollback', () => {
   it('migrates an older Lite copy before merging, never Lite itself', async () => {
     const t = seedTarget();
     const lite = seedLite();
-    // pretend Lite stopped two migrations earlier: undo 028 (safety tables) and 029 (message changes)
+    // pretend Lite stopped three migrations earlier: undo 028 (safety tables), 029 (message
+    // changes) and 030 (Google Sheets)
     const db = openDb(join(lite.dir, 'app.db'));
+    db.exec(
+      'DROP TABLE sheets_agent_settings; DROP TABLE sheets_leads; DROP TABLE sheets_activity;',
+    );
     db.exec('DROP TABLE safety_downloads; DROP TABLE safety_items; DROP TABLE safety_numbers;');
     db.exec('DROP TABLE message_edits; DROP TABLE message_changes_pending;');
     for (const column of [
@@ -694,6 +724,7 @@ describe('mergeLiteInbox refusals and rollback', () => {
     try {
       expect(check.prepare('SELECT COUNT(*) AS n FROM safety_items').get()).toEqual({ n: 0 });
       expect(check.prepare('SELECT COUNT(*) AS n FROM message_edits').get()).toEqual({ n: 0 });
+      expect(check.prepare('SELECT COUNT(*) AS n FROM sheets_leads').get()).toEqual({ n: 0 });
     } finally {
       check.close();
     }

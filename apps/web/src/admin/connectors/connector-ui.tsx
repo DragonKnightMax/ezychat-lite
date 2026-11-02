@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ChevronRight, ExternalLink, ThumbsUp, type LucideIcon } from 'lucide-react';
@@ -6,6 +7,8 @@ import { useConnectorGallery } from '../../api/connector-list';
 import { Banner } from '@/components/app';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useAppLinks } from '@/lib/app-links';
 import { cn } from '@/lib/utils';
 import { useWebExtensions } from '../../extensions';
@@ -180,5 +183,48 @@ export function GoogleCalendarLink({
         <ExternalLink aria-hidden />
       </a>
     </Button>
+  );
+}
+
+/**
+ * One switch of a connector's per-agent settings ("Check free times", "Read rows"): label, an
+ * optional badge (e.g. "Changes your calendar"), a hint and a 44 px switch target; `children` shows
+ * under it (e.g. the tab to read).
+ */
+export function ToolSwitchRow({
+  id,
+  label,
+  hint,
+  badge,
+  checked,
+  disabled,
+  onCheckedChange,
+  children,
+}: Readonly<{
+  id: string;
+  label: string;
+  hint: string;
+  badge?: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  children?: ReactNode;
+}>) {
+  return (
+    <div className="flex flex-col gap-3 px-3 py-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <span className="flex flex-wrap items-center gap-2">
+            <Label htmlFor={id}>{label}</Label>
+            {badge && <Badge variant="secondary">{badge}</Badge>}
+          </span>
+          <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+        </div>
+        <Label htmlFor={id} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">
+          <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+        </Label>
+      </div>
+      {children}
+    </div>
   );
 }

@@ -16,6 +16,18 @@
   },
   "proposals": [
     {
+      "feature": "google-sheets",
+      "creationOrder": 27,
+      "createdAt": "2026-11-02",
+      "design": "docs/features/google-sheets/design.md",
+      "mock": null,
+      "status": "proposal",
+      "baselineFeature": "group-mentions",
+      "baselineGitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
+      "coverage": "Design and checklist only; the HTML mock (clone of group-mentions plus the Google Sheets connector screens) is still owed.",
+      "note": "Built against the confirmed Google Calendar connector screens; needs the owner's mock confirmation before leaving draft."
+    },
+    {
       "feature": "message-edit-delete",
       "creationOrder": 26,
       "createdAt": "2026-10-28",
@@ -100,7 +112,8 @@
       "coverage": "Full app clone of the confirmed concept-tips reference; agent page Closing chats card (Ask if the question is answered: off by default for every agent, with no check-in line and the team closing chats, on with the clear-yes rule), dashed Mock only preview of the same two customer messages per state, kept per agent in localStorage; desktop 1280 / mobile 360 touch, light/dark (resolution-shots.mjs)",
       "confirmedAt": "2026-10-30",
       "confirmation": "Owner confirmed in chat 2026-10-30 (answer \"Off for every agent\" to the default question, with \"Merge #230 now\"): the Closing chats card as proposed, default off for every agent.",
-      "gitRevision": "16a126ec521e9e9e79dbe4a4477c449114bb51fb"
+      "gitRevision": "16a126ec521e9e9e79dbe4a4477c449114bb51fb",
+      "archived": "Folder pruned 2026-11-02 (retention: five newest); recover it from its gitRevision."
     },
     {
       "feature": "concept-tips",

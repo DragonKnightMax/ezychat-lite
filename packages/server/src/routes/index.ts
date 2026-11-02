@@ -33,6 +33,7 @@ import replySuggestions from './reply-suggestions.js';
 import askEzy from './ask-ezy.js';
 import fixEnglish from './fix-english.js';
 import connectors from './connectors.js';
+import connectorGoogleSheets from './connector-google-sheets.js';
 import connectorList from './connector-list.js';
 import connectorMcp from './connector-mcp.js';
 import reports from './reports.js';
@@ -72,6 +73,7 @@ export const routeModules: RouteModule[] = [
   askEzy,
   fixEnglish,
   connectors,
+  connectorGoogleSheets,
   connectorList,
   connectorMcp,
   reports,

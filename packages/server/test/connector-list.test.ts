@@ -120,7 +120,11 @@ describe('connector list', () => {
     // Beta while Google reviews the sign-in app: the badge and notice come from the list.
     expect(entries[0]).toMatchObject({ stage: 'beta' });
     expect(Object.keys(entries[0]!.notice!).sort()).toEqual(['en', 'ms', 'zh-CN']);
-    expect(entries.filter((e) => e.stage === 'beta').map((e) => e.id)).toEqual(['google-calendar']);
+    expect(entries[1]).toMatchObject({ kind: 'builtin', builtinId: 'google-sheets' });
+    expect(entries.filter((e) => e.stage === 'beta').map((e) => e.id)).toEqual([
+      'google-calendar',
+      'google-sheets',
+    ]);
   });
 
   it('downloads, checks and saves a good list with its icons', async () => {

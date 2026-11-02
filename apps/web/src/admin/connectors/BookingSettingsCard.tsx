@@ -10,7 +10,6 @@ import {
 import { errorMessage } from '../../api/client';
 import { useBookingSettings, useSaveBookingSettings } from '../../api/connectors';
 import { Banner } from '@/components/app';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,8 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { ErrorState, Field, ListSkeleton, Pending, SaveBar } from '../adminUi';
+import { ToolSwitchRow } from './connector-ui';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120, 180, 240];
 const GAPS = [0, 5, 10, 15, 30, 60];
@@ -163,50 +162,28 @@ export function BookingSettingsCard({
             </Field>
 
             <div className="flex flex-col divide-y rounded-lg border">
-              <div className="flex items-start justify-between gap-4 px-3 py-3">
-                <div className="min-w-0">
-                  <Label htmlFor={ids.free}>{t('connectors.tools.checkFree')}</Label>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t('connectors.booking.checkFreeHint')}
-                  </p>
-                </div>
-                <Label
-                  htmlFor={ids.free}
-                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center"
-                >
-                  <Switch
-                    id={ids.free}
-                    checked={value.checkFree}
-                    onCheckedChange={(checkFree) =>
-                      set({ checkFree, book: checkFree ? value.book : false })
-                    }
-                  />
-                </Label>
-              </div>
-              <div className="flex items-start justify-between gap-4 px-3 py-3">
-                <div className="min-w-0">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <Label htmlFor={ids.book}>{t('connectors.tools.book')}</Label>
-                    <Badge variant="secondary">{t('connectors.booking.changesCalendar')}</Badge>
-                  </span>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {value.checkFree
-                      ? t('connectors.booking.bookHint')
-                      : t('connectors.booking.bookNeedsFree')}
-                  </p>
-                </div>
-                <Label
-                  htmlFor={ids.book}
-                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center"
-                >
-                  <Switch
-                    id={ids.book}
-                    checked={value.book}
-                    disabled={!value.checkFree}
-                    onCheckedChange={(book) => set({ book })}
-                  />
-                </Label>
-              </div>
+              <ToolSwitchRow
+                id={ids.free}
+                label={t('connectors.tools.checkFree')}
+                hint={t('connectors.booking.checkFreeHint')}
+                checked={value.checkFree}
+                onCheckedChange={(checkFree) =>
+                  set({ checkFree, book: checkFree ? value.book : false })
+                }
+              />
+              <ToolSwitchRow
+                id={ids.book}
+                label={t('connectors.tools.book')}
+                badge={t('connectors.booking.changesCalendar')}
+                hint={
+                  value.checkFree
+                    ? t('connectors.booking.bookHint')
+                    : t('connectors.booking.bookNeedsFree')
+                }
+                checked={value.book}
+                disabled={!value.checkFree}
+                onCheckedChange={(book) => set({ book })}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

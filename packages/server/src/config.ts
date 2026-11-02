@@ -23,6 +23,12 @@ export interface ServerConfig {
    * desktop client type). null/absent: Google Calendar shows "not configured". Never logged.
    */
   googleOAuth?: { clientId: string; clientSecret: string } | null;
+  /**
+   * Google's file picker of this build (env GOOGLE_PICKER_API_KEY / GOOGLE_PICKER_APP_ID: a browser
+   * API key limited to the Picker API, and the Cloud project number). Google Sheets needs it with
+   * `googleOAuth`. Never logged.
+   */
+  googlePicker?: { apiKey: string; appId: string } | null;
 }
 
 const MODES = ['standalone', 'service', 'dev'] as const;
@@ -49,14 +55,24 @@ export interface CliConfig extends ServerConfig {
  * The Google sign-in app a release bundle carries (esbuild `define` from repository secrets in
  * scripts/google-oauth-define.mjs, Lite and Enterprise). Undeclared in source runs and forks.
  */
-declare const __EZYCHAT_GOOGLE_OAUTH__: { clientId?: unknown; clientSecret?: unknown } | undefined;
+declare const __EZYCHAT_GOOGLE_OAUTH__:
+  | { clientId?: unknown; clientSecret?: unknown; pickerApiKey?: unknown; pickerAppId?: unknown }
+  | undefined;
 
-function bundledGoogleOAuth(): { clientId?: string; clientSecret?: string } {
+function bundledGoogleOAuth(): {
+  clientId?: string;
+  clientSecret?: string;
+  pickerApiKey?: string;
+  pickerAppId?: string;
+} {
   const app =
     typeof __EZYCHAT_GOOGLE_OAUTH__ === 'undefined' ? undefined : __EZYCHAT_GOOGLE_OAUTH__;
+  const text = (value: unknown) => (typeof value === 'string' ? value : undefined);
   return {
-    clientId: typeof app?.clientId === 'string' ? app.clientId : undefined,
-    clientSecret: typeof app?.clientSecret === 'string' ? app.clientSecret : undefined,
+    clientId: text(app?.clientId),
+    clientSecret: text(app?.clientSecret),
+    pickerApiKey: text(app?.pickerApiKey),
+    pickerAppId: text(app?.pickerAppId),
   };
 }
 
@@ -84,7 +100,8 @@ function defaultWebDist(): string | null {
  * Flags: --data <dir> (required unless WATI_DATA env), --port <n>, --host <h>, --mode <m>,
  * --fake-wa, --web-dist <dir>, --reset-admin, --max-inboxes <n>. Also accepts --flag=value.
  * Env fallbacks: WATI_DATA, WATI_PORT, WATI_HOST, WATI_MODE, WATI_WEB_DIST. Google sign-in app:
- * GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET (both or neither), else the release bundle's.
+ * GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET (both or neither), else the release bundle's;
+ * Google's file picker likewise: GOOGLE_PICKER_API_KEY + GOOGLE_PICKER_APP_ID.
  * Fake WhatsApp is enabled ONLY by the explicit --fake-wa flag (never by env), and never in service mode.
  * --max-inboxes is accepted only together with --mode dev and --fake-wa (never by env).
  * Lite → Enterprise (flag-only, never env): --ignore-moved (start although `moved.json` is there),
@@ -189,6 +206,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
   const googleClientSecret = envGoogle
     ? env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()
     : bundled.clientSecret;
+  const envPicker = env.GOOGLE_PICKER_API_KEY?.trim() && env.GOOGLE_PICKER_APP_ID?.trim();
+  const pickerApiKey = envPicker ? env.GOOGLE_PICKER_API_KEY?.trim() : bundled.pickerApiKey;
+  const pickerAppId = envPicker ? env.GOOGLE_PICKER_APP_ID?.trim() : bundled.pickerAppId;
   const webDist = str('web-dist') ?? env.WATI_WEB_DIST;
 
   return {
@@ -212,5 +232,6 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
       googleClientId && googleClientSecret
         ? { clientId: googleClientId, clientSecret: googleClientSecret }
         : null,
+    googlePicker: pickerApiKey && pickerAppId ? { apiKey: pickerApiKey, appId: pickerAppId } : null,
   };
 }

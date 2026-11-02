@@ -3,7 +3,7 @@
  * `--fake-wa` (tests, e2e, Dev Builds). Nothing here touches the network: `fetch` answers the same
  * requests GoogleClient sends to the fake base URLs.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { FakeGoogleAuth, fakeJson as json, type FakeGoogleMode } from '../google-fake-auth.js';
 import { GOOGLE_SCOPES, type GoogleEndpoints } from './google.js';
 
 const BASE = 'https://fake-google.invalid';
@@ -16,7 +16,7 @@ export const FAKE_GOOGLE_ENDPOINTS: GoogleEndpoints = {
 export const FAKE_GOOGLE_APP = { clientId: 'fake-client', clientSecret: 'fake-secret' };
 export const FAKE_GOOGLE_ACCOUNT = 'demo.bookings@example.com';
 
-export type FakeGoogleMode = 'ok' | 'expired' | 'unavailable';
+export type { FakeGoogleMode };
 
 export interface FakeGoogleEvent {
   calendarId: string;
@@ -43,63 +43,12 @@ const CALENDARS = [
   },
 ];
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const fakeJwt = (payload: object) =>
-  ['e30', Buffer.from(JSON.stringify(payload)).toString('base64url'), 'sig'].join('.');
-
-export class FakeGoogle {
-  mode: FakeGoogleMode = 'ok';
+export class FakeGoogle extends FakeGoogleAuth {
   busy: Array<{ start: string; end: string }> = [];
   readonly events: FakeGoogleEvent[] = [];
-  /** Requests answered, by kind (tests check what was asked, never the network). */
-  readonly calls: string[] = [];
-  private readonly codes = new Map<string, { challenge: string; scope: string }>();
-  private readonly access = new Set<string>();
-  private readonly refresh = new Set<string>();
 
-  /** The consent page's Allow: a one-time code bound to the PKCE challenge of that sign-in. */
-  issueCode(challenge: string, scope: string): string {
-    const code = `fake-code-${randomBytes(8).toString('hex')}`;
-    this.codes.set(code, { challenge, scope });
-    return code;
-  }
-
-  private tokens(scope: string, refresh?: string) {
-    const accessToken = `fake-access-${randomBytes(8).toString('hex')}`;
-    this.access.add(accessToken);
-    const refreshToken = refresh ?? `fake-refresh-${randomBytes(8).toString('hex')}`;
-    this.refresh.add(refreshToken);
-    return {
-      access_token: accessToken,
-      expires_in: 3600,
-      scope,
-      token_type: 'Bearer',
-      ...(refresh ? {} : { refresh_token: refreshToken }),
-      id_token: fakeJwt({ email: FAKE_GOOGLE_ACCOUNT }),
-    };
-  }
-
-  private async token(body: URLSearchParams): Promise<Response> {
-    if (this.mode === 'unavailable') return json(503, { error: 'backend_error' });
-    if (body.get('grant_type') === 'authorization_code') {
-      const issued = this.codes.get(body.get('code') ?? '');
-      this.codes.delete(body.get('code') ?? '');
-      const verifier = body.get('code_verifier') ?? '';
-      const challenge = createHash('sha256').update(verifier).digest('base64url');
-      if (!issued || issued.challenge !== challenge) return json(400, { error: 'invalid_grant' });
-      return json(200, this.tokens(issued.scope));
-    }
-    const refresh = body.get('refresh_token') ?? '';
-    if (this.mode === 'expired' || !this.refresh.has(refresh))
-      return json(400, { error: 'invalid_grant' });
-    return json(200, this.tokens(CALENDAR_SCOPE_ALL, refresh));
-  }
-
-  /** Expire every access token now (the next call refreshes). */
-  expireAccessTokens(): void {
-    this.access.clear();
+  constructor() {
+    super(FAKE_GOOGLE_ACCOUNT, GOOGLE_SCOPES.join(' '));
   }
 
   readonly fetch: typeof fetch = async (input, init) => {
@@ -109,18 +58,8 @@ export class FakeGoogle {
     if (url.origin !== BASE) throw new TypeError('fake Google: unknown host');
     const method = (init?.method ?? 'GET').toUpperCase();
     const body = init?.body;
-    if (url.pathname === '/token') {
-      this.calls.push('token');
-      return this.token(new URLSearchParams(String(body ?? '')));
-    }
-    if (url.pathname === '/revoke') {
-      this.calls.push('revoke');
-      return json(200, {});
-    }
-    if (this.mode === 'unavailable') return json(503, { error: { code: 503 } });
-    const auth = new Headers(init?.headers).get('authorization') ?? '';
-    if (this.mode === 'expired' || !this.access.has(auth.replace(/^Bearer /, '')))
-      return json(401, { error: { code: 401 } });
+    const denied = this.authorize(url.pathname, init);
+    if (denied) return denied;
     const path = url.pathname.replace('/calendar/v3', '');
     if (method === 'GET' && path === '/users/me/calendarList') {
       this.calls.push('calendarList');
@@ -182,5 +121,3 @@ export class FakeGoogle {
     return json(404, { error: { code: 404 } });
   };
 }
-
-const CALENDAR_SCOPE_ALL = GOOGLE_SCOPES.join(' ');

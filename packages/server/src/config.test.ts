@@ -52,4 +52,19 @@ describe('parseArgs Google sign-in app', () => {
     g.__EZYCHAT_GOOGLE_OAUTH__ = { clientId: 42 };
     expect(parseArgs(['--data', 'x'], {}).googleOAuth).toBeNull();
   });
+
+  it("reads Google's file picker from the environment, else from the bundle", () => {
+    expect(parseArgs(['--data', 'x'], {}).googlePicker).toBeNull();
+    g.__EZYCHAT_GOOGLE_OAUTH__ = { ...bundled, pickerApiKey: 'bundled-key', pickerAppId: '42' };
+    expect(parseArgs(['--data', 'x'], {}).googlePicker).toEqual({
+      apiKey: 'bundled-key',
+      appId: '42',
+    });
+    const env = { GOOGLE_PICKER_API_KEY: ' env-key ', GOOGLE_PICKER_APP_ID: '7' };
+    expect(parseArgs(['--data', 'x'], env).googlePicker).toEqual({ apiKey: 'env-key', appId: '7' });
+    expect(parseArgs(['--data', 'x'], { GOOGLE_PICKER_API_KEY: 'only-key' }).googlePicker).toEqual({
+      apiKey: 'bundled-key',
+      appId: '42',
+    });
+  });
 });

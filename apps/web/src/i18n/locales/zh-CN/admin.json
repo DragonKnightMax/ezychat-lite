@@ -1533,7 +1533,10 @@
       "checkOnly": "查看空闲时间；由团队预约",
       "off": "此代理已关闭",
       "none": "尚无连接器。",
-      "browse": "浏览连接器"
+      "browse": "浏览连接器",
+      "sheetsReadAndLeads": "读取表格并添加潜在客户",
+      "sheetsRead": "读取表格",
+      "sheetsLeads": "添加潜在客户"
     },
     "settingsPointerTitle": "连接器",
     "settingsPointer": "Google Calendar 及 AI 代理使用的其他系统位于 管理 → 连接器。",
@@ -1541,7 +1544,11 @@
       "checkFree": "查看空闲时间",
       "checkFreeHint": "读取所选日历的忙碌时间。",
       "book": "预约",
-      "bookHint": "客户确认时间后添加日程。"
+      "bookHint": "客户确认时间后添加日程。",
+      "readRows": "读取行",
+      "readRowsHint": "查找与客户问题匹配的行。",
+      "addLead": "添加潜在客户",
+      "addLeadHint": "将客户的姓名、号码和需求添加为一行。"
     },
     "items": {
       "google-calendar": {
@@ -1555,6 +1562,12 @@
         "short": "连接任何提供 MCP 服务器的系统。",
         "long": "用于您自己的系统：粘贴 MCP 服务器链接、登录，并为每个 AI 代理选择 AI 可以使用的工具。会更改数据的工具默认关闭。",
         "privacy": "{{product}} 只向该系统发送工具在一轮聊天中所需的内容。"
+      },
+      "google-sheets": {
+        "name": "Google Sheets",
+        "short": "从表格读取价格或库存；添加新的潜在客户。",
+        "long": "把价格、库存或常见问题放在 Google 表格中，让 AI 代理读取。如果您允许，AI 还会把每个新的潜在客户添加为一行。使用 Google 登录，然后选择表格。",
+        "privacy": "{{product}} 只能打开您选择的电子表格，只读取您选的工作表，只写入它添加的潜在客户行：日期、客户姓名、WhatsApp 号码、电子邮件，以及一句简短的需求说明。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
       }
     },
     "gc": {
@@ -1830,6 +1843,69 @@
         "needs_sign_in": "{{publisher}} 不再接受当前的登录。AI 将聊天转交给您的团队。"
       },
       "agentCardTools_other": "已开启 {{count}}/{{total}} 个工具"
+    },
+    "gs": {
+      "accountDescription": "{{product}} 用于 Google Sheets 的 Google 账号。整个团队共用一个账号；它可以与 Google Calendar 的账号不同。",
+      "what1": "AI 根据您选择的工作表回答：价格、库存、营业时间或常见问题。",
+      "what2": "只有在您开启后，它才会把新的潜在客户添加为一行。",
+      "what3": "它绝不会修改或删除表格中已有的行。",
+      "connect": "连接 Google Sheets",
+      "connectHint": "您使用 Google 登录，并只允许 {{product}} 打开您选择的电子表格。您可以随时断开连接。",
+      "connectedToast": "已连接 Google Sheets",
+      "expiredBody": "在您重新登录之前，AI 不会读取表格或添加潜在客户；它会把这些聊天转交给您的团队。",
+      "unavailableTitle": "无法连接 Google Sheets",
+      "unavailableBody": "{{product}} 会自动重试。在此期间，AI 会把需要表格的聊天转交给您的团队。",
+      "perAgent": "在“设置”中为每个 AI 代理选择电子表格和工作表。",
+      "disconnectTitle": "断开 Google Sheets？",
+      "disconnectBody": "AI 会立即停止读取表格和添加潜在客户。表格中已有的行会保留。设置会保留，方便您重新连接。",
+      "disconnected": "已断开 Google Sheets"
+    },
+    "sheets": {
+      "title": "Google 表格",
+      "description": "{{name}} 读取哪个表格，以及是否添加新的潜在客户。",
+      "notConnected": "请先在“概览”标签页连接 Google 账号。",
+      "spreadsheet": "电子表格",
+      "open": "在 Google Sheets 中打开",
+      "chooseTab": "选择工作表",
+      "tabRequired": "请选择工作表。",
+      "readHint": "AI 会查找与客户提问匹配的行。第一行必须是列名。",
+      "lookupTab": "要读取的工作表",
+      "leadsHint": "当客户说明需求时，AI 会添加一行：日期、姓名、WhatsApp 号码、电子邮件和需求。",
+      "leadsTab": "新潜在客户的工作表",
+      "leadsTabHint": "最好使用空白工作表：添加第一个潜在客户时会自动加上列名。",
+      "changesSheet": "会修改您的表格",
+      "rulesTitle": "{{product}} 始终检查的事项",
+      "rule1": "AI 只读取所选工作表：前 1,000 行以及 A 到 Z 列。",
+      "rule2": "每位客户每天最多添加一行潜在客户，且只来自私聊，绝不来自群组。",
+      "rule3": "它绝不会修改或删除已有的行。",
+      "rule4": "文字以纯文本保存：客户输入的公式绝不会被执行。",
+      "save": "保存",
+      "saved": "已保存 Google Sheets 设置",
+      "paused": {
+        "expired": "已暂停：请重新登录 Google",
+        "unavailable": "已暂停：无法连接 Google Sheets"
+      },
+      "pausedBody": "在恢复正常之前，{{name}} 不会使用表格。",
+      "choose": "选择表格",
+      "chooseAnother": "选择其他表格",
+      "chooseHint": "Google 文件选择器会在新窗口中打开。{{product}} 只能打开您在其中选择的表格。",
+      "sheetRequired": "请先选择表格。",
+      "picking": "正在等待 Google 文件选择器…",
+      "pickingHint": "请在打开的窗口中选择表格。此页面会自动更新。",
+      "pickBlocked": "浏览器阻止了该窗口。请打开文件选择器继续。",
+      "openPicker": "打开文件选择器",
+      "pickError": {
+        "cancelled": "没有选择表格。",
+        "failed": "{{product}} 无法打开该表格。请重新选择。",
+        "expired": "文件选择器等待时间过长。请重试。"
+      },
+      "pickSameComputer": "文件选择器只能在运行 {{product}} 的电脑上的浏览器中使用。"
+    },
+    "sheetsAct": {
+      "hint": "AI 查询和添加的内容。只记录谁和何时：绝不记录数值或聊天内容。",
+      "looked_up": "{{agent}} 为 {{customer}} 查询了表格",
+      "lead_added": "{{agent}} 将 {{customer}} 添加为潜在客户",
+      "failed": "{{agent}} 无法为 {{customer}} 连接 Google Sheets"
     }
   },
   "reports": {

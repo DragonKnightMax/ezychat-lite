@@ -1543,7 +1543,10 @@
       "checkOnly": "Checks free times; your team books",
       "off": "Off for this agent",
       "none": "No connector yet.",
-      "browse": "Browse connectors"
+      "browse": "Browse connectors",
+      "sheetsReadAndLeads": "Reads the sheet and adds leads",
+      "sheetsRead": "Reads the sheet",
+      "sheetsLeads": "Adds leads"
     },
     "settingsPointerTitle": "Connectors",
     "settingsPointer": "Google Calendar and other systems your AI agents use are in Admin → Connectors.",
@@ -1551,7 +1554,11 @@
       "checkFree": "Check free times",
       "checkFreeHint": "Reads when the chosen calendar is busy.",
       "book": "Book appointments",
-      "bookHint": "Adds an event after the customer confirms a time."
+      "bookHint": "Adds an event after the customer confirms a time.",
+      "readRows": "Read rows",
+      "readRowsHint": "Looks up the rows that match the customer's question.",
+      "addLead": "Add leads",
+      "addLeadHint": "Adds the customer's name, number and request as a row."
     },
     "items": {
       "google-calendar": {
@@ -1565,6 +1572,12 @@
         "short": "Connect any system that offers an MCP server.",
         "long": "For your own systems: paste an MCP server link, sign in, and choose per AI agent which of its tools the AI may use. Tools that change data start off.",
         "privacy": "{{product}} sends the system only what a tool asks for in one chat turn."
+      },
+      "google-sheets": {
+        "name": "Google Sheets",
+        "short": "Read prices or stock from a sheet; add new leads.",
+        "long": "Keep prices, stock or a FAQ in a Google Sheet and let your AI agent read it. If you allow it, the AI also adds each new lead as a row. Sign in with Google, then choose the sheet.",
+        "privacy": "{{product}} can open only the spreadsheets you choose, reads only the tab you pick and writes only the lead rows it adds: date, the customer’s name, WhatsApp number, email and a short line on what they want. No chat history goes to Google. The sign-in is stored encrypted on this computer."
       }
     },
     "gc": {
@@ -1847,6 +1860,69 @@
       },
       "agentCardTools_one": "{{count}} of {{total}} tools on",
       "agentCardTools_other": "{{count}} of {{total}} tools on"
+    },
+    "gs": {
+      "accountDescription": "The Google account {{product}} uses for Google Sheets. One account for the whole team; it can be different from the Google Calendar account.",
+      "what1": "The AI answers from the tab you choose: prices, stock, opening hours or a FAQ.",
+      "what2": "It adds a new lead as a row only if you turn that on.",
+      "what3": "It never changes or deletes rows that are already in the sheet.",
+      "connect": "Connect Google Sheets",
+      "connectHint": "You sign in with Google and allow {{product}} to open only the spreadsheets you choose. You can disconnect at any time.",
+      "connectedToast": "Google Sheets connected",
+      "expiredBody": "Until you sign in again, the AI does not read the sheet or add leads; it hands those chats to your team.",
+      "unavailableTitle": "Can't reach Google Sheets",
+      "unavailableBody": "{{product}} tries again on its own. Meanwhile the AI hands chats that need the sheet to your team.",
+      "perAgent": "Choose the spreadsheet and tabs for each AI agent in Settings.",
+      "disconnectTitle": "Disconnect Google Sheets?",
+      "disconnectBody": "The AI stops reading the sheet and adding leads at once. Rows already in your sheet stay. Settings are kept for when you connect again.",
+      "disconnected": "Google Sheets disconnected"
+    },
+    "sheets": {
+      "title": "Google Sheet",
+      "description": "Which sheet {{name}} reads, and whether it adds new leads.",
+      "notConnected": "Connect a Google account on the Overview tab first.",
+      "spreadsheet": "Spreadsheet",
+      "open": "Open in Google Sheets",
+      "chooseTab": "Choose a tab",
+      "tabRequired": "Choose a tab.",
+      "readHint": "The AI looks up rows that match what the customer asks. The first row must hold the column names.",
+      "lookupTab": "Tab to read",
+      "leadsHint": "When a customer says what they want, the AI adds one row: date, name, WhatsApp number, email and their request.",
+      "leadsTab": "Tab for new leads",
+      "leadsTabHint": "An empty tab works best: the column names are added on the first lead.",
+      "changesSheet": "Changes your sheet",
+      "rulesTitle": "What {{product}} always checks",
+      "rule1": "The AI reads only the chosen tab: the first 1,000 rows and columns A to Z.",
+      "rule2": "It adds at most one lead row per customer a day, and only from a direct chat, never a group.",
+      "rule3": "It never changes or deletes rows that are already there.",
+      "rule4": "Text is saved as plain text: a formula a customer types is never run.",
+      "save": "Save",
+      "saved": "Google Sheets settings saved",
+      "paused": {
+        "expired": "Paused: sign in to Google again",
+        "unavailable": "Paused: can't reach Google Sheets"
+      },
+      "pausedBody": "{{name}} does not use the sheet until it works again.",
+      "choose": "Choose a sheet",
+      "chooseAnother": "Choose another sheet",
+      "chooseHint": "Google's file picker opens in a new window. {{product}} can open only the sheets you choose there.",
+      "sheetRequired": "Choose a sheet first.",
+      "picking": "Waiting for Google's file picker…",
+      "pickingHint": "Choose the sheet in the window that opened. This page updates by itself.",
+      "pickBlocked": "Your browser blocked the window. Open the file picker to continue.",
+      "openPicker": "Open the file picker",
+      "pickError": {
+        "cancelled": "No sheet was chosen.",
+        "failed": "{{product}} could not open that sheet. Choose it again.",
+        "expired": "The file picker took too long. Try again."
+      },
+      "pickSameComputer": "The file picker works only in a browser on the computer that runs {{product}}."
+    },
+    "sheetsAct": {
+      "hint": "What the AI looked up and added. Only who and when: never the values or the chat.",
+      "looked_up": "{{agent}} looked up the sheet for {{customer}}",
+      "lead_added": "{{agent}} added {{customer}} as a lead",
+      "failed": "{{agent}} could not reach Google Sheets for {{customer}}"
     }
   },
   "reports": {
