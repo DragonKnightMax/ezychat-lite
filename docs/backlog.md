@@ -25,6 +25,11 @@ are listed here until they get a branch. Newest first; remove an item when its P
 - **Flag emoji show as letters on Windows** (2026-10-22): Chrome on Windows shows 🇲🇾 as "MY" (Windows has
   no flag glyphs). Fix with a bundled country-flag font (polyfill) for the web app.
 
+- **A live event right after the conversation loads can be lost** (seen in the message-changes e2e on mobile,
+  2026-10-28; older than that change): `upsertMessageInCache` drops an event that arrives before the first
+  messages fetch has answered, and that fetch carries the older snapshot, so the bubble stays stale until the next
+  refetch. Fix idea: keep early events per chat and apply them on top of the first page.
+
 ## Ideas and next steps
 
 - **Real-model check of the hand-off rules fixes** (PR #230, merged 2026-10-30): after the next release, run

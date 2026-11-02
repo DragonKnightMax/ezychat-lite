@@ -4,6 +4,9 @@ import { fileTypeFromBuffer } from 'file-type';
 import mime from 'mime-types';
 import type {
   Message,
+  MessageDeletedBy,
+  MessageEditedBy,
+  MessageEditsResponse,
   MessageListQuery,
   MessageReaction,
   MessageStatus,
@@ -15,6 +18,8 @@ import type {
 import type {
   SendResult,
   WaIncomingMessage,
+  WaMessageEdit,
+  WaMessageRevoke,
   WaMessageStatusUpdate,
   WaQuotedRef,
   WaReaction,
@@ -43,6 +48,13 @@ import { VOICE_NOTE_MAX_SECONDS, voiceNoteSeconds, voiceNoteWaveform } from './v
 import { TemplateCatalog, fillTemplate, templatesUnsupported } from './templates.js';
 import { WINDOW_CLOSED, replyWindowOpen, windowClosedError } from '../inboxes/reply-window.js';
 import { capabilitiesOf } from '../inboxes/types.js';
+import { DELETE_WINDOW_MS, EDIT_WINDOW_MS, MessageChangeRepo, changeAuthor } from './changes.js';
+
+/** The signed-in user who edits or deletes (permission checks). */
+export interface ChangeUser {
+  id: number;
+  role: 'admin' | 'agent';
+}
 
 export interface MediaFile {
   path: string;
@@ -115,6 +127,28 @@ export interface MessageService {
    * `message:reactions` and returns the message's reactions.
    */
   sendReaction(messageId: string, emoji: string, userId: number): Promise<MessageReaction[]>;
+  /**
+   * An edit WhatsApp delivered through `inboxId` (the customer's, or the linked phone's): applied
+   * only by the message's own author in the same chat, kept until the message arrives when it is not
+   * stored yet. Emits `message:updated`. Never notifies.
+   */
+  applyRemoteEdit(e: WaMessageEdit, source: 'live' | 'history', inboxId?: number): void;
+  /** A delete for everyone WhatsApp delivered (its author, our phone or a group admin), as above. */
+  applyRemoteDelete(r: WaMessageRevoke, source: 'live' | 'history', inboxId?: number): void;
+  /**
+   * `user` edits the text or caption of a message the team sent (the teammate who sent it, or an
+   * admin), within `EDIT_WINDOW_MS`, straight away (never queued). 409 `not_supported` /
+   * `edit_window_closed`; WhatsApp offline → WaUnavailableError (503). Emits `message:updated`.
+   */
+  editMessage(id: string, text: string, user: ChangeUser): Promise<Message>;
+  /**
+   * `everyone`: the teammate who sent it or an admin deletes it on WhatsApp too, within
+   * `DELETE_WINDOW_MS` (409 `delete_window_closed`). `me`: admins hide it for the team and delete it on
+   * the linked phone. A message still waiting to be sent is cancelled locally. Emits `message:updated`.
+   */
+  deleteMessage(id: string, scope: 'everyone' | 'me', user: ChangeUser): Promise<Message>;
+  /** Earlier versions; the original of a deleted message (and its versions) only for admins. */
+  messageEdits(id: string, isAdmin: boolean): MessageEditsResponse;
   mediaPath(id: string): MediaFile | null;
   redownload(id: string): Promise<Message>;
   /**
@@ -193,6 +227,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
   const log = ctx.log.child({ mod: 'messages' });
   const withMentionNames = createMentionPresenter(ctx, log);
   const reactions = createReactionPresenter(ctx);
+  const changeRepo = new MessageChangeRepo(ctx.db);
 
   /** WA statuses that arrived before the local row was renamed to the WA id. */
   const earlyStatus = new Map<string, WaMessageStatusUpdate['status']>();
@@ -209,8 +244,22 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       rows,
       rows.map((row) => rowToMessage(row)),
     );
-    const shown = reactions.attach(ctx.services.customers?.withSenderProfiles(list) ?? list);
-    return ctx.services.safety?.attach(shown) ?? shown;
+    const presented = reactions.attach(ctx.services.customers?.withSenderProfiles(list) ?? list);
+    const edits = changeRepo.editCounts(
+      rows.filter((r) => r.edited_at != null && r.deleted_at == null).map((r) => r.id),
+    );
+    // A deleted message shows no reactions (WhatsApp drops them with the message).
+    const shown = presented.map((m) =>
+      m.deletedAt != null
+        ? { ...m, reactions: [] }
+        : edits.has(m.id)
+          ? { ...m, editCount: edits.get(m.id)! }
+          : m,
+    );
+    // Nor a Safety finding: its reasons name the file and text the deletion hides.
+    return (ctx.services.safety?.attach(shown) ?? shown).map((m) =>
+      m.deletedAt != null && m.safety ? { ...m, safety: null } : m,
+    );
   };
   const present = (row: MessageRow): Message => presentAll([row])[0]!;
 
@@ -427,6 +476,8 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       const updated = repo.get(waId)!;
       emitStatus({ ...updated, status: 'sent' }, waId);
       if (updated.status !== 'sent') emitStatus(updated);
+      // Deleted while WhatsApp was already sending it: delete it there too.
+      if (updated.deleted_at != null && updated.deleted_by === 'team') void deleteSentLate(updated);
     } finally {
       reconciliations.get(job.localId)?.();
     }
@@ -703,7 +754,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
 
   const doRedownload = async (id: string): Promise<Message> => {
     const r = repo.get(id);
-    if (!r) throw errors.notFound('Message');
+    if (!r || r.deleted_at != null || r.hidden_at != null) throw errors.notFound('Message');
     if (r.type === 'text' || r.type === 'system') throw errors.validation('Message has no media');
     let buf: Buffer | null = null;
     try {
@@ -725,6 +776,194 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
     const rel = media.save(r.chat_jid, id, buf, extFor(mimeType, r.media_name));
     repo.update(id, { media_path: rel, media_mime: mimeType, media_status: 'ok' });
     return present(repo.get(id)!);
+  };
+
+  /** The chat list preview follows the newest message the team still sees. */
+  const refreshPreview = (chatJid: string, quiet = false) => {
+    const newest = repo.newestVisible(chatJid);
+    chats.update(chatJid, {
+      last_message_preview: newest ? previewOf(newest) : null,
+      updated_at: now(),
+    });
+    if (!quiet) emitChat(chatJid);
+  };
+  const emitUpdated = (id: string) => {
+    const row = repo.get(id);
+    if (row) ctx.bus.emit('message:updated', present(row));
+  };
+
+  const recordEdit = (
+    row: MessageRow,
+    body: string,
+    at: number,
+    by: MessageEditedBy,
+    userId: number | null,
+    quiet = false,
+  ) => {
+    ctx.db.transaction(() => {
+      changeRepo.addEdit(row.id, row.body, at, by, userId);
+      repo.update(row.id, { body, edited_at: at });
+    })();
+    refreshPreview(row.chat_jid, quiet);
+    if (!quiet) emitUpdated(row.id);
+  };
+
+  const recordDelete = (
+    row: MessageRow,
+    at: number,
+    by: MessageDeletedBy,
+    userId: number | null,
+    quiet = false,
+  ) => {
+    repo.update(row.id, {
+      deleted_at: at,
+      deleted_by: by,
+      deleted_by_user_id: userId,
+      // A message still waiting to be sent is cancelled (the queue skips it).
+      ...(row.status === 'pending' ? { status: 'failed', error: 'Deleted before sending' } : {}),
+    });
+    refreshPreview(row.chat_jid, quiet);
+    if (!quiet) emitUpdated(row.id);
+  };
+
+  /** The chat key a change WhatsApp delivered belongs to (routed like a message). */
+  const changeChat = (chatJid: string, inboxId: number) =>
+    chatJid.endsWith('@g.us') ? chatKey(inboxId, chatJid) : getAliases(ctx).route(inboxId, chatJid);
+
+  /** Apply one change WhatsApp reported; false when it is ignored (other chat or author, repeat). */
+  const applyRemoteChange = (
+    row: MessageRow,
+    c: {
+      kind: 'edit' | 'delete';
+      fromMe: boolean;
+      senderJid: string | null;
+      body: string;
+      timestamp: number;
+    },
+    chatJid: string,
+    quiet = false,
+  ): boolean => {
+    if (row.chat_jid !== chatJid) {
+      log.warn({ messageId: row.id, kind: c.kind }, 'message change from another chat ignored');
+      return false;
+    }
+    if (row.type === 'system' || row.deleted_at != null) return false;
+    const isGroup = waJidOf(row.chat_jid).endsWith('@g.us');
+    const by = changeAuthor(row, c, c.kind, isGroup, getAliases(ctx));
+    if (!by) {
+      log.warn({ messageId: row.id, kind: c.kind }, 'message change by another author ignored');
+      return false;
+    }
+    if (c.kind === 'edit') {
+      // a repeat (e.g. our own edit's echo) or an older edit arriving late changes nothing
+      if (c.body === row.body || c.timestamp < (row.edited_at ?? 0)) return false;
+      recordEdit(row, c.body, c.timestamp, by as MessageEditedBy, null, quiet);
+    } else {
+      recordDelete(row, c.timestamp, by, null, quiet);
+    }
+    log.info(
+      { messageId: row.id, chatJid: row.chat_jid, kind: c.kind, by },
+      'message changed on WhatsApp',
+    );
+    return true;
+  };
+
+  const learnChangeAliases = (c: WaMessageRevoke, source: 'live' | 'history') => {
+    const aliases = getAliases(ctx);
+    const learnedFrom = source === 'history' ? 'history' : 'message';
+    if (c.chatJid.endsWith('@g.us')) {
+      if (c.senderJid && c.senderJidAlt)
+        aliases.learn({ jid: c.senderJid, alias: c.senderJidAlt }, learnedFrom);
+    } else if (c.chatJidAlt) {
+      aliases.learn({ jid: c.chatJid, alias: c.chatJidAlt }, learnedFrom);
+    }
+  };
+
+  const remoteChange = (
+    kind: 'edit' | 'delete',
+    c: WaMessageRevoke & { body?: string },
+    source: 'live' | 'history',
+    inboxId: number,
+  ) => {
+    learnChangeAliases(c, source);
+    const id = messageKey(inboxId, c.targetId);
+    const chatJid = changeChat(c.chatJid, inboxId);
+    const change = {
+      kind,
+      fromMe: c.fromMe,
+      senderJid: c.senderJid,
+      body: c.body ?? '',
+      timestamp: c.timestamp,
+    };
+    const row = repo.get(id);
+    if (row) {
+      applyRemoteChange(row, change, chatJid);
+      return;
+    }
+    // Not stored yet (history order): applied when the message arrives.
+    changeRepo.savePending({
+      message_id: id,
+      kind,
+      chat_jid: chatJid,
+      from_me: c.fromMe ? 1 : 0,
+      sender_jid: c.senderJid,
+      body: kind === 'edit' ? change.body : null,
+      changed_at: c.timestamp,
+      received_at: now(),
+    });
+  };
+
+  /** Edit or delete for everyone: a message the team sent, by its teammate or an admin. */
+  const requireOwnChange = (r: MessageRow, user: ChangeUser, verb: 'edited' | 'deleted') => {
+    if (r.type === 'system') throw errors.validation(`This message cannot be ${verb}`);
+    if (r.deleted_at != null) throw errors.conflict('This message was deleted');
+    if (r.from_me !== 1) throw errors.validation(`Only messages the team sent can be ${verb}`);
+    if (user.role !== 'admin' && r.sent_by_user_id !== user.id)
+      throw errors.forbidden(
+        `Only the teammate who sent it or an admin can ${verb.slice(0, -1)} it`,
+      );
+    requireSendable(r.chat_jid);
+    if (chatNumberMoved(r.chat_jid)) throw errors.conflict(MOVED_NUMBER_MESSAGE);
+  };
+
+  const NOT_SUPPORTED = 'This WhatsApp connection cannot do this';
+  /** The chat's connection, when it can make this change (409 `not_supported` otherwise). */
+  const changeAdapter = (
+    chatJid: string,
+    can: 'editMessage' | 'deleteForEveryone' | 'deleteForMe',
+  ) => {
+    const wa = connections.adapter(inboxOfKey(chatJid));
+    const method =
+      can === 'editMessage'
+        ? wa.editText
+        : can === 'deleteForEveryone'
+          ? wa.deleteForEveryone
+          : wa.deleteForMe;
+    if (!capabilitiesOf(wa)[can] || !method)
+      throw new HttpError(409, 'not_supported', NOT_SUPPORTED);
+    return wa;
+  };
+
+  /** The chat address a stored message lives at (phone number or WhatsApp ID), as for reactions. */
+  const messageAddress = (r: MessageRow): string => {
+    const stored = r.wa_remote_jid ?? waJidOf(r.chat_jid);
+    return addressOf(stored, r.chat_jid) ? stored : waJidOf(r.chat_jid);
+  };
+
+  /** A send that finished after the teammate deleted it: delete it on WhatsApp as well. */
+  const deleteSentLate = async (r: MessageRow) => {
+    try {
+      const wa = adapterOf(inboxOfKey(r.chat_jid));
+      if (!wa?.deleteForEveryone || !capabilitiesOf(wa).deleteForEveryone) return;
+      await wa.deleteForEveryone(messageAddress(r), {
+        id: waMessageId(r.id),
+        fromMe: true,
+        participant: null,
+      });
+      log.info({ messageId: r.id, chatJid: r.chat_jid }, 'message deleted after a late send');
+    } catch (err) {
+      log.warn({ err, messageId: r.id }, 'late delete for everyone failed');
+    }
   };
 
   const svc: MessageService = {
@@ -886,6 +1125,24 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
             ? { name: m.media.fileName, mime: m.media.mime, rel: mediaRel, bytes: mediaBytes }
             : null,
         });
+
+      // Edits and deletes WhatsApp delivered before the message itself (history order).
+      for (const p of changeRepo.takePending(id)) {
+        const current = repo.get(id);
+        if (current)
+          applyRemoteChange(
+            current,
+            {
+              kind: p.kind,
+              fromMe: p.from_me === 1,
+              senderJid: p.sender_jid,
+              body: p.body ?? '',
+              timestamp: p.changed_at,
+            },
+            p.chat_jid,
+            true,
+          );
+      }
 
       const final = repo.get(id);
       if (!final) return null;
@@ -1159,12 +1416,124 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       return list;
     },
 
+    applyRemoteEdit(e, source, inboxId = PRIMARY_INBOX_ID) {
+      remoteChange('edit', e, source, inboxId);
+    },
+
+    applyRemoteDelete(r, source, inboxId = PRIMARY_INBOX_ID) {
+      remoteChange('delete', r, source, inboxId);
+    },
+
+    async editMessage(id, text, user) {
+      const r = repo.get(id);
+      if (!r) throw errors.notFound('Message');
+      requireOwnChange(r, user, 'edited');
+      if (r.template_name || (r.type !== 'text' && !r.body))
+        throw errors.validation('Only text messages and captions can be edited');
+      if (r.id.startsWith('local-'))
+        throw errors.conflict('This message is still being sent; try again in a moment');
+      const wa = changeAdapter(r.chat_jid, 'editMessage');
+      if (now() - r.timestamp > EDIT_WINDOW_MS)
+        throw new HttpError(
+          409,
+          'edit_window_closed',
+          'A message can be edited only within 15 minutes of sending',
+        );
+      const next = text.trim();
+      if (next === (r.body ?? '').trim()) return present(r);
+      await wa.editText!(
+        messageAddress(r),
+        { id: waMessageId(r.id), fromMe: true, participant: null },
+        next,
+      );
+      const current = repo.get(id);
+      if (!current) throw errors.notFound('Message');
+      recordEdit(current, next, now(), 'team', user.id);
+      log.info({ messageId: id, chatJid: r.chat_jid, userId: user.id }, 'message edited');
+      return present(repo.get(id)!);
+    },
+
+    async deleteMessage(id, scope, user) {
+      const r = repo.get(id);
+      if (!r) throw errors.notFound('Message');
+      const local = r.id.startsWith('local-');
+      if (scope === 'me') {
+        if (user.role !== 'admin')
+          throw errors.forbidden('Only admins can delete a message for the team');
+        if (r.type === 'system') throw errors.validation('This message cannot be deleted');
+        if (r.hidden_at != null) return present(r);
+        if (!local) {
+          refuseSend(inboxOfKey(r.chat_jid));
+          const wa = changeAdapter(r.chat_jid, 'deleteForMe');
+          const address = messageAddress(r);
+          const fromMe = r.from_me === 1;
+          await wa.deleteForMe!(
+            address,
+            {
+              id: waMessageId(r.id),
+              fromMe,
+              participant: address.endsWith('@g.us') && !fromMe ? r.sender_jid : null,
+            },
+            r.timestamp,
+          );
+        }
+        repo.update(id, {
+          hidden_at: now(),
+          hidden_by_user_id: user.id,
+          ...(r.status === 'pending' ? { status: 'failed', error: 'Deleted before sending' } : {}),
+        });
+        refreshPreview(r.chat_jid);
+        emitUpdated(id);
+        log.info(
+          { messageId: id, chatJid: r.chat_jid, userId: user.id },
+          'message hidden for the team',
+        );
+        return present(repo.get(id)!);
+      }
+      requireOwnChange(r, user, 'deleted');
+      if (!local) {
+        const wa = changeAdapter(r.chat_jid, 'deleteForEveryone');
+        if (now() - r.timestamp > DELETE_WINDOW_MS)
+          throw new HttpError(
+            409,
+            'delete_window_closed',
+            'A message can be deleted for everyone only within 2 days of sending',
+          );
+        await wa.deleteForEveryone!(messageAddress(r), {
+          id: waMessageId(r.id),
+          fromMe: true,
+          participant: null,
+        });
+      }
+      const current = repo.get(id);
+      if (!current) throw errors.notFound('Message');
+      recordDelete(current, now(), 'team', user.id);
+      log.info(
+        { messageId: id, chatJid: r.chat_jid, userId: user.id, local },
+        'message deleted for everyone',
+      );
+      return present(repo.get(id)!);
+    },
+
+    messageEdits(id, isAdmin) {
+      const r = repo.get(id);
+      if (!r) throw errors.notFound('Message');
+      const deleted = r.deleted_at != null;
+      return {
+        messageId: id,
+        // a deleted message's earlier texts are the original too: admins only
+        edits: deleted && !isAdmin ? [] : changeRepo.edits(id),
+        original: deleted && isAdmin ? r.body : null,
+      };
+    },
+
     mediaPath(id) {
       // a client may still hold the optimistic local id after the row was renamed to the WA id
       const r =
         repo.get(id) ??
         (id.startsWith('local-') ? repo.byClientId(id.slice('local-'.length)) : null);
-      if (!r || !r.media_path) return null;
+      // a deleted (or hidden) message's file is never served
+      if (!r || !r.media_path || r.deleted_at != null || r.hidden_at != null) return null;
       let p: string;
       try {
         p = media.abs(r.media_path);

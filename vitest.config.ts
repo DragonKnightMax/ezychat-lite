@@ -39,7 +39,7 @@ export default defineConfig({
       exclude: ['**/*.test.*', '**/*.d.ts', '**/test/**', '**/locales/**'],
       reporter: ['text-summary', 'json-summary', 'json'],
       reportOnFailure: true,
-      thresholds: { lines: 84, statements: 81, branches: 75, functions: 78 },
+      thresholds: { lines: 90, statements: 81, branches: 75, functions: 78 },
     },
   },
 });

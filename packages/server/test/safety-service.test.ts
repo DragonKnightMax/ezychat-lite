@@ -103,6 +103,14 @@ afterEach(async () => {
 });
 
 describe('WhatsApp Safety: the ZIP lure', () => {
+  it('a lure the customer deletes shows no finding on the message; admins keep the item', async () => {
+    const { id } = await incoming(LURE, { text: LURE_TEXT, file: lureZip() });
+    expect(message(id).safety?.level).toBe('high');
+    t.wa.simulateRevoke({ chatJid: LURE, targetId: id });
+    expect(message(id)).toMatchObject({ deletedBy: 'sender', body: null, safety: null });
+    expect((await state()).items.map((i) => i.messageId)).toEqual([id]);
+  });
+
   it('flags it High, locks the file in quarantine and shows the finding on the message', async () => {
     const { id } = await incoming(LURE, { text: LURE_TEXT, file: lureZip() });
     const m = message(id);

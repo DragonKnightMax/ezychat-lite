@@ -215,10 +215,19 @@ function applyPatch(x: Message, patch: Partial<Message>): Message {
   return next;
 }
 
-/** Insert or replace a message in the messages cache of its chat. */
+/** Insert or replace a message in the messages cache of its chat ("Delete for me": remove it). */
 export function upsertMessageInCache(qc: QueryClient, m: Message): void {
   qc.setQueryData<MessagesData>(qk.messages(m.chatJid), (old) => {
     if (!old || old.pages.length === 0) return old;
+    if (m.hidden)
+      return {
+        ...old,
+        pages: old.pages.map((p) =>
+          p.messages.some((x) => sameMessage(x, m))
+            ? { ...p, messages: p.messages.filter((x) => !sameMessage(x, m)) }
+            : p,
+        ),
+      };
     let found = false;
     const pages = old.pages.map((p) => {
       if (!p.messages.some((x) => sameMessage(x, m))) return p;

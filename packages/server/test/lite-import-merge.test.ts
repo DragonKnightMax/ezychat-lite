@@ -166,6 +166,22 @@ describe('mergeLiteInbox', () => {
       expect(db.prepare('SELECT message_id, sent_by_user_id FROM message_reactions').get()).toEqual(
         { message_id: 'M1#3', sent_by_user_id: lee.id },
       );
+      // edits and deletes keep their message, chat and teammate under the new ids
+      expect(
+        db.prepare('SELECT message_id, previous_body, edited_by, user_id FROM message_edits').all(),
+      ).toEqual([
+        { message_id: 'M2#3', previous_body: 'old text', edited_by: 'team', user_id: lee.id },
+      ]);
+      expect(
+        db
+          .prepare(
+            "SELECT deleted_by, deleted_by_user_id, hidden_by_user_id FROM messages WHERE id = 'M5#3'",
+          )
+          .get(),
+      ).toEqual({ deleted_by: 'team', deleted_by_user_id: lee.id, hidden_by_user_id: lee.id });
+      expect(
+        db.prepare('SELECT message_id, chat_jid, kind FROM message_changes_pending').all(),
+      ).toEqual([{ message_id: 'M9#3', chat_jid: `${LITE_CHAT}#3`, kind: 'delete' }]);
       expect(db.prepare('SELECT user_id, chat_jid FROM notes').get()).toEqual({
         user_id: lee.id,
         chat_jid: '60888@s.whatsapp.net#3',
@@ -657,9 +673,19 @@ describe('mergeLiteInbox refusals and rollback', () => {
   it('migrates an older Lite copy before merging, never Lite itself', async () => {
     const t = seedTarget();
     const lite = seedLite();
-    // pretend Lite stopped one migration earlier (028 is idempotent-safe to rerun? no: drop its tables first)
+    // pretend Lite stopped two migrations earlier: undo 028 (safety tables) and 029 (message changes)
     const db = openDb(join(lite.dir, 'app.db'));
     db.exec('DROP TABLE safety_downloads; DROP TABLE safety_items; DROP TABLE safety_numbers;');
+    db.exec('DROP TABLE message_edits; DROP TABLE message_changes_pending;');
+    for (const column of [
+      'edited_at',
+      'deleted_at',
+      'deleted_by',
+      'deleted_by_user_id',
+      'hidden_at',
+      'hidden_by_user_id',
+    ])
+      db.exec(`ALTER TABLE messages DROP COLUMN ${column}`);
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);
@@ -667,6 +693,7 @@ describe('mergeLiteInbox refusals and rollback', () => {
     const check = openDb(join(t.dir, 'app.db'));
     try {
       expect(check.prepare('SELECT COUNT(*) AS n FROM safety_items').get()).toEqual({ n: 0 });
+      expect(check.prepare('SELECT COUNT(*) AS n FROM message_edits').get()).toEqual({ n: 0 });
     } finally {
       check.close();
     }

@@ -5,6 +5,8 @@ import type {
   WaContactInfo,
   WaContactAlias,
   WaIncomingMessage,
+  WaMessageEdit,
+  WaMessageRevoke,
   WaMessageStatusUpdate,
   WaReaction,
 } from '@ezychat/wa';
@@ -13,7 +15,8 @@ import { PRIMARY_INBOX_ID } from '../inboxes/keys.js';
 
 /**
  * Wires the events of one inbox's WaAdapter into the domain services:
- * message → messages.ingest; reaction → messages.applyReaction; messageStatus → applyStatus; chats → upsertFromWa (all with the
+ * message → messages.ingest; reaction → messages.applyReaction; messageEdited / messageDeleted →
+ * applyRemoteEdit / applyRemoteDelete; messageStatus → applyStatus; chats → upsertFromWa (all with the
  * inbox); contacts → contacts upsert; status → bus 'inbox:status' (every inbox) and, for inbox 1,
  * ctx.services.waStatus + bus 'wa:status'; when open → that inbox's send queue onConnected().
  * Returns a detach function.
@@ -83,6 +86,20 @@ export function attachWaBridge(
       log.error({ err, id: r.targetId }, 'reaction not stored');
     }
   };
+  const onEdited = (e: WaMessageEdit, meta: { source: 'live' | 'history' }) => {
+    try {
+      messages.applyRemoteEdit(e, meta?.source ?? 'live', inboxId);
+    } catch (err) {
+      log.error({ err, id: e.targetId }, 'edit not stored');
+    }
+  };
+  const onDeleted = (r: WaMessageRevoke, meta: { source: 'live' | 'history' }) => {
+    try {
+      messages.applyRemoteDelete(r, meta?.source ?? 'live', inboxId);
+    } catch (err) {
+      log.error({ err, id: r.targetId }, 'delete not stored');
+    }
+  };
   const onStatusUpdate = (u: WaMessageStatusUpdate) => {
     try {
       messages.applyStatus(u, inboxId);
@@ -129,6 +146,8 @@ export function attachWaBridge(
   if (primary) ctx.services.waStatus = wa.status;
   wa.on('message', onMessage);
   wa.on('reaction', onReaction);
+  wa.on('messageEdited', onEdited);
+  wa.on('messageDeleted', onDeleted);
   wa.on('messageStatus', onStatusUpdate);
   wa.on('chats', onChats);
   wa.on('contacts', onContacts);
@@ -141,6 +160,8 @@ export function attachWaBridge(
     connectionGeneration++;
     wa.off('message', onMessage);
     wa.off('reaction', onReaction);
+    wa.off('messageEdited', onEdited);
+    wa.off('messageDeleted', onDeleted);
     wa.off('messageStatus', onStatusUpdate);
     wa.off('chats', onChats);
     wa.off('contacts', onContacts);

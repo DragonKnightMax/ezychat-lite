@@ -1,0 +1,74 @@
+{
+  "appName": "EzyChat Lite",
+  "devBuild": "Dev Build",
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "retry": "Retry",
+    "tryAgain": "Try again",
+    "copy": "Copy",
+    "copied": "Copied",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "done": "Done",
+    "search": "Search",
+    "clear": "Clear",
+    "reload": "Reload",
+    "open": "Open",
+    "learnMore": "Learn more"
+  },
+  "status": {
+    "loading": "Loading…",
+    "somethingWentWrong": "Something went wrong",
+    "noResults": "No results",
+    "optional": "Optional"
+  },
+  "time": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "justNow": "just now"
+  },
+  "roles": {
+    "admin": "Admin",
+    "agent": "Agent"
+  },
+  "theme": {
+    "label": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "language": {
+    "label": "Language",
+    "saveFailed": "Could not save your language preference",
+    "loadFailed": "Could not load that language. Reload the page and try again."
+  },
+  "account": {
+    "menu": "Account menu",
+    "adminSettings": "Admin settings",
+    "changePassword": "Change password",
+    "share": "Share this app",
+    "reportIssue": "Report an issue",
+    "about": "About {{appName}}",
+    "signOut": "Sign out"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "This part of the app hit an unexpected error. The error has been reported.",
+    "reload": "Reload page",
+    "goHome": "Go to inbox"
+  },
+  "upgrade": {
+    "cta": "Upgrade to Enterprise",
+    "agents": "Need more AI agents? EzyChat Enterprise has one AI agent for each WhatsApp number.",
+    "numbers": "Need more WhatsApp numbers? EzyChat Enterprise links several numbers to one team inbox.",
+    "about": "More WhatsApp numbers and AI agents, with support from Anchor Sprint."
+  }
+}

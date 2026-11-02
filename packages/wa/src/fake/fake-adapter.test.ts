@@ -380,3 +380,84 @@ describe('FakeWaAdapter options for several inboxes', () => {
     expect(statuses).toEqual(['sent', 'delivered']);
   });
 });
+
+describe('FakeWaAdapter edits and deletes', () => {
+  it('records edits and deletes it sends, without an echo; offline refuses them', async () => {
+    const wa = new FakeWaAdapter();
+    const events: string[] = [];
+    wa.on('messageEdited', () => events.push('edited'));
+    wa.on('messageDeleted', () => events.push('deleted'));
+    await expect(
+      wa.editText('601@s.whatsapp.net', { id: 'M1', fromMe: true }, 'x'),
+    ).rejects.toBeInstanceOf(WaUnavailableError);
+    await wa.connect();
+    const edit = await wa.editText('601@s.whatsapp.net', { id: 'M1', fromMe: true }, 'new');
+    const del = await wa.deleteForEveryone('601@s.whatsapp.net', { id: 'M2', fromMe: true });
+    await wa.deleteForMe('601@s.whatsapp.net', { id: 'M3', fromMe: false }, 123);
+    expect(edit.id).toMatch(/-EDIT-/);
+    expect(del.id).toMatch(/-REVOKE-/);
+    expect(wa.changes).toEqual([
+      {
+        kind: 'edit',
+        chatJid: '601@s.whatsapp.net',
+        target: { id: 'M1', fromMe: true },
+        text: 'new',
+      },
+      {
+        kind: 'deleteForEveryone',
+        chatJid: '601@s.whatsapp.net',
+        target: { id: 'M2', fromMe: true },
+      },
+      {
+        kind: 'deleteForMe',
+        chatJid: '601@s.whatsapp.net',
+        target: { id: 'M3', fromMe: false },
+        timestamp: 123,
+      },
+    ]);
+    expect(events).toEqual([]);
+  });
+
+  it('simulates edits and deletes from the customer, a group member and the phone', () => {
+    const wa = new FakeWaAdapter();
+    const seen: Array<{ kind: string; sender: string | null; fromMe: boolean; source: string }> =
+      [];
+    wa.on('messageEdited', (e, meta) =>
+      seen.push({
+        kind: `edit:${e.body}`,
+        sender: e.senderJid,
+        fromMe: e.fromMe,
+        source: meta.source,
+      }),
+    );
+    wa.on('messageDeleted', (r, meta) =>
+      seen.push({ kind: 'delete', sender: r.senderJid, fromMe: r.fromMe, source: meta.source }),
+    );
+    const e = wa.simulateEdit({ chatJid: '601@s.whatsapp.net', targetId: 'M1', body: 'b' });
+    expect(e).toMatchObject({ targetId: 'M1', chatJidAlt: null, senderJidAlt: null });
+    expect(typeof e.timestamp).toBe('number');
+    wa.simulateRevoke({ chatJid: '1203@g.us', targetId: 'G1', senderJid: '602@s.whatsapp.net' });
+    wa.simulateRevoke({ chatJid: '1203@g.us', targetId: 'G2' }, 'history');
+    wa.simulateRevoke({
+      chatJid: '601@s.whatsapp.net',
+      targetId: 'M2',
+      fromMe: true,
+      timestamp: 5,
+    });
+    expect(seen).toEqual([
+      { kind: 'edit:b', sender: '601@s.whatsapp.net', fromMe: false, source: 'live' },
+      { kind: 'delete', sender: '602@s.whatsapp.net', fromMe: false, source: 'live' },
+      { kind: 'delete', sender: null, fromMe: false, source: 'history' },
+      { kind: 'delete', sender: null, fromMe: true, source: 'live' },
+    ]);
+  });
+
+  it('a linked phone can edit and delete; the default capabilities say so', async () => {
+    const { LINKED_PHONE_CAPABILITIES } = await import('../types.js');
+    expect(LINKED_PHONE_CAPABILITIES).toMatchObject({
+      editMessage: true,
+      deleteForEveryone: true,
+      deleteForMe: true,
+    });
+  });
+});

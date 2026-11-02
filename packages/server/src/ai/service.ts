@@ -137,14 +137,17 @@ import { WINDOW_CLOSED, isWindowClosed, replyWindowOpen } from '../inboxes/reply
  * AI agent's message is `AI` (an inbox may have been answered by another agent before).
  */
 const conversation = (history: Message[], aiUserIds: ReadonlySet<number>): AiConversationTurn[] =>
-  history.map((message) => ({
-    speaker: message.fromMe
-      ? message.sentByUserId !== null && aiUserIds.has(message.sentByUserId)
-        ? 'AI'
-        : 'human'
-      : 'customer',
-    text: conversationLine(message),
-  }));
+  // A message deleted for everyone is gone for the customer too: the model never sees it.
+  history
+    .filter((message) => message.deletedAt == null)
+    .map((message) => ({
+      speaker: message.fromMe
+        ? message.sentByUserId !== null && aiUserIds.has(message.sentByUserId)
+          ? 'AI'
+          : 'human'
+        : 'customer',
+      text: conversationLine(message),
+    }));
 
 /**
  * A Try it "Group question" decision as a group answer would go out (nothing is sent): every reply
@@ -1377,12 +1380,23 @@ export function createAiService(
       const customerDetails = () =>
         aiCustomer(ctx.services.customers?.profile(jid).profile ?? null);
       const savedCustomer = customerDetails();
+      /** When the customer last edited or deleted a message of this chat. */
+      const customerChanges = () =>
+        JSON.stringify(
+          ctx.db
+            .prepare(
+              'SELECT MAX(edited_at) AS edited, MAX(deleted_at) AS deleted FROM messages WHERE chat_jid = ? AND from_me = 0',
+            )
+            .get(jid),
+        );
+      const savedChanges = customerChanges();
       /** The last 20 messages, the customer message being answered and its debounce batch. */
       const snapshot = () => {
         const page = messages.list(jid, { limit: 20 });
         const history = page.messages;
         const customer = history.find((message) => message.id === customerId);
-        if (!customer || customer.fromMe) return null;
+        // A question the customer deleted is not answered.
+        if (!customer || customer.fromMe || customer.deletedAt != null) return null;
         // The debounce batch: every customer message since the last AI reply.
         const repliedIndex = history.findIndex(
           (message) => message.id === state(jid)!.last_replied_message_id,
@@ -1604,6 +1618,12 @@ export function createAiService(
       // the outdated reply, answer again with the current details.
       if (JSON.stringify(customerDetails()) !== JSON.stringify(savedCustomer)) {
         log.info({ jid, reason: 'customer_details_changed' }, 'AI reply regenerated');
+        schedule(jid, Date.now());
+        return;
+      }
+      // The customer edited or deleted a message meanwhile: answer what the chat says now.
+      if (customerChanges() !== savedChanges) {
+        log.info({ jid, reason: 'customer_message_changed' }, 'AI reply regenerated');
         schedule(jid, Date.now());
         return;
       }

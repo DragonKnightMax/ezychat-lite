@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDay } from '../lib/format';
 import { EventItem, NoteItem } from './EventItem';
+import type { MessageChangeProps } from './message-changes';
 import { MessageBubble } from './MessageBubble';
 import type { TimelineItem } from './timeline';
 import type { Directory } from './useDirectory';
@@ -29,6 +30,8 @@ export interface MessageListProps {
   reactDisabledReason?: string | null;
   /** Direct chats: the customer's display name, for quotes. */
   contactName?: string;
+  /** Edit and delete sent messages (rights per message, handlers). */
+  changes?: MessageChangeProps;
   footer?: React.ReactNode;
 }
 
@@ -60,6 +63,7 @@ export function MessageList({
   onReact,
   reactDisabledReason,
   contactName,
+  changes,
   footer,
 }: MessageListProps) {
   const { t } = useTranslation('inbox');
@@ -210,6 +214,7 @@ export function MessageList({
                     onReact={onReact}
                     reactDisabledReason={reactDisabledReason}
                     contactName={contactName}
+                    changes={changes}
                   />
                 );
               }

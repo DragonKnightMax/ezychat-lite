@@ -11,9 +11,33 @@
     "mock": "docs/features/group-mentions/mock/index.html",
     "design": "docs/features/group-mentions/design.md",
     "confirmedAt": "2026-10-31",
-    "confirmation": "Owner wrote 2026-10-31 \"build it until merge to main\" after reviewing the mock screenshots: the @ member picker as proposed."
+    "confirmation": "Owner wrote 2026-10-31 \"build it until merge to main\" after reviewing the mock screenshots: the @ member picker as proposed.",
+    "note": "The next clone also adds the screens of the parallel features whatsapp-safety (docs/features/whatsapp-safety/mock) and message-edit-delete (docs/features/message-edit-delete/mock)."
   },
   "proposals": [
+    {
+      "feature": "message-edit-delete",
+      "creationOrder": 26,
+      "createdAt": "2026-10-28",
+      "design": "docs/features/message-edit-delete/design.md",
+      "mock": "docs/features/message-edit-delete/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "ai-groups",
+      "baselineGitRevision": "80de805a8fe31d500c2cf7b650c4029ed56d9095",
+      "baselineAppRevision": "5709439",
+      "coverage": "Full app clone of the confirmed ai-groups reference; linked-phone (Baileys) chats: the ⋮ menu beside a message (touch: Edit / Delete under Reply in the press-and-hold bar), Edit dialog (text and captions, 15 minutes), \"Edited\" label with earlier versions, Delete dialog (for everyone within 2 days, for me = hidden for the team and the phone, admins), deleted placeholders for the customer, a teammate and the phone, Show original for admins only, quotes of deleted messages, closed windows (3 days later), WhatsApp offline, agent view, no actions on a Business API inbox; mock-only routes /api/mock/messages/:id, /api/mock/message-changes* and the Simulate edits and deletes panel; desktop 1280 / mobile 360 touch, light/dark (edit-delete-shots.mjs)",
+      "confirmedAt": "2026-10-28",
+      "confirmation": "Owner viewed the mock screenshots (desktop chat, menu after 15 minutes, phone menu, edit and delete dialogs, dark phone states) and confirmed 2026-10-28 (\"implement it\"); the open question (greyed-out Edit on phones) unanswered, default as mocked.",
+      "gitRevision": "6be302deb7785daedde3129eff80493ead0ba060",
+      "parallelFeatures": [
+        "ai-direct-chats",
+        "ai-handoff-rules",
+        "concept-tips",
+        "whatsapp-safety",
+        "group-mentions"
+      ],
+      "note": "Confirmed 2026-10-28 on the ai-groups baseline (first creationOrder 19, renumbered when rebased on main after features 19-25 merged). Its mock does not have the later features; latestConfirmed stays group-mentions, and the next clone copies the edit/delete screens from docs/features/message-edit-delete/mock."
+    },
     {
       "feature": "group-mentions",
       "creationOrder": 25,
@@ -91,7 +115,8 @@
       "coverage": "Full app clone of the confirmed grammar-fix reference; a \"?\" tip (InfoTip) beside 15 new-concept labels and titles: setup wizard (Link your WhatsApp number, About your business, Connect the AI, OpenAI and Claude API key), Settings -> AI (AI connection, API keys, model, voice messages), Settings -> General (LAN access), Settings -> Integrations (AI assistant access, access tokens), AI agent page (Business context, Role, Hand-over rules, Try it), Phone access, Connectors; each card: what it is in plain words, how to get it (numbered steps), a note (safety, cost or the easier way), a button to the outside page (OpenAI, Anthropic keys) and Read the full guide (ezychat.ai guide in the app language, utm tags only); desktop 1280 / mobile 360 touch, light/dark, seeded and fresh install (tips-shots.mjs)",
       "confirmedAt": "2026-10-30",
       "confirmation": "Owner reviewed round 1 (\"too many text\"), asked for the shorter round 2 cards (\"yes\"), reviewed them and set the goal 2026-10-30 (\"build it, test it for ezychat lite and enterprise, than merge, no need release\"). Open questions defaulted to the proposals: the ? marker; Enterprise tips in the same change.",
-      "gitRevision": "360d3be5ad7030d5e6fc3e8d719df223a2a6fe9d"
+      "gitRevision": "360d3be5ad7030d5e6fc3e8d719df223a2a6fe9d",
+      "folderRemoved": "2026-11-02 (message-edit-delete: sixth feature folder); last on main at ee6c347e"
     },
     {
       "feature": "ask-ezy",

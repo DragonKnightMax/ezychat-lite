@@ -1,6 +1,7 @@
 import type {
   MediaStatus,
   Message,
+  MessageDeletedBy,
   MessageStatus,
   MessageType,
   TranscriptStatus,
@@ -42,13 +43,47 @@ export interface MessageRow {
   template_name?: string | null;
   template_language?: string | null;
   template_params?: string | null;
+  /** Edits and deletes (025); optional so inserts need not name them. */
+  edited_at?: number | null;
+  deleted_at?: number | null;
+  deleted_by?: MessageDeletedBy | null;
+  deleted_by_user_id?: number | null;
+  /** "Delete for me": hidden for the whole team. */
+  hidden_at?: number | null;
+  hidden_by_user_id?: number | null;
 }
 
 export function mediaUrlFor(id: string): string {
   return `/api/media/${encodeURIComponent(id)}`;
 }
 
+/**
+ * A stored row as clients see it. A message deleted for everyone keeps its row (admins can read the
+ * original through `GET /messages/:id/edits`) but goes out without body, media, quote or transcript.
+ */
 export function rowToMessage(r: MessageRow): Message {
+  if (r.deleted_at != null) {
+    return {
+      ...rowToMessage({
+        ...r,
+        deleted_at: null,
+        body: null,
+        media_path: null,
+        media_mime: null,
+        media_name: null,
+        media_status: 'none',
+        quoted_id: null,
+        transcript: null,
+        transcript_lang: null,
+        transcript_status: null,
+        voice_note: 0,
+      }),
+      deletedAt: r.deleted_at,
+      deletedBy: r.deleted_by ?? null,
+      deletedByUserId: r.deleted_by_user_id ?? null,
+      editedAt: null,
+    };
+  }
   return {
     id: r.id,
     chatJid: r.chat_jid,
@@ -74,6 +109,8 @@ export function rowToMessage(r: MessageRow): Message {
     ...(r.template_name
       ? { template: { name: r.template_name, language: r.template_language ?? '' } }
       : {}),
+    ...(r.edited_at != null ? { editedAt: r.edited_at } : {}),
+    ...(r.hidden_at != null ? { hidden: true } : {}),
     // Only voice notes that went through transcription carry these fields.
     ...(r.transcript_status
       ? {
@@ -85,14 +122,16 @@ export function rowToMessage(r: MessageRow): Message {
   };
 }
 
-/** Chat list preview: body truncated to 120 chars or a media label. */
+/** Chat list preview: body truncated to 120 chars or a media label ("deleted" once deleted). */
 export function previewOf(m: {
   type: MessageType;
   body: string | null;
   media_name?: string | null;
   mediaName?: string | null;
   voice_note?: number;
+  deleted_at?: number | null;
 }): string {
+  if (m.deleted_at != null) return 'This message was deleted';
   const name = m.media_name ?? m.mediaName ?? null;
   const label = (l: string) => (m.body ? `${l} ${truncate(m.body, 100)}` : l);
   switch (m.type) {
@@ -194,14 +233,28 @@ export class MessageRepo {
     if (before) {
       return this.db
         .prepare(
-          `SELECT * FROM messages WHERE chat_jid = ? AND (timestamp < ? OR (timestamp = ? AND id < ?))
+          `SELECT * FROM messages WHERE chat_jid = ? AND hidden_at IS NULL
+           AND (timestamp < ? OR (timestamp = ? AND id < ?))
            ORDER BY timestamp DESC, id DESC LIMIT ?`,
         )
         .all(chatJid, before.ts, before.ts, before.id, limit) as MessageRow[];
     }
     return this.db
-      .prepare('SELECT * FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC, id DESC LIMIT ?')
+      .prepare(
+        'SELECT * FROM messages WHERE chat_jid = ? AND hidden_at IS NULL ORDER BY timestamp DESC, id DESC LIMIT ?',
+      )
       .all(chatJid, limit) as MessageRow[];
+  }
+
+  /** The newest message of a chat the team still sees (not hidden), for the chat list preview. */
+  newestVisible(chatJid: string): MessageRow | null {
+    return (
+      (this.db
+        .prepare(
+          'SELECT * FROM messages WHERE chat_jid = ? AND hidden_at IS NULL ORDER BY timestamp DESC, id DESC LIMIT 1',
+        )
+        .get(chatJid) as MessageRow | undefined) ?? null
+    );
   }
 
   /** The JID WhatsApp used for the newest inbound message of a chat (where replies should go). */

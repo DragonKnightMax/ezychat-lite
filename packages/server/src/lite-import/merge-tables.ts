@@ -23,6 +23,8 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   chats: { merged: true },
   messages: { merged: true },
   message_reactions: { merged: true },
+  message_edits: { merged: true },
+  message_changes_pending: { merged: true },
   chat_events: { merged: true },
   notes: { merged: true },
   customer_profiles: { merged: true },
@@ -416,6 +418,8 @@ export function mergeTables(input: MergeInput): MergeOutcome {
         chat_jid: chat,
         quoted_id: maps.message(m.quoted_id as string | null),
         sent_by_user_id: maps.user(m.sent_by_user_id),
+        deleted_by_user_id: maps.user(m.deleted_by_user_id),
+        hidden_by_user_id: maps.user(m.hidden_by_user_id),
         sent_via_token_id: null,
         media_path: mediaPath(m.media_path),
       });
@@ -425,6 +429,18 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     for (const r of rows(lite, 'SELECT * FROM message_reactions')) {
       const id = maps.message(r.message_id as string);
       if (id) addReaction({ ...r, message_id: id, sent_by_user_id: maps.user(r.sent_by_user_id) });
+    }
+    // Earlier versions of edited messages, and edits/deletes still waiting for their message.
+    const addEdit = inserter(target, 'message_edits', { omit: ['id'] });
+    for (const e of rows(lite, 'SELECT * FROM message_edits ORDER BY id')) {
+      const id = maps.message(e.message_id as string);
+      if (id) addEdit({ ...e, message_id: id, user_id: maps.user(e.user_id) });
+    }
+    const addPending = inserter(target, 'message_changes_pending');
+    for (const p of rows(lite, 'SELECT * FROM message_changes_pending')) {
+      const id = maps.message(p.message_id as string);
+      const chat = maps.chat(p.chat_jid as string);
+      if (id && chat) addPending({ ...p, message_id: id, chat_jid: chat });
     }
   });
   phase(() => {

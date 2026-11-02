@@ -9,6 +9,9 @@ import {
   type WaContactAlias,
   type WaGroupInfo,
   type WaIncomingMessage,
+  type WaMessageEdit,
+  type WaMessageRevoke,
+  type WaMessageTarget,
   type WaReaction,
   type WaReactionTarget,
   type WaSendFile,
@@ -56,6 +59,12 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
 
   readonly sent: FakeSentRecord[] = [];
   readonly reactions: Array<{ chatJid: string; target: WaReactionTarget; emoji: string }> = [];
+  /** Every edit, delete for everyone and delete for me sent (`editText`, `deleteFor…`). */
+  readonly changes: Array<
+    | { kind: 'edit'; chatJid: string; target: WaMessageTarget; text: string }
+    | { kind: 'deleteForEveryone'; chatJid: string; target: WaMessageTarget }
+    | { kind: 'deleteForMe'; chatJid: string; target: WaMessageTarget; timestamp: number }
+  > = [];
   readonly reads: Array<{ chatJid: string; messageIds: string[] }> = [];
   readonly presences: Array<{ chatJid: string; presence: 'composing' | 'paused' }> = [];
   /** Every template sent (adapters given `templates`). */
@@ -223,6 +232,27 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
     return { id, timestamp };
   }
 
+  /** Unlike reactions, WhatsApp's echo of our own edit or delete is never reported (as Baileys). */
+  async editText(chatJid: string, target: WaMessageTarget, text: string): Promise<SendResult> {
+    this.beforeSend();
+    this.changes.push({ kind: 'edit', chatJid, target: { ...target }, text });
+    return { id: `${this.idPrefix}-EDIT-${FAKE_RUN}-${++this.outCounter}`, timestamp: Date.now() };
+  }
+
+  async deleteForEveryone(chatJid: string, target: WaMessageTarget): Promise<SendResult> {
+    this.beforeSend();
+    this.changes.push({ kind: 'deleteForEveryone', chatJid, target: { ...target } });
+    return {
+      id: `${this.idPrefix}-REVOKE-${FAKE_RUN}-${++this.outCounter}`,
+      timestamp: Date.now(),
+    };
+  }
+
+  async deleteForMe(chatJid: string, target: WaMessageTarget, timestamp: number): Promise<void> {
+    this.beforeSend();
+    this.changes.push({ kind: 'deleteForMe', chatJid, target: { ...target }, timestamp });
+  }
+
   async markRead(chatJid: string, messageIds: string[]): Promise<void> {
     this.reads.push({ chatJid, messageIds: [...messageIds] });
   }
@@ -375,6 +405,51 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
     };
     this.emitTyped('reaction', reaction, { source });
     return reaction;
+  }
+
+  /**
+   * Emit an edit (live unless `source` says history). In a DM the editor defaults to the chat
+   * partner; `fromMe` means the linked phone edited.
+   */
+  simulateEdit(
+    p: Partial<WaMessageEdit> & { chatJid: string; targetId: string; body: string },
+    source: 'live' | 'history' = 'live',
+  ): WaMessageEdit {
+    const edit: WaMessageEdit = { ...this.changeAuthor(p), body: p.body };
+    this.emitTyped('messageEdited', edit, { source });
+    return edit;
+  }
+
+  /** Emit a delete for everyone (live unless `source` says history), as `simulateEdit`. */
+  simulateRevoke(
+    p: Partial<WaMessageRevoke> & { chatJid: string; targetId: string },
+    source: 'live' | 'history' = 'live',
+  ): WaMessageRevoke {
+    const revoke = this.changeAuthor(p);
+    this.emitTyped('messageDeleted', revoke, { source });
+    return revoke;
+  }
+
+  private changeAuthor(
+    p: Partial<WaMessageRevoke> & { chatJid: string; targetId: string },
+  ): WaMessageRevoke {
+    const isGroup = p.chatJid.endsWith('@g.us');
+    const fromMe = p.fromMe ?? false;
+    return {
+      targetId: p.targetId,
+      chatJid: p.chatJid,
+      chatJidAlt: p.chatJidAlt ?? null,
+      senderJid: fromMe
+        ? null
+        : p.senderJid !== undefined
+          ? p.senderJid
+          : isGroup
+            ? null
+            : p.chatJid,
+      senderJidAlt: p.senderJidAlt ?? null,
+      fromMe,
+      timestamp: p.timestamp ?? Date.now(),
+    };
   }
 
   simulateStatus(s: Partial<WaStatus>): void {

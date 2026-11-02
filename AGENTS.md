@@ -106,6 +106,17 @@ Sending: `PUT /api/messages/:id/reaction` {emoji} ('' removes; one emoji, zod-ch
 goes straight to `WaAdapter.sendReaction` (never queued; offline → 503), with the reply refusals; the
 linked number's row (reactor `me`) keeps `sent_by_user_id` (teammate, `ReactionRepo.applyOwn`) until
 WhatsApp reports another emoji from the phone. One reaction per number: the team shares it.
+Edits and deletes (design `docs/features/message-edit-delete/design.md`, migration 029, `messages/changes.ts`):
+Baileys `MESSAGE_EDIT` / `REVOKE` protocol messages (`baileys/protocol.ts`, upsert and history only) become adapter
+events `messageEdited` / `messageDeleted`; the adapter skips the echo of its own changes. A change applies only in
+the stored message's chat and only by its author (`changeAuthor`; a group admin may delete, never edit), else waits
+in `message_changes_pending` until the message arrives. Team: `PATCH /api/messages/:id` {text} (15 min) and
+`DELETE /api/messages/:id?scope=everyone` (2 days) for the teammate who sent it or an admin, `scope=me` (hidden for
+the team, `chatModify` on the phone) for admins; never queued (offline → 503), 30 a minute per user, audit ids only.
+Only with `WaCapabilities.editMessage` / `deleteForEveryone` / `deleteForMe` (absent = off, e.g. the Business API).
+A deleted row keeps its text; `rowToMessage` sends it without body, media or quote, and only admins read the
+original (`GET /api/messages/:id/edits`). Hidden rows leave `pageDesc`; the AI skips deleted messages and redrafts
+when the customer changes a message mid-reply. Dev: `POST /api/dev/fake-edit`, `/api/dev/fake-revoke`.
 
 **Inboxes (several WhatsApp numbers).** Design `docs/features/multi-inbox/design.md`. Each WhatsApp
 number is an inbox (table `inboxes`, linked phone). `InboxConnections` (`inboxes/connections.ts`) holds one

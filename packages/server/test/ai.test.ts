@@ -219,6 +219,43 @@ it('drops a reply written with details a teammate corrected meanwhile, and answe
   expect(t.wa.sent).toHaveLength(1);
 });
 
+it('drops a reply written while the customer edited their message, and answers the new text', async () => {
+  clock();
+  await incoming('ask', 'Is delivery free?');
+  vi.mocked(provider.generate).mockImplementationOnce(async () => {
+    // The customer edits the question while the model is still writing.
+    t.wa.simulateEdit({ chatJid: jid, targetId: 'ask', body: 'What are your opening hours?' });
+    return { reply: 'Delivery costs RM10.', action: 'answer' };
+  });
+  await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS);
+  await vi.advanceTimersByTimeAsync(100);
+  const calls = vi.mocked(provider.generate).mock.calls;
+  expect(calls).toHaveLength(2);
+  expect(calls[1]![2].input).toContain('What are your opening hours?');
+  expect(calls[1]![2].input).not.toContain('Is delivery free?');
+  expect(t.wa.sent.map((m) => m.text)).not.toContain('Delivery costs RM10.');
+  expect(aiLogs.join('\n')).toContain('customer_message_changed');
+});
+
+it('never shows the model a deleted message and does not answer a deleted question', async () => {
+  clock();
+  await incoming('first', 'My IC number is 900101-07-1234');
+  t.wa.simulateRevoke({ chatJid: jid, targetId: 'first' });
+  await incoming('second', 'What are your opening hours?');
+  await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS);
+  const { input } = vi.mocked(provider.generate).mock.calls[0]![2];
+  expect(input).not.toContain('900101');
+  expect(input).toContain('opening hours');
+
+  const other = 'deleted@s.whatsapp.net';
+  await incoming('gone', 'Can I order now?', 'live', other);
+  t.wa.simulateRevoke({ chatJid: other, targetId: 'gone' });
+  await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS);
+  expect(
+    vi.mocked(provider.generate).mock.calls.some(([, , p]) => p.input.includes('Can I order')),
+  ).toBe(false);
+});
+
 it('does no work while the access gate is closed and picks the chat up again when it opens', async () => {
   clock();
   t.ctx.access.close({ code: 'license_required' });

@@ -93,6 +93,18 @@ export const MessageReactionSchema = z.object({
 });
 export type MessageReaction = z.infer<typeof MessageReactionSchema>;
 
+/**
+ * Who deleted a message for everyone: `sender` = the customer (or group member) who wrote it,
+ * `group_admin` = a group admin deleted a member's message, `team` = a teammate in the inbox,
+ * `phone` = the linked phone (or another linked device).
+ */
+export const MessageDeletedBy = z.enum(['sender', 'group_admin', 'team', 'phone']);
+export type MessageDeletedBy = z.infer<typeof MessageDeletedBy>;
+
+/** Who edited a message: the customer (`sender`), a teammate (`team`) or the linked phone. */
+export const MessageEditedBy = z.enum(['sender', 'team', 'phone']);
+export type MessageEditedBy = z.infer<typeof MessageEditedBy>;
+
 export const MessageSchema = z.object({
   id: z.string(),
   chatJid: z.string(),
@@ -129,6 +141,17 @@ export const MessageSchema = z.object({
   reactions: z.array(MessageReactionSchema).default([]),
   /** WhatsApp Safety's finding on this inbound message; absent or null when nothing was found. */
   safety: MessageSafety.nullable().optional(),
+  /** epoch ms of the last edit (body is the edited text); absent/null = never edited. */
+  editedAt: z.number().nullable().optional(),
+  /** Earlier versions kept (`GET /messages/:id/edits`). */
+  editCount: z.number().int().nonnegative().optional(),
+  /** Deleted for everyone: epoch ms (absent/null = not deleted); body, media and reactions are then empty. */
+  deletedAt: z.number().nullable().optional(),
+  deletedBy: MessageDeletedBy.nullable().optional(),
+  /** `deletedBy` `team`: the teammate who deleted it. */
+  deletedByUserId: z.number().nullable().optional(),
+  /** Deleted for me: hidden for the whole team (clients drop it from the conversation). */
+  hidden: z.boolean().optional(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 

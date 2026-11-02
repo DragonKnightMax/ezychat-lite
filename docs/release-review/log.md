@@ -339,3 +339,7 @@ Tier **critical**, set by: apps/desktop/src/main.ts, apps/desktop/src/service/in
 Hard stops: 4. checks pending (running: Test (ubuntu-latest), Test (windows-latest), Test (macos-latest); missing: SonarCloud Code Analysis)
 
 Decision: **risk:human**
+
+## 2026-11-02 · PR #204 · `8565861` · approved by the owner
+
+> I think it is low risk, if delete dun work not big deal. Merge and release core than success release enterprise

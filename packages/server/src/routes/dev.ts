@@ -5,6 +5,7 @@ import {
   FakeGroupBody,
   FakeIncomingBody,
   FakeLinkBody,
+  FakeMessageChangeBody,
   FakeReactionBody,
   type Message,
 } from '@ezychat/shared';
@@ -157,6 +158,39 @@ export default async function devRoutes(app: FastifyInstance, ctx: AppContext) {
     });
     return { messageId: body.messageId, chatJid: message.chat_jid, timestamp: reaction.timestamp };
   });
+
+  /**
+   * POST /api/dev/fake-edit and /api/dev/fake-revoke: the fake phone of the message's inbox delivers
+   * an edit or a delete for everyone of a stored message, in that message's chat, as WhatsApp would.
+   */
+  for (const kind of ['edit', 'revoke'] as const)
+    app.post(`/dev/fake-${kind}`, { preHandler: requireUser(ctx) }, async (req) => {
+      const body = parse(FakeMessageChangeBody, req.body ?? {});
+      const message = ctx.db
+        .prepare('SELECT chat_jid, wa_remote_jid, sender_jid FROM messages WHERE id = ?')
+        .get(body.messageId) as
+        { chat_jid: string; wa_remote_jid: string | null; sender_jid: string | null } | undefined;
+      if (!message) throw errors.notFound('Message');
+      if (kind === 'edit' && body.body === undefined) throw errors.validation('body is required');
+      const wa = fakeOf(inboxOfKey(body.messageId));
+      const chatJid = message.wa_remote_jid ?? parseChatKey(message.chat_jid).waJid;
+      const change = {
+        chatJid,
+        targetId: waMessageId(body.messageId),
+        fromMe: body.fromMe ?? false,
+        // a group change comes from the message's own author unless another member is named
+        ...(chatJid.endsWith('@g.us') && !body.fromMe
+          ? { senderJid: body.senderJid ?? message.sender_jid }
+          : body.senderJid
+            ? { senderJid: body.senderJid }
+            : {}),
+      };
+      const sent =
+        kind === 'edit'
+          ? wa.simulateEdit({ ...change, body: body.body! })
+          : wa.simulateRevoke(change);
+      return { messageId: body.messageId, chatJid: message.chat_jid, timestamp: sent.timestamp };
+    });
 
   /**
    * POST /api/dev/fake-group: a group with members for the Group info panel. Every 4th generated

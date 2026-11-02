@@ -86,7 +86,7 @@ function planMentions(
   aliases: AliasStore,
   wanted: Set<string>,
 ): MentionPlan | null {
-  if (!row.body || row.type === 'system') return null;
+  if (!row.body || row.type === 'system' || row.deleted_at != null) return null;
   const legacy = row.mentioned_jids == null;
   if (legacy && !parseChatKey(row.chat_jid).waJid.endsWith('@g.us')) return null;
   const tags = tokens(row.body);
@@ -274,7 +274,7 @@ export function createChatPresenter(ctx: AppContext, log: Pick<Logger, 'debug'>)
   const withMentionNames = createMentionPresenter(ctx, log);
   const latest = ctx.db.prepare(`
     SELECT m.* FROM json_each(?) ids JOIN messages m ON m.rowid = (
-      SELECT rowid FROM messages WHERE chat_jid = ids.value
+      SELECT rowid FROM messages WHERE chat_jid = ids.value AND hidden_at IS NULL
       ORDER BY timestamp DESC, rowid DESC LIMIT 1
     )
   `);

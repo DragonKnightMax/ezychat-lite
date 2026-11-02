@@ -31,6 +31,8 @@ import { MediaView } from './MediaView';
 import { SafetyFile, SafetyNotice, showsSafety } from './SafetyMessage';
 import { ReactionBadges } from './ReactionBadges';
 import { ReactionPicker } from './ReactionPicker';
+import { DeletedBody, EditedLabel, MessageMoreMenu } from './MessageActions';
+import { NO_RIGHTS, type MessageChangeProps } from './message-changes';
 import { useGuardedLinkClick } from './navigation-guard';
 import type { Directory } from './useDirectory';
 import { SWIPE_TRIGGER_PX, useSwipeReply } from './useSwipeReply';
@@ -55,6 +57,8 @@ export interface MessageBubbleProps {
   directory?: Directory;
   /** Direct chats: the customer's name as the header shows it (used in quotes). */
   contactName?: string;
+  /** Edit and delete (⋮ menu; under Reply in the press-and-hold bar on touch). */
+  changes?: MessageChangeProps;
 }
 
 /** Read-only profile of a group sender, from their direct chat, with a link to that chat. */
@@ -108,6 +112,7 @@ export function quotedAuthor(q: Message, t: TFunction<'inbox'>, contactName?: st
 }
 
 export function quotedPreview(q: Message, t: TFunction<'inbox'>): string {
+  if (q.deletedAt != null) return t('message.change.deletedQuote');
   if (q.body) return truncate(plainWhatsApp(q.body), 140);
   switch (q.type) {
     case 'image':
@@ -180,10 +185,13 @@ export function MessageBubble({
   onReact,
   reactDisabledReason = null,
   contactName,
+  changes,
 }: MessageBubbleProps) {
   const { t } = useTranslation(['inbox', 'common']);
+  // Deleted for everyone: no reply, reaction or copy (WhatsApp shows only the placeholder).
+  const deleted = m.deletedAt != null;
   // Pending and failed messages still have a local id that WhatsApp could not match.
-  const canReply = !!onReply && m.type !== 'system' && !m.id.startsWith('local-');
+  const canReply = !!onReply && m.type !== 'system' && !m.id.startsWith('local-') && !deleted;
   // Whoever may reply may react, with the linked number's one reaction.
   const canReact = canReply && !!onReact;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -202,9 +210,12 @@ export function MessageBubble({
   }
 
   const out = m.fromMe;
-  const hasMedia = m.type !== 'text';
+  const hasMedia = m.type !== 'text' && !deleted;
   // WhatsApp Safety: a flagged message shows why; its file is checked or locked before download.
-  const flagged = showsSafety(m) ? m.safety : null;
+  // A deleted message shows nothing of it (the server drops the finding too).
+  const flagged = !deleted && showsSafety(m) ? m.safety : null;
+  const rights = changes ? changes.rightsOf(m) : NO_RIGHTS;
+  const changeDisabled = changes?.disabledReason ?? null;
   // Messages cached before reactions existed have none.
   const reactions = m.reactions ?? [];
   // A WhatsApp ID (LID) sender formats to '' (never its digits): fall back to a placeholder.
@@ -231,7 +242,7 @@ export function MessageBubble({
   );
 
   // Copies the text as written, WhatsApp's *bold* and _italic_ marks included, as WhatsApp does.
-  const body = m.body;
+  const body = deleted ? null : m.body;
   const copyBody = body
     ? async () => {
         try {
@@ -267,6 +278,25 @@ export function MessageBubble({
       : sentBy === meId
         ? ''
         : (directory?.nameOf(sentBy) ?? t('message.reactions.fromTeammateUnknown'));
+  const moreMenu = changes && (
+    <MessageMoreMenu
+      rights={rights}
+      disabledReason={changeDisabled}
+      onEdit={() => changes.onEdit(m)}
+      onDelete={() => changes.onDelete(m)}
+    />
+  );
+  // Touch: Edit and Delete under Reply in the press-and-hold bar, only while they are possible.
+  const touchEdit =
+    changes && rights.canEdit && !rights.editWindowClosed && !changeDisabled
+      ? () => changes.onEdit(m)
+      : undefined;
+  const touchDelete =
+    changes &&
+    ((rights.canDeleteForEveryone && !rights.deleteWindowClosed) || rights.canDeleteForMe) &&
+    !changeDisabled
+      ? () => changes.onDelete(m)
+      : undefined;
   const reactButton = canReact && (
     <ReactionPicker
       out={out}
@@ -278,6 +308,8 @@ export function MessageBubble({
       disabledReason={reactDisabledReason}
       onReply={() => onReply!(m)}
       onCopy={copyBody}
+      onEdit={touchEdit}
+      onDelete={touchDelete}
     />
   );
 
@@ -299,6 +331,7 @@ export function MessageBubble({
           <Reply className="size-4" />
         </span>
       )}
+      {out && moreMenu}
       {out && copyButton}
       {out && replyButton}
       {out && reactButton}
@@ -365,15 +398,23 @@ export function MessageBubble({
             )}
           </div>
         )}
-        {m.type === 'audio' && <VoiceTranscript message={m} />}
-        {m.body && (
+        {m.type === 'audio' && !deleted && <VoiceTranscript message={m} />}
+        {deleted && (
+          <DeletedBody
+            message={m}
+            isAdmin={!!changes?.isAdmin}
+            directory={directory}
+            contactName={contactName}
+          />
+        )}
+        {body && (
           <p
             className={cn(
               'whitespace-pre-wrap break-words text-[15px] leading-snug [overflow-wrap:anywhere]',
               WHATSAPP_TEXT,
             )}
           >
-            {formatWhatsApp(m.body)}
+            {formatWhatsApp(body)}
           </p>
         )}
         <div
@@ -404,12 +445,18 @@ export function MessageBubble({
               {t('message.voiceNote')} ·
             </span>
           )}
+          {m.editedAt != null && !deleted && (
+            <>
+              <EditedLabel message={m} directory={directory} contactName={contactName} />
+              <span aria-hidden="true">·</span>
+            </>
+          )}
           <time dateTime={new Date(m.timestamp).toISOString()} title={formatDateTime(m.timestamp)}>
             {formatTime(m.timestamp)}
           </time>
-          {out && <StatusTicks status={m.status} />}
+          {out && !deleted && <StatusTicks status={m.status} />}
         </div>
-        {out && m.status === 'failed' && (
+        {out && m.status === 'failed' && !deleted && (
           <div className="mt-1 flex flex-wrap items-center justify-end gap-2 text-xs text-danger">
             <span className="min-w-0 truncate">{m.error ?? t('message.notSent')}</span>
             {onRetry && (
@@ -439,6 +486,7 @@ export function MessageBubble({
       {!out && reactButton}
       {!out && replyButton}
       {!out && copyButton}
+      {!out && moreMenu}
     </div>
   );
 }

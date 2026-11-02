@@ -209,6 +209,18 @@ export function seedLite(opts: { ownJid?: string; googleAccount?: string } = {})
     `INSERT INTO message_reactions (message_id, reactor, chat_wa_jid, emoji, from_me, reacted_at, sent_by_user_id)
      VALUES ('M1', 'me', ?, '👍', 1, ?, ?)`,
   ).run(LITE_CHAT, NOW, lee);
+  // Edits and deletes (029): Lee edited M2 and deleted M5; a delete waits for a message not stored yet.
+  db.prepare("UPDATE messages SET edited_at = ? WHERE id = 'M2'").run(NOW);
+  db.prepare(
+    "INSERT INTO message_edits (message_id, previous_body, edited_at, edited_by, user_id) VALUES ('M2', 'old text', ?, 'team', ?)",
+  ).run(NOW, lee);
+  db.prepare(
+    "UPDATE messages SET deleted_at = ?, deleted_by = 'team', deleted_by_user_id = ?, hidden_at = ?, hidden_by_user_id = ? WHERE id = 'M5'",
+  ).run(NOW, lee, NOW, lee);
+  db.prepare(
+    `INSERT INTO message_changes_pending (message_id, kind, chat_jid, from_me, sender_jid, body, changed_at, received_at)
+     VALUES ('M9', 'delete', ?, 0, ?, NULL, ?, ?)`,
+  ).run(LITE_CHAT, LITE_CHAT, NOW, NOW);
   db.prepare(
     "INSERT INTO notes (chat_jid, user_id, body, created_at) VALUES (?, ?, 'call back', ?)",
   ).run('60888@s.whatsapp.net', lee, NOW);

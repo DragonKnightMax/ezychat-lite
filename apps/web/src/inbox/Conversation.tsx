@@ -19,6 +19,7 @@ import {
   useSendReaction,
   useSendMedia,
   useInboxStatus,
+  useInboxes,
   useSendText,
   type MessagesData,
 } from '../api/queries';
@@ -61,7 +62,14 @@ import { useInboxOfChat } from './useVisibleInboxes';
 import { waQueuesMessages, waSendingBlocked } from './WaBanner';
 import { ReplyWindowNote, WindowClosedPanel } from './ReplyWindow';
 import { SafetyChatBar } from './SafetyMessage';
-import { useInboxCanTag, useReplyWindowHours, useWindowClosed } from './reply-window';
+import {
+  inboxCapabilities,
+  useInboxCanTag,
+  useReplyWindowHours,
+  useWindowClosed,
+} from './reply-window';
+import { DeleteMessageDialog, EditMessageDialog } from './MessageActions';
+import { NO_RIGHTS, messageRights, type MessageChangeProps } from './message-changes';
 
 export interface ConversationProps {
   jid: string;
@@ -272,6 +280,22 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
     [doReact, jid, t],
   );
 
+  // Edit and delete sent messages: only on a connection that can (a linked phone).
+  const { data: inboxList } = useInboxes();
+  const inboxId = chat?.inboxId;
+  const caps = useMemo(
+    () => inboxCapabilities(inboxList?.inboxes.find((i) => i.id === inboxId) ?? {}),
+    [inboxList, inboxId],
+  );
+  const [editing, setEditing] = useState<Message | null>(null);
+  const [deleting, setDeleting] = useState<Message | null>(null);
+  useEffect(() => {
+    setEditing(null);
+    setDeleting(null);
+  }, [jid]);
+  // The time windows are read when a bubble renders; the server checks them again.
+  const rightsOf = useCallback((m: Message) => messageRights(m, me, caps, Date.now()), [me, caps]);
+
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = messagesQ;
   const loadOlder = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
@@ -324,6 +348,13 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
   // Quotes in a direct chat name the customer like the header does (groups name each sender).
   const contactName = chat.type === 'dm' ? chatTitle(chat, t) : undefined;
   const startedByAssistant = assistantStartedChat(chat, messages, !!hasNextPage);
+  const changes: MessageChangeProps = {
+    rightsOf,
+    disabledReason: blocked || queued ? t('message.change.notConnected') : null,
+    onEdit: setEditing,
+    onDelete: setDeleting,
+    isAdmin: me?.role === 'admin',
+  };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
@@ -401,6 +432,7 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
           onReact={onReact}
           reactDisabledReason={blocked || queued ? t('message.reactions.notConnected') : null}
           contactName={contactName}
+          changes={changes}
         />
         <div className="safe-bottom border-t bg-surface">
           <TypingIndicator entries={typing[jid] ?? []} meId={me?.id ?? null} />
@@ -553,6 +585,12 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
           guardRef={customerGuard}
         />
       )}
+      <EditMessageDialog message={editing} onClose={() => setEditing(null)} />
+      <DeleteMessageDialog
+        message={deleting}
+        rights={deleting ? rightsOf(deleting) : NO_RIGHTS}
+        onClose={() => setDeleting(null)}
+      />
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && closeConfirm(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>

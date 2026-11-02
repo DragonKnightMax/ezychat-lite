@@ -39,6 +39,8 @@ const TABLES = [
   'safety_items',
   'safety_numbers',
   'safety_downloads',
+  'message_edits',
+  'message_changes_pending',
 ];
 const LATEST = latestMigration();
 

@@ -49,6 +49,45 @@ export interface WaReaction {
   timestamp: number;
 }
 
+/**
+ * Someone edited a message they sent (WhatsApp `MESSAGE_EDIT`): the customer, a group member or the
+ * linked number itself (its phone or another linked device). Only text and captions are edited.
+ */
+export interface WaMessageEdit {
+  /** WhatsApp id of the edited message. */
+  targetId: string;
+  /** The chat of the message (as WhatsApp delivered the edit). */
+  chatJid: string;
+  /** DM only: the same person's other address (`key.remoteJidAlt`), as for messages. */
+  chatJidAlt?: string | null;
+  /** Who edited: the group participant or the DM partner; null when `fromMe`. */
+  senderJid: string | null;
+  senderJidAlt?: string | null;
+  /** Edited from the linked number (its phone or another linked device). */
+  fromMe: boolean;
+  /** The new text or caption. */
+  body: string;
+  /** epoch ms of the edit */
+  timestamp: number;
+}
+
+/**
+ * Someone deleted a message for everyone (WhatsApp `REVOKE`): its sender, the linked number, or in
+ * a group an admin deleting a member's message.
+ */
+export interface WaMessageRevoke {
+  /** WhatsApp id of the deleted message. */
+  targetId: string;
+  chatJid: string;
+  chatJidAlt?: string | null;
+  /** Who deleted it: the group participant or the DM partner; null when `fromMe`. */
+  senderJid: string | null;
+  senderJidAlt?: string | null;
+  fromMe: boolean;
+  /** epoch ms of the deletion */
+  timestamp: number;
+}
+
 export interface WaChatInfo {
   jid: string;
   type: 'dm' | 'group';
@@ -111,6 +150,10 @@ export interface WaAdapterEvents {
   message: [WaIncomingMessage, { source: 'live' | 'history' }];
   /** Someone reacted to a message, changed their reaction or removed it (live or history). */
   reaction: [WaReaction, { source: 'live' | 'history' }];
+  /** A message was edited (live or history); never an echo of an edit this adapter sent. */
+  messageEdited: [WaMessageEdit, { source: 'live' | 'history' }];
+  /** A message was deleted for everyone (live or history); never an echo of this adapter's own. */
+  messageDeleted: [WaMessageRevoke, { source: 'live' | 'history' }];
   messageStatus: [WaMessageStatusUpdate];
   chats: [WaChatInfo[]];
   contacts: [WaContactInfo[]];
@@ -151,7 +194,10 @@ export interface WaSendOptions {
   messageId?: string;
 }
 
-/** The message a reaction points at: WhatsApp matches it by chat, id, side and group author. */
+/**
+ * The message a reaction, an edit or a delete points at: WhatsApp matches it by chat, id, side and
+ * group author.
+ */
 export interface WaReactionTarget {
   /** WhatsApp id of the message. */
   id: string;
@@ -160,6 +206,8 @@ export interface WaReactionTarget {
   /** Group messages from someone else: who wrote it. */
   participant?: string | null;
 }
+
+export type WaMessageTarget = WaReactionTarget;
 
 export interface SendResult {
   id: string;
@@ -207,6 +255,12 @@ export interface WaCapabilities {
   blockWindowHours?: number | null;
   /** Sends WhatsApp mentions (`WaSendOptions.mentions`); absent: no. */
   mentions?: boolean;
+  /** Edits a sent text or caption (`editText`). Absent: no. */
+  editMessage?: boolean;
+  /** Deletes a sent message for everyone (`deleteForEveryone`). Absent: no. */
+  deleteForEveryone?: boolean;
+  /** Deletes a message on the linked device itself (`deleteForMe`). Absent: no. */
+  deleteForMe?: boolean;
 }
 
 /** The capabilities of an adapter that declares none: a phone linked by QR (Baileys, the fake). */
@@ -220,6 +274,9 @@ export const LINKED_PHONE_CAPABILITIES: WaCapabilities = Object.freeze({
   block: true,
   blockWindowHours: null,
   mentions: true,
+  editMessage: true,
+  deleteForEveryone: true,
+  deleteForMe: true,
 });
 
 /** An approved message template of the number's business account. */
@@ -271,6 +328,18 @@ export interface WaAdapter {
    * reaction per number, so this replaces one made on the phone. Throws WaUnavailableError offline.
    */
   sendReaction(chatJid: string, target: WaReactionTarget, emoji: string): Promise<SendResult>;
+  /**
+   * Replaces the text (or caption) of a message the linked number sent (`capabilities.editMessage`).
+   * WhatsApp shows the customer "Edited". Throws WaUnavailableError offline.
+   */
+  editText?(chatJid: string, target: WaMessageTarget, text: string): Promise<SendResult>;
+  /** Deletes a message for everyone (`capabilities.deleteForEveryone`). Throws WaUnavailableError offline. */
+  deleteForEveryone?(chatJid: string, target: WaMessageTarget): Promise<SendResult>;
+  /**
+   * Deletes a message on the linked phone only ("Delete for me", `capabilities.deleteForMe`);
+   * `timestamp` is the message's (epoch ms). Throws WaUnavailableError offline.
+   */
+  deleteForMe?(chatJid: string, target: WaMessageTarget, timestamp: number): Promise<void>;
   markRead(chatJid: string, messageIds: string[]): Promise<void>;
   sendPresence(chatJid: string, presence: 'composing' | 'paused'): Promise<void>;
   /** re-download by id if still cached */

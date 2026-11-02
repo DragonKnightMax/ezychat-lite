@@ -4,6 +4,7 @@ import { LocaleSchema } from './i18n/locales.js';
 import {
   ChatEventSchema,
   ChatSchema,
+  MessageEditedBy,
   MessageReactionSchema,
   MessageSchema,
   QuickReplySchema,
@@ -142,6 +143,39 @@ export const SendReactionResponse = z.object({
   reactions: z.array(MessageReactionSchema),
 });
 export type SendReactionResponse = z.infer<typeof SendReactionResponse>;
+
+/** PATCH /messages/:id: new text (or caption) of a message the team sent; WhatsApp shows "Edited". */
+export const EditMessageBody = z.object({ text: z.string().trim().min(1).max(65536) });
+export type EditMessageBody = z.infer<typeof EditMessageBody>;
+
+/**
+ * DELETE /messages/:id?scope=: `everyone` deletes it on the customer's WhatsApp too; `me` hides it
+ * for the whole team and deletes it on the linked phone (admins only).
+ */
+export const DeleteMessageQuery = z.object({ scope: z.enum(['everyone', 'me']) });
+export type DeleteMessageQuery = z.infer<typeof DeleteMessageQuery>;
+
+/** One earlier version of an edited message, oldest first. */
+export const MessageEditSchema = z.object({
+  /** The text before this edit. */
+  previousBody: z.string().nullable(),
+  at: z.number(),
+  by: MessageEditedBy,
+  /** `by` `team`: the teammate who edited. */
+  userId: z.number().nullable(),
+});
+export type MessageEdit = z.infer<typeof MessageEditSchema>;
+
+/**
+ * GET /messages/:id/edits. `original`: the text of a message deleted for everyone, for admins only
+ * (null for agents and for messages that are not deleted).
+ */
+export const MessageEditsResponse = z.object({
+  messageId: z.string(),
+  edits: z.array(MessageEditSchema),
+  original: z.string().nullable(),
+});
+export type MessageEditsResponse = z.infer<typeof MessageEditsResponse>;
 
 export const NoteBody = z.object({ body: z.string().min(1).max(8192) });
 export type NoteBody = z.infer<typeof NoteBody>;
@@ -304,6 +338,20 @@ export const FakeReactionBody = z.object({
   fromMe: z.boolean().optional(),
 });
 export type FakeReactionBody = z.infer<typeof FakeReactionBody>;
+
+/**
+ * POST /api/dev/fake-edit and /api/dev/fake-revoke (fake WA only): the fake phone delivers an edit
+ * (`body`) or a delete for everyone of a stored message, by its customer, a group member
+ * (`senderJid`) or the linked phone (`fromMe`).
+ */
+export const FakeMessageChangeBody = z.object({
+  messageId: z.string().min(1).max(256),
+  /** The new text (fake-edit only). */
+  body: z.string().max(65536).optional(),
+  senderJid: z.string().max(256).optional(),
+  fromMe: z.boolean().optional(),
+});
+export type FakeMessageChangeBody = z.infer<typeof FakeMessageChangeBody>;
 
 /** POST /api/dev/fake-link (fake WA only): the inbox's fake phone links, as a QR scan would. */
 export const FakeLinkBody = z.object({ inboxId: z.number().int().positive() });
