@@ -237,6 +237,43 @@ export const McpSendImageInput = z.strictObject({
 });
 export type McpSendImageInput = z.infer<typeof McpSendImageInput>;
 
+/** Largest document the send_file tool accepts (decoded bytes; same MCP body limit as an image). */
+export const MCP_SEND_MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+export const McpSendFileInput = z.strictObject({
+  jid: McpSendMessageInput.shape.jid,
+  fileUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .optional()
+    .describe(
+      'A public https link to the file (PDF or Word .docx, up to 5 MB). Pass fileUrl or fileBase64, not both',
+    ),
+  fileBase64: z
+    .string()
+    .max(Math.ceil(MCP_SEND_MAX_FILE_BYTES / 3) * 4 + 64)
+    .optional()
+    .describe(
+      'The file as base64 (PDF or Word .docx, up to 5 MB; a data: URL prefix is allowed). Pass fileUrl or fileBase64, not both',
+    ),
+  fileName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .describe('The file name the customer sees, for example Quotation-1042.pdf'),
+  caption: z
+    .string()
+    .trim()
+    .max(MCP_SEND_MAX_CAPTION)
+    .optional()
+    .describe('Text shown with the file, exactly as the user approved it'),
+  requestId: McpSendMessageInput.shape.requestId,
+  quotedMessageId: McpSendMessageInput.shape.quotedMessageId,
+});
+export type McpSendFileInput = z.infer<typeof McpSendFileInput>;
+
 /** Digits of a phone number with its country code, or null (spaces, dashes, brackets and a leading + allowed). */
 export function normalizeNewChatPhone(raw: string): string | null {
   const digits = raw

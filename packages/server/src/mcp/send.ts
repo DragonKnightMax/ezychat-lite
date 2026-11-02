@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { fileTypeFromBuffer } from 'file-type';
-import { MCP_SEND_MAX_IMAGE_BYTES, normalizeNewChatPhone, type Message } from '@ezychat/shared';
+import {
+  MCP_SEND_MAX_FILE_BYTES,
+  MCP_SEND_MAX_IMAGE_BYTES,
+  normalizeNewChatPhone,
+  type Message,
+} from '@ezychat/shared';
 import type { AppContext } from '../context.js';
 import type { ApiPrincipal } from '../api-tokens/index.js';
 import {
@@ -56,6 +61,18 @@ export interface InboxSendPort {
   ): Promise<NewNumberResult>;
   /** An image (public https link or base64) with an optional caption into an existing chat. */
   sendImage(principal: ApiPrincipal, input: SendImageInput): Promise<SendResult>;
+  /** A PDF or Word .docx document (public https link or base64) into an existing chat. */
+  sendFile(principal: ApiPrincipal, input: SendFileInput): Promise<SendResult>;
+}
+
+export interface SendFileInput {
+  jid: string;
+  fileUrl?: string;
+  fileBase64?: string;
+  fileName: string;
+  caption?: string;
+  requestId: string;
+  quotedMessageId?: string;
 }
 
 export interface SendImageInput {
@@ -75,49 +92,83 @@ export const MCP_IMAGE_TYPES: ReadonlySet<string> = new Set([
   'image/webp',
 ]);
 
-/** Downloads an image link; throws SendError with a message for the model. */
+/** Documents send_file accepts, by the type found in the bytes, with the extension they are sent with. */
+export const MCP_FILE_TYPES: ReadonlyMap<string, string> = new Map([
+  ['application/pdf', 'pdf'],
+  ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'docx'],
+]);
+
+/** Downloads an image or file link; throws SendError with a message for the model. */
 export type ImageFetcher = (url: string) => Promise<Buffer>;
 
+type Attachment = 'image' | 'file';
+
+const tooLarge = (what: Attachment, maxBytes: number) =>
+  `The ${what} is larger than ${maxBytes / 1024 / 1024} MB.`;
+
 /**
- * The default image download: https only, never this computer or a private network (checked on the
- * address actually connected to), same-origin redirects only, 10 s, at most 5 MB.
+ * A guarded download: https only, never this computer or a private network (checked on the address
+ * actually connected to), same-origin redirects only, 10 s, at most `maxBytes`.
  */
-export function guardedImageFetcher(policy?: Omit<NetPolicy, 'maxResponseBytes'>): ImageFetcher {
-  const get = guardedFetch({
-    allowLoopback: false,
-    ...policy,
-    maxResponseBytes: MCP_SEND_MAX_IMAGE_BYTES,
-  });
+function guardedDownloader(
+  what: Attachment,
+  accept: string,
+  maxBytes: number,
+  policy?: Omit<NetPolicy, 'maxResponseBytes'>,
+): ImageFetcher {
+  const get = guardedFetch({ allowLoopback: false, ...policy, maxResponseBytes: maxBytes });
   return async (url) => {
     let res: Response;
     try {
-      res = await get(url, { method: 'GET', headers: { accept: 'image/*' } });
-      if (!res.ok) throw new SendError(`The image link answered ${res.status}; check the link.`);
+      res = await get(url, { method: 'GET', headers: { accept } });
+      if (!res.ok) throw new SendError(`The ${what} link answered ${res.status}; check the link.`);
       return Buffer.from(await res.arrayBuffer());
     } catch (err) {
       if (err instanceof SendError) throw err;
       if (err instanceof BlockedAddressError)
-        throw new SendError('The image link must be a public internet address.');
-      if (err instanceof ResponseTooLargeError) throw new SendError(IMAGE_TOO_LARGE);
+        throw new SendError(`The ${what} link must be a public internet address.`);
+      if (err instanceof ResponseTooLargeError) throw new SendError(tooLarge(what, maxBytes));
       if (err instanceof TypeError && err.message === 'url_not_https')
-        throw new SendError('The image link must start with https://.');
+        throw new SendError(`The ${what} link must start with https://.`);
       if (err instanceof TypeError && err.message === 'url_private')
-        throw new SendError('The image link must be a public internet address.');
-      throw new SendError('The image could not be downloaded from that link; check the link.');
+        throw new SendError(`The ${what} link must be a public internet address.`);
+      throw new SendError(`The ${what} could not be downloaded from that link; check the link.`);
     }
   };
 }
 
-const IMAGE_TOO_LARGE = `The image is larger than ${MCP_SEND_MAX_IMAGE_BYTES / 1024 / 1024} MB.`;
+/** The default image download (5 MB). */
+export function guardedImageFetcher(policy?: Omit<NetPolicy, 'maxResponseBytes'>): ImageFetcher {
+  return guardedDownloader('image', 'image/*', MCP_SEND_MAX_IMAGE_BYTES, policy);
+}
+
+/** The default file download for send_file (PDF or .docx, 5 MB). */
+export function guardedFileFetcher(policy?: Omit<NetPolicy, 'maxResponseBytes'>): ImageFetcher {
+  return guardedDownloader(
+    'file',
+    [...MCP_FILE_TYPES.keys(), '*/*;q=0.1'].join(', '),
+    MCP_SEND_MAX_FILE_BYTES,
+    policy,
+  );
+}
+
+function decodeBase64(raw: string, field: string, what: Attachment, maxBytes: number): Buffer {
+  const b64 = raw.replace(/^data:[\w.+-]+\/[\w.+-]+;base64,/i, '').replace(/\s+/g, '');
+  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 === 1)
+    throw new SendError(`${field} is not valid base64.`);
+  const buf = Buffer.from(b64, 'base64');
+  if (buf.length > maxBytes) throw new SendError(tooLarge(what, maxBytes));
+  return buf;
+}
 
 /** Bytes of a base64 image (a data: URL prefix and line breaks allowed), or a SendError. */
 export function decodeImageBase64(raw: string): Buffer {
-  const b64 = raw.replace(/^data:[\w.+-]+\/[\w.+-]+;base64,/i, '').replace(/\s+/g, '');
-  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 === 1)
-    throw new SendError('imageBase64 is not valid base64.');
-  const buf = Buffer.from(b64, 'base64');
-  if (buf.length > MCP_SEND_MAX_IMAGE_BYTES) throw new SendError(IMAGE_TOO_LARGE);
-  return buf;
+  return decodeBase64(raw, 'imageBase64', 'image', MCP_SEND_MAX_IMAGE_BYTES);
+}
+
+/** Bytes of a base64 file for send_file, or a SendError. */
+export function decodeFileBase64(raw: string): Buffer {
+  return decodeBase64(raw, 'fileBase64', 'file', MCP_SEND_MAX_FILE_BYTES);
 }
 
 /** Per-token limits: a runaway assistant loop cannot flood customers. */
@@ -154,9 +205,10 @@ export function sendClientId(tokenId: number, requestId: string): string {
 
 export function createInboxSendPort(
   ctx: AppContext,
-  deps?: { now?: () => number; fetchImage?: ImageFetcher },
+  deps?: { now?: () => number; fetchImage?: ImageFetcher; fetchFile?: ImageFetcher },
 ): InboxSendPort {
   const fetchImage = deps?.fetchImage ?? guardedImageFetcher();
+  const fetchFile = deps?.fetchFile ?? guardedFileFetcher();
   const chats = getChats(ctx);
   const messages = getMessages(ctx);
   const log = ctx.log.child({ mod: 'mcp' });
@@ -189,65 +241,114 @@ export function createInboxSendPort(
     );
   }
 
+  /**
+   * An image or document into an existing chat, through the message service like a text. The type is
+   * checked on the bytes, never the link, name or label; the extension comes from that type.
+   */
+  async function sendAttachment(
+    principal: ApiPrincipal,
+    input: {
+      jid: string;
+      caption?: string;
+      fileName?: string;
+      requestId: string;
+      quotedMessageId?: string;
+    },
+    kind: {
+      what: Attachment;
+      type: Message['type'];
+      bytes: () => Promise<Buffer>;
+      /** The extension to send with, or null when this tool refuses the detected type. */
+      extFor: (mime: string, ext: string) => string | null;
+      refused: string;
+      defaultName: string;
+    },
+  ): Promise<SendResult> {
+    const chatJid = targetChat(principal, input.jid);
+    const caption = input.caption?.trim() || undefined;
+    const clientId = sendClientId(principal.tokenId, input.requestId);
+    // A retried requestId returns the stored message: nothing is downloaded, sent or counted again.
+    const before = messages.byClientId(clientId);
+    if (before) {
+      if (
+        before.chatJid !== chatJid ||
+        before.type !== kind.type ||
+        (before.body ?? undefined) !== caption
+      )
+        throw new SendError(
+          'This requestId was already used for a different message; use a new requestId.',
+        );
+      return result(before, true);
+    }
+    countSend(principal);
+    const buffer = await kind.bytes();
+    if (!buffer.length) throw new SendError(`The ${kind.what} is empty.`);
+    const type = await fileTypeFromBuffer(buffer).catch(() => undefined);
+    const ext = type ? kind.extFor(type.mime, type.ext) : null;
+    if (!ext) throw new SendError(kind.refused);
+    const base = (input.fileName?.trim() || kind.defaultName).replace(/\.[A-Za-z0-9]{1,5}$/, '');
+    let msg: Message;
+    try {
+      msg = await messages.sendMedia(
+        chatJid,
+        {
+          buffer,
+          fileName: `${base || kind.defaultName}.${ext}`,
+          ...(caption ? { caption } : {}),
+          ...(input.quotedMessageId ? { quotedId: input.quotedMessageId } : {}),
+        },
+        principal.user.id,
+        clientId,
+        { viaTokenId: principal.tokenId },
+      );
+    } catch (err) {
+      throw sendFailure(err);
+    }
+    audit(ctx.db, {
+      userId: principal.user.id,
+      action: 'mcp.send',
+      ip: null,
+      // Never the caption or the file: which token sent which message into which chat.
+      meta: { tokenId: principal.tokenId, chatJid, messageId: msg.id, type: kind.type },
+    });
+    return result(msg, false);
+  }
+
   return {
     sendText(principal, input) {
       return send(principal, targetChat(principal, input.jid), input);
     },
 
     async sendImage(principal, input) {
-      const chatJid = targetChat(principal, input.jid);
       if (Boolean(input.imageUrl) === Boolean(input.imageBase64))
         throw new SendError('Pass the image as imageUrl or imageBase64 (one of them).');
-      const caption = input.caption?.trim() || undefined;
-      const clientId = sendClientId(principal.tokenId, input.requestId);
-      // A retried requestId returns the stored message: nothing is downloaded, sent or counted again.
-      const before = messages.byClientId(clientId);
-      if (before) {
-        if (
-          before.chatJid !== chatJid ||
-          before.type !== 'image' ||
-          (before.body ?? undefined) !== caption
-        )
-          throw new SendError(
-            'This requestId was already used for a different message; use a new requestId.',
-          );
-        return result(before, true);
-      }
-      countSend(principal);
-      const buffer = input.imageBase64
-        ? decodeImageBase64(input.imageBase64)
-        : await fetchImage(input.imageUrl!);
-      if (!buffer.length) throw new SendError('The image is empty.');
-      // Checked on the bytes, never the link, name or label.
-      const type = await fileTypeFromBuffer(buffer).catch(() => undefined);
-      if (!type || !MCP_IMAGE_TYPES.has(type.mime))
-        throw new SendError('Only JPEG, PNG or WebP images can be sent.');
-      const base = (input.fileName?.trim() || 'image').replace(/\.[A-Za-z0-9]{1,5}$/, '');
-      let msg: Message;
-      try {
-        msg = await messages.sendMedia(
-          chatJid,
-          {
-            buffer,
-            fileName: `${base}.${type.ext}`,
-            ...(caption ? { caption } : {}),
-            ...(input.quotedMessageId ? { quotedId: input.quotedMessageId } : {}),
-          },
-          principal.user.id,
-          clientId,
-          { viaTokenId: principal.tokenId },
-        );
-      } catch (err) {
-        throw sendFailure(err);
-      }
-      audit(ctx.db, {
-        userId: principal.user.id,
-        action: 'mcp.send',
-        ip: null,
-        // Never the caption or the image: which token sent which message into which chat.
-        meta: { tokenId: principal.tokenId, chatJid, messageId: msg.id, type: 'image' },
+      return sendAttachment(principal, input, {
+        what: 'image',
+        type: 'image',
+        bytes: () =>
+          input.imageBase64
+            ? Promise.resolve(decodeImageBase64(input.imageBase64))
+            : fetchImage(input.imageUrl!),
+        extFor: (mime, ext) => (MCP_IMAGE_TYPES.has(mime) ? ext : null),
+        refused: 'Only JPEG, PNG or WebP images can be sent.',
+        defaultName: 'image',
       });
-      return result(msg, false);
+    },
+
+    async sendFile(principal, input) {
+      if (Boolean(input.fileUrl) === Boolean(input.fileBase64))
+        throw new SendError('Pass the file as fileUrl or fileBase64 (one of them).');
+      return sendAttachment(principal, input, {
+        what: 'file',
+        type: 'document',
+        bytes: () =>
+          input.fileBase64
+            ? Promise.resolve(decodeFileBase64(input.fileBase64))
+            : fetchFile(input.fileUrl!),
+        extFor: (mime) => MCP_FILE_TYPES.get(mime) ?? null,
+        refused: 'Only PDF or Word (.docx) files can be sent.',
+        defaultName: 'document',
+      });
     },
 
     async sendToNewNumber(principal, input) {

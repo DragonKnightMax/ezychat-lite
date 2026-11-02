@@ -513,7 +513,9 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
   audit `mcp.send` {tokenId, chatJid, messageId}, never the text. `send_image` (same scope and limits)
   sends a JPEG/PNG/WebP (type read from the bytes, ≤ 5 MB) given as base64 or a public https link
   downloaded only through `guardedFetch` (SSRF guard, 10 s, no loopback/private address); a retry with
-  the same `requestId` downloads nothing; audit adds `type: 'image'`, never the caption or link. `/mcp`
+  the same `requestId` downloads nothing; audit adds `type: 'image'`, never the caption or link. `send_file` does the
+  same for a PDF or Word .docx (≤ 5 MB, type read from the bytes, sent as a document named `fileName`; audit
+  `type: 'document'`). `/mcp`
   accepts bodies up to 8 MB (`MCP_BODY_LIMIT`), only after the token check in `onRequest`. `send_to_new_number` (scope
   `inbox:send_new`, ticked at creation under "Can send", default off) may start a chat with a number not
   in the inbox only after `WaAdapter.checkNumber` confirms it (20 checks a day per token, counted before

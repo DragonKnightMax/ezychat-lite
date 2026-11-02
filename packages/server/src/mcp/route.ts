@@ -95,7 +95,7 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
       principals.set(req, authenticate(req));
     });
 
-    // send_image takes an image of up to 5 MB as base64 (about 6.7 MB of JSON). The token is checked
+    // send_image and send_file take up to 5 MB as base64 (about 6.7 MB of JSON). The token is checked
     // in onRequest, before the body is read, so only a valid token can send a large body.
     scope.post(MCP_PATH, { bodyLimit: MCP_BODY_LIMIT }, async (req, reply) => {
       const principal = principals.get(req)!;

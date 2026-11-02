@@ -1,21 +1,23 @@
 // send_image through the real /mcp route (real tokens, message service, send queue, fake WhatsApp),
 // the port with an injected image download, and the guarded download against a local https server.
-import { createServer, type Server } from 'node:https';
-import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { User } from '@ezychat/shared';
 import { MCP_SEND_MAX_IMAGE_BYTES } from '@ezychat/shared';
-import { generateSelfSignedCert } from '../../../e2e/partner-mcp/cert.mjs';
 import {
   createInboxSendPort,
   decodeImageBase64,
   guardedImageFetcher,
-  sendClientId,
   SendError,
 } from '../src/mcp/send.js';
-import { getApiTokens } from '../src/api-tokens/index.js';
 import { makeTestApp, type TestApp } from './helpers.js';
-import { data, mcpClient, rpc, waitFor, sendTokens } from './mcp-helpers.js';
+import { data, mcpClient, waitFor, sendTokens } from './mcp-helpers.js';
+import {
+  httpsFixture,
+  lastSendAudit,
+  listedTools,
+  principalOf,
+  sentRow,
+} from './mcp-send-media-helpers.js';
 
 const LID = '9101@lid';
 const PN = '60123450000@s.whatsapp.net';
@@ -49,21 +51,11 @@ afterAll(async () => {
   await t.close();
 });
 
-const row = (id: string) =>
-  t.ctx.db
-    .prepare(
-      `SELECT chat_jid, type, body, media_mime, media_name, sent_by_user_id, sent_via_token_id
-       FROM messages WHERE client_id = ?`,
-    )
-    .get(sendClientId(senderId, id)) as Record<string, unknown> | undefined;
+const row = (id: string) => sentRow(t, senderId, id);
 
 describe('send_image over /mcp', () => {
   it('is listed only for a token that can send, and is not read-only', async () => {
-    const tools = async (token: string) =>
-      (await post(rpc('tools/list'), token)).json().result.tools as Array<{
-        name: string;
-        annotations: Record<string, boolean>;
-      }>;
+    const tools = (token: string) => listedTools(post, token);
     expect((await tools(readOnly)).map((x) => x.name)).not.toContain('send_image');
     const tool = (await tools(sender)).find((x) => x.name === 'send_image');
     expect(tool?.annotations).toMatchObject({ readOnlyHint: false, openWorldHint: true });
@@ -97,12 +89,9 @@ describe('send_image over /mcp', () => {
       sent_via_token_id: senderId,
     });
     await waitFor(() => t.wa.sent.some((m) => m.file?.caption === 'The blue one'));
-    const audit = t.ctx.db
-      .prepare("SELECT meta FROM audit_log WHERE action = 'mcp.send' ORDER BY id DESC LIMIT 1")
-      .get() as { meta: string };
-    const meta = JSON.parse(audit.meta);
-    expect(meta).toMatchObject({ tokenId: senderId, chatJid: LID, type: 'image' });
-    expect(audit.meta).not.toContain('blue');
+    const audit = lastSendAudit(t);
+    expect(audit.meta).toMatchObject({ tokenId: senderId, chatJid: LID, type: 'image' });
+    expect(audit.raw).not.toContain('blue');
   });
 
   it('a repeated requestId sends nothing again; reusing it for another caption is refused', async () => {
@@ -175,8 +164,7 @@ describe('the send port with an image link', () => {
         return JPEG;
       },
     });
-    const principal = getApiTokens(t.ctx).resolve(sender);
-    if (!principal.ok) throw new Error('token');
+    const principal = { principal: principalOf(t, sender) };
     const id = requestId();
     const sent = await port.sendImage(principal.principal, {
       jid: LID,
@@ -197,8 +185,7 @@ describe('the send port with an image link', () => {
 
   it('an empty download is refused', async () => {
     const port = createInboxSendPort(t.ctx, { fetchImage: async () => Buffer.alloc(0) });
-    const principal = getApiTokens(t.ctx).resolve(sender);
-    if (!principal.ok) throw new Error('token');
+    const principal = { principal: principalOf(t, sender) };
     await expect(
       port.sendImage(principal.principal, {
         jid: LID,
@@ -222,28 +209,15 @@ describe('decodeImageBase64', () => {
 });
 
 describe('guardedImageFetcher', () => {
-  let server: Server;
+  let site: Awaited<ReturnType<typeof httpsFixture>>;
   let origin: string;
   let ca: string;
 
   beforeAll(async () => {
-    const tls = generateSelfSignedCert();
-    ca = tls.cert;
-    server = createServer({ cert: tls.cert, key: tls.key }, (req, res) => {
-      if (req.url === '/photo.png')
-        return void res.writeHead(200, { 'content-type': 'image/png' }).end(PNG);
-      if (req.url === '/big') {
-        res.writeHead(200);
-        return void res.end(Buffer.alloc(MCP_SEND_MAX_IMAGE_BYTES + 1024));
-      }
-      res.writeHead(404).end();
-    });
-    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
-    origin = `https://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    site = await httpsFixture({ '/photo.png': PNG }, MCP_SEND_MAX_IMAGE_BYTES + 1024);
+    ({ origin, ca } = site);
   });
-  afterAll(async () => {
-    await new Promise<void>((r) => server.close(() => r()));
-  });
+  afterAll(() => site.close());
 
   it('downloads an image (loopback only allowed in tests)', async () => {
     const get = guardedImageFetcher({ allowLoopback: true, ca });

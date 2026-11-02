@@ -29,6 +29,16 @@ Read this log before testing a feature, and add a row after every Dev Build chec
 
 ## Log
 
+MCP `send_file` (branch `feat/mcp-send-file`), owner's PC, `D:\dev\test-env\lite\start-sheets-google.ps1` (worktree
+`D:\dev\wm-pr192`, port 7491, kept test data, fake WhatsApp); AI assistant access turned on for the run with a temporary
+"Can send" token, both removed and access turned off again afterwards; calls to the real `/mcp` endpoint from the
+signed-in app tab:
+
+| Date       | Build / PR                        | Scenario                               | Steps                                                                                                                                                                 | Result                                                                                                                                                                                                          | Untested                                                                                |
+| ---------- | --------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2026-11-03 | `main` `f3e8f375` (before change) | send_image baseline                    | `send_image` 1×1 PNG + caption; a PDF through `send_image`; `send_file`                                                                                               | PNG sent (row `image`, `image/png`, delivered; invisible at 1×1 px); PDF refused "Only JPEG, PNG or WebP"; `send_file` "not found"                                                                              |                                                                                         |
+| 2026-11-03 | PR #261 `8e15eb71`                | send_file PDF and .docx, visible image | `tools/list`; `send_image` 320×180 PNG; `send_file` PDF `Quotation-1042.pdf` + caption; `send_file` .docx named `Kopi Apong terms` + caption; PNG through `send_file` | Pass: `send_file` listed; all three sent and shown in the chat (image, `Quotation-1042.pdf` application/pdf, `Kopi Apong terms.docx` with Download, "via AI assistant"); PNG refused "Only PDF or Word (.docx)" | Real WhatsApp delivery and how the phone shows the document; `fileUrl` from a real site |
+
 Google Sheets connector with **real Google** (PR #258 on `main` `f3e8f375`, then this branch `d1e6eb8a`), owner's PC,
 `D:\dev\test-env\lite\start-sheets-google.ps1` (worktree `D:\dev\wm-pr192`, port 7491, kept test data, fake WhatsApp,
 "EzyChat Desktop" OAuth client + Picker API key of `ezychat-prod`, AI on the owner's ChatGPT sign-in); inbound through
