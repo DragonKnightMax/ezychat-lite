@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.69] - 2026-11-02
+
 ### Added
 
 - **AI assistants can send images.** A connected AI assistant (MCP) with **Can send WhatsApp messages** has a new
@@ -22,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the AI agent; agents change their own. When a customer edits or deletes a message, the inbox now shows it too
   ("Edited", or "… deleted this message"); admins can still open the original. The AI agent ignores deleted
   messages and answers the edited text. Linked-phone inboxes only (the WhatsApp Business API cannot edit or
-  delete); untested against real WhatsApp until the release check.
+  delete).
 
 ### Fixed
 
