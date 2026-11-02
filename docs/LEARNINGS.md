@@ -1359,6 +1359,11 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
   (`chat:updated` with tags), or another tab or teammate sees stale options until the cache expires.
 - E2E data that other tests or projects could share (tags, names) gets a per-project suffix
   (`projectTag(info)`); `npm run e2e` rebuilds `apps/web/dist`, so stop any Dev Build serving it first.
+- E2E that closes one Radix popover and then opens another waits for the first to be gone
+  (`toHaveCount(0)`) and its trigger to be focused (`toBeFocused()`) before the next step: Radix hands focus
+  back one timer tick after the exit animation, and under load that late focus lands after the next step,
+  dismissing the new popover ("focus outside"). Reproduce such races by delaying zero-delay timers in the
+  page, not by raising timeouts. `--repeat-each` on reaction tests hits the 30-a-minute reaction limit.
 - Review a UI change on the whole page at 1280 and 360 px, top to bottom, not only the changed
   section: background bands, orphaned blocks and spacing between sections only show in context.
 - Marketing screenshots come from `e2e/marketing-screenshots.mjs` on a fresh `--mode standalone` server

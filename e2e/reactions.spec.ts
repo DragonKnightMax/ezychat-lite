@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import {
   chatHref,
   customerJid,
@@ -120,21 +121,33 @@ test('a teammate reacts from the 🙂 button, sees "You", and the same emoji rem
   await page.goto(chatHref(jid));
   const row = page.locator(`[data-message-id="${id}"]`).locator('..');
 
+  const pickerButton = row.getByTestId('reaction-picker-button');
+  const badge = row.getByTestId('reaction-badges');
+  // A closing popover hands focus back to its trigger one timer tick after its exit animation.
+  // Under load that late focus can land after the next step's focus and dismiss the popover it
+  // just opened, so wait until the popover is gone and its trigger has focus again.
+  const closed = async (popover: 'reaction-picker' | 'reaction-list', trigger: Locator) => {
+    await expect(page.getByTestId(popover)).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  };
   // Keyboard path (works with mouse and touch layouts): focus the button, Enter opens the bar.
   const open = async () => {
-    await row.getByTestId('reaction-picker-button').focus();
+    await pickerButton.focus();
     await page.keyboard.press('Enter');
-    return page.getByTestId('reaction-picker');
+    const bar = page.getByTestId('reaction-picker');
+    await expect(bar).toBeVisible();
+    return bar;
   };
   let bar = await open();
   await expect(bar.getByRole('button', { name: /^React with/ })).toHaveCount(6);
   await expectNoHorizontalScroll(page, 'reaction bar');
   await bar.getByRole('button', { name: 'React with 👍' }).click();
-  const badge = row.getByTestId('reaction-badges');
   await expect(badge).toHaveText('👍');
+  await closed('reaction-picker', pickerButton);
   await badge.click();
   await expect(page.getByTestId('reaction-list')).toContainText('You');
   await page.keyboard.press('Escape');
+  await closed('reaction-list', badge);
 
   // The current emoji is highlighted; selecting it again removes the reaction.
   bar = await open();
@@ -142,6 +155,7 @@ test('a teammate reacts from the 🙂 button, sees "You", and the same emoji rem
   await expect(current).toHaveAttribute('aria-pressed', 'true');
   await current.click();
   await expect(badge).toHaveCount(0);
+  await closed('reaction-picker', pickerButton);
 
   // An emoji from the grid of 40.
   bar = await open();
