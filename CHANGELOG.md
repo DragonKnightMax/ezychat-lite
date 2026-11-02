@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.71] - 2026-11-03
+
 ### Added
 
 - **AI assistants can send PDF and Word files.** With **Can send WhatsApp messages**, an AI assistant connected
-  through MCP can now send a PDF or Word (.docx) file of up to 5 MB, with a caption, into an existing chat
-  (`send_file`), for example a quotation or your terms. The customer gets it as a WhatsApp document with the
-  name you chose. Other file types are refused, whatever their name.
+  through MCP can now send a PDF or Word (.docx) file of up to 5 MB, with a caption, into an existing chat, for
+  example a quotation or your terms. The customer gets it as a WhatsApp document with the name you chose. Other
+  file types are refused, whatever their name.
 - **Google Sheets connector (Beta).** Admin → Connectors → **Google Sheets**: sign in with Google, choose a
   spreadsheet in Google's own file picker (EzyChat can open only the sheets you choose) and pick a tab. With
   **Answer questions from the sheet**, the AI agent answers prices, stock, opening hours or FAQ questions from that
