@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Linking WhatsApp no longer gets stuck on a spinner.** Showing the QR code (or a new one) could hang on
+  "Waiting for the QR code" when the WhatsApp version lookup was slow to answer. The QR code now shows at once; the
+  lookup runs in the background and is used from the next connection.
+
 ## [0.1.69] - 2026-11-02
 
 ### Added

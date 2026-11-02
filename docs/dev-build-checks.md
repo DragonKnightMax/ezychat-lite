@@ -29,6 +29,14 @@ Read this log before testing a feature, and add a row after every Dev Build chec
 
 ## Log
 
+QR link never waits for the WhatsApp version lookup (PR ossmalaysia/ezychat-lite#256, `fd6b0d2`), **real WhatsApp
+servers** (no `--fake-wa`), cloud session (Linux), temp data, port 7492; GitHub "blocked" by a `--import` preload that makes
+every `raw.githubusercontent.com` fetch hang (the field report: QR spinner forever):
+
+| Date       | Build / PR                                                            | Scenario                                  | Steps                                                                                                                              | Result                                                                                                                                                                                      | Untested                                                                             |
+| ---------- | --------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 2026-11-02 | PR #256 (`fd6b0d2`), `cli.ts --mode standalone`, temp data, port 7492 | QR shows with GitHub blocked; Show new QR | first-admin setup, poll `GET /api/wa/status` every 0.5 s as the link screen does, then `POST /api/wa/relink` and poll for a new QR | real: WhatsApp sent a QR 0.5 s after `connecting`; Show new QR 200, new QR 0.5 s later. Same adapter test on `main` with GitHub blocked: `connect()` never returned, no QR (bug reproduced) | scanning the QR with a phone (no number linked; nothing sent); Windows desktop build |
+
 MCP `send_image` (PR ossmalaysia/ezychat-lite#253, `f6f71b9`), `cli.ts --mode dev --fake-wa`, temp data, port 7488 (cloud
 session, Linux), real HTTP client against `/mcp` (script: setup admin, MCP on, token with Can send, fake inbound):
 

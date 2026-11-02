@@ -875,6 +875,9 @@ into AGENTS.md.
 
 ## WhatsApp / Baileys
 
+- Nothing on the connect path may await the network without a bound: `fetchLatestBaileysVersion()` has no timeout,
+  and awaiting it in `open()` kept the QR on "connecting" forever. Connect with `waVersion.current()` and refresh in the
+  background (`wa-version.ts`); a connect refused for an old version reconnects with the refreshed one.
 - A WhatsApp ERROR ack is not proof a message was not sent: in a group it is one ack for the whole message even when
   only some members' devices failed. A later delivered/read receipt overrides it, and a Retry of a message that has a
   WhatsApp id re-sends under that same id (`WaSendOptions.messageId`), never a new one: a new id is a second copy.

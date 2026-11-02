@@ -42,6 +42,7 @@ import {
 import { createAuthStore, type AuthStore } from './auth-store.js';
 import { backoffMs, classifyDisconnect } from './disconnect.js';
 import { Lru } from './lru.js';
+import { createWaVersionSource } from './wa-version.js';
 import { jidType, mapStoredReactions, mapWAMessage, mapWAReaction, toMs } from './mapping.js';
 import { quotedForChat, quotedFromRef } from './quoted.js';
 import { mapWAProtocol } from './protocol.js';
@@ -56,6 +57,11 @@ const RAW_CACHE_MAX = 2000;
 /** How long an edit or delete this adapter sent waits for WhatsApp's echo of it. */
 const OWN_CHANGE_TTL_MS = 60_000;
 const DAY_MS = 86_400_000;
+
+/** One per process: every inbox and reconnect shares the looked-up WhatsApp Web version. */
+const waVersion = createWaVersionSource({
+  fetchLatest: () => fetchLatestBaileysVersion() as Promise<{ version: [number, number, number] }>,
+});
 
 type BoomLike = { output?: { statusCode?: number }; message?: string };
 
@@ -305,13 +311,11 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
     this.setStatus({ state: 'connecting', qr: null });
     const { state, saveCreds } = await this.auth.load();
 
-    let version: [number, number, number] | undefined;
-    try {
-      const latest = await fetchLatestBaileysVersion();
-      version = latest.version;
-    } catch (err) {
-      this.logger.warn({ err }, 'could not fetch latest WA version; using bundled default');
-    }
+    // Never wait for the GitHub lookup: connect with the version we have, refresh it for next time.
+    const version = waVersion.current();
+    void waVersion.refresh().then(({ error }) => {
+      if (error) this.logger.warn({ err: error }, 'could not fetch latest WA version');
+    });
 
     if (this.stopped) return; // disconnect() was called while loading
 

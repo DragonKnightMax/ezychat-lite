@@ -28,3 +28,4 @@ Every release review run, newest last. Never pruned.
 | 2026-11-01 | #244 | `2b3e562` | — | — | human-approved | docs/release-review/log.md |
 | 2026-11-01 | #244 | `2b3e562` | critical | 40 | risk:human | docs/release-review/log.md |
 | 2026-11-02 | #204 | `8565861` | — | — | human-approved | docs/release-review/log.md |
+| 2026-11-02 | #256 | `4483177` | — | — | human-approved | docs/release-review/log.md |
