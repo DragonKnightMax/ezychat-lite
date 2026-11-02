@@ -165,6 +165,25 @@ describe('FakeWaAdapter', () => {
     expect(wa.sent).toHaveLength(1);
   });
 
+  it('sendText under a given messageId reuses it, and skipNextDelivery withholds one receipt', async () => {
+    const wa = new FakeWaAdapter();
+    await wa.connect();
+    const statuses: string[] = [];
+    wa.on('messageStatus', (u) => statuses.push(`${u.id}:${u.status}`));
+    wa.skipNextDelivery();
+    const res = await wa.sendText('601111@s.whatsapp.net', 'again', { messageId: 'WA-SAME' });
+    await new Promise((r) => setImmediate(r));
+    expect(res.id).toBe('WA-SAME');
+    expect(wa.sent.at(-1)?.id).toBe('WA-SAME');
+    expect(statuses).toEqual(['WA-SAME:sent']);
+    const media = await wa.sendMedia(
+      '601111@s.whatsapp.net',
+      { buffer: Buffer.from('x'), mime: 'image/png', fileName: 'a.png' },
+      { messageId: 'WA-MEDIA' },
+    );
+    expect(media.id).toBe('WA-MEDIA');
+  });
+
   it('sendMedia records file', async () => {
     const wa = new FakeWaAdapter();
     await wa.connect();

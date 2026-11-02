@@ -856,6 +856,9 @@ into AGENTS.md.
 
 ## WhatsApp / Baileys
 
+- A WhatsApp ERROR ack is not proof a message was not sent: in a group it is one ack for the whole message even when
+  only some members' devices failed. A later delivered/read receipt overrides it, and a Retry of a message that has a
+  WhatsApp id re-sends under that same id (`WaSendOptions.messageId`), never a new one: a new id is a second copy.
 - Baileys emits the echo of our own send (`messages.upsert`, `fromMe`) before `sendMessage` resolves:
   data only the sender knows (e.g. which teammate sent a reaction) must be added after the send by an
   idempotent step that works whether the echo came first or later (`ReactionRepo.applyOwn`), and the

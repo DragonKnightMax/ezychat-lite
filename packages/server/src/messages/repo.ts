@@ -215,10 +215,11 @@ export class MessageRepo {
     return r?.wa_remote_jid ?? null;
   }
 
+  /** Outgoing rows waiting to be sent: new sends (`local-…`) and retries kept under their WhatsApp id. */
   pendingLocal(): MessageRow[] {
     return this.db
       .prepare(
-        "SELECT * FROM messages WHERE status = 'pending' AND id LIKE 'local-%' ORDER BY created_at ASC",
+        "SELECT * FROM messages WHERE status = 'pending' AND (id LIKE 'local-%' OR from_me = 1) ORDER BY created_at ASC",
       )
       .all() as MessageRow[];
   }

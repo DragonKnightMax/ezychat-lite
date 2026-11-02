@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type * as Baileys from 'baileys';
+import { proto } from 'baileys';
 import { createBaileysAdapter } from '../index.js';
 import { WaUnavailableError } from '../types.js';
 import type {
@@ -44,6 +45,22 @@ function openAdapterRecording(prefix: string) {
     _status: { state: 'open', me: null, qr: null, lastError: null },
   });
   return { a, calls };
+}
+
+/** Like openAdapterRecording, but also records the send options and returns the id it was given. */
+function openAdapterWithOptions() {
+  const a = new BaileysAdapter({ authDir: 'unused-auth-dir', historyDays: 7 });
+  const options: unknown[] = [];
+  Object.assign(a as unknown as Record<string, unknown>, {
+    sock: {
+      sendMessage: async (_jid: string, _content: unknown, opts?: { messageId?: string }) => {
+        options.push(opts);
+        return { key: { id: opts?.messageId ?? 'NEW-ID' }, messageTimestamp: 1_700_000_000 };
+      },
+    },
+    _status: { state: 'open', me: null, qr: null, lastError: null },
+  });
+  return { a, options };
 }
 
 describe('pairing identity', () => {
@@ -151,6 +168,35 @@ function collect(a: BaileysAdapter) {
 }
 
 describe('BaileysAdapter event handling', () => {
+  it('passes the WhatsApp error code of an ERROR ack, and only for failures', () => {
+    const a = new BaileysAdapter({ authDir: 'unused-auth-dir', historyDays: 0 });
+    const { statuses } = collect(a);
+    const key = { id: 'OUT1', remoteJid: '120363000000000001@g.us', fromMe: true };
+    a.handleMessageUpdates([
+      {
+        key,
+        update: { status: proto.WebMessageInfo.Status.ERROR, messageStubParameters: ['479'] },
+      },
+      { key, update: { status: proto.WebMessageInfo.Status.ERROR } },
+      {
+        key,
+        update: { status: proto.WebMessageInfo.Status.SERVER_ACK, messageStubParameters: ['x'] },
+      },
+    ] as never);
+    expect(statuses).toEqual([
+      { id: 'OUT1', chatJid: key.remoteJid, status: 'failed', error: '479' },
+      { id: 'OUT1', chatJid: key.remoteJid, status: 'failed' },
+      { id: 'OUT1', chatJid: key.remoteJid, status: 'sent' },
+    ]);
+  });
+
+  it('re-sends under the given WhatsApp id and otherwise passes no options', async () => {
+    const { a, options } = openAdapterWithOptions();
+    expect((await a.sendText('g@g.us', 'again', { messageId: 'WA-SAME' })).id).toBe('WA-SAME');
+    expect((await a.sendText('g@g.us', 'new')).id).toBe('NEW-ID');
+    expect(options).toEqual([{ messageId: 'WA-SAME' }, undefined]);
+  });
+
   it("treats upsert 'append' (offline-queued) messages as live, even with history_days=0", () => {
     const a = new BaileysAdapter({ authDir: 'unused-auth-dir', historyDays: 0 });
     const { msgs } = collect(a);

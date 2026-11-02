@@ -22,6 +22,11 @@ export interface SendJob {
   voiceNote?: boolean;
   /** template jobs: the approved template and its body values */
   template?: WaTemplateSend;
+  /**
+   * Retry of a message WhatsApp already took (row keeps its WhatsApp id): send it again under that
+   * same WhatsApp id, so phones that already have it never show a second copy.
+   */
+  resendId?: string;
 }
 
 export interface SendQueueDeps {

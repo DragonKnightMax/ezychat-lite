@@ -4,7 +4,8 @@ import { FAKE_RUN } from '@ezychat/wa';
 import { makeTestApp, type TestApp } from './helpers.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
 import { getChats, getMessages } from '../src/wa-bridge/index.js';
-import { createMessageService } from '../src/messages/service.js';
+import { createMessageService, GROUP_DELIVERY_ERROR } from '../src/messages/service.js';
+import { MessageRepo } from '../src/messages/repo.js';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -16,6 +17,7 @@ afterEach(async () => {
 
 const enc = encodeURIComponent;
 const JID = '60177777777@s.whatsapp.net';
+const GROUP = '120363000000000001@g.us';
 const settle = async (n = 20) => {
   for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r));
 };
@@ -293,6 +295,7 @@ describe('messages routes', () => {
   it('an ERROR ack that arrives before the id rename leaves the message failed', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seed();
+    t.wa.skipNextDelivery();
     // the fake adapter's next outgoing id is FAKE-OUT-<run>-1; its failure ack races ahead of the send result
     getMessages(t.ctx).applyStatus({
       id: `FAKE-OUT-${FAKE_RUN}-1`,
@@ -319,7 +322,7 @@ describe('messages routes', () => {
     expect(row().error).toBe('Delivery failed');
   });
 
-  it('a message failed by WhatsApp after the rename (WA id) can be retried', async () => {
+  it('a retry of a message WhatsApp already took re-sends it under the same id (no second copy)', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seed();
     await t.app.inject({
@@ -336,11 +339,10 @@ describe('messages routes', () => {
     await waitFor(() => row().id.startsWith('FAKE-OUT-'));
     const waId = row().id;
     await settle();
-    // simulate WhatsApp rejecting it after the rename (ERROR ack on the WA-id row)
+    // simulate WhatsApp's ERROR ack on the WA-id row
     t.ctx.db
       .prepare("UPDATE messages SET status = 'failed', error = 'Delivery failed' WHERE id = ?")
       .run(waId);
-    expect(row().status).toBe('failed');
     const statuses: Array<{ id: string; newId?: string; status: string }> = [];
     t.ctx.bus.on('message:status', (s) => statuses.push(s));
     const r = await t.app.inject({
@@ -350,11 +352,119 @@ describe('messages routes', () => {
     });
     expect(r.statusCode).toBe(200);
     const m = MessageSchema.parse(r.json());
-    expect(m.status).toBe('pending');
-    expect(m.id).toBe('local-c-wa');
-    expect(statuses[0]).toMatchObject({ id: waId, newId: 'local-c-wa', status: 'pending' });
-    await waitFor(() => row().id.startsWith('FAKE-OUT-') && row().id !== waId);
-    expect(t.wa.sent.filter((x) => x.text === 'retry me').length).toBe(2);
+    expect(m).toMatchObject({ id: waId, status: 'pending' });
+    expect(statuses[0]).toMatchObject({ id: waId, status: 'pending' });
+    expect(statuses[0]?.newId).toBeUndefined();
+    await waitFor(() => row().status === 'delivered');
+    const copies = t.wa.sent.filter((x) => x.text === 'retry me');
+    expect(copies.map((x) => x.id)).toEqual([waId, waId]);
+    expect(row().id).toBe(waId);
+    expect(
+      (
+        t.ctx.db.prepare("SELECT COUNT(*) AS n FROM messages WHERE client_id = 'c-wa'").get() as {
+          n: number;
+        }
+      ).n,
+    ).toBe(1);
+  });
+
+  it('a retry kept under its WhatsApp id is restored after a restart', () => {
+    t.ctx.db
+      .prepare(
+        `INSERT INTO messages(id, chat_jid, from_me, type, body, timestamp, status, client_id, created_at)
+         VALUES ('WA-R-1', ?, 1, 'text', 'again', 1700000005000, 'pending', 'c-r', 1700000005000),
+                ('WA-IN-1', ?, 0, 'text', 'hi', 1700000005000, 'pending', NULL, 1700000005000)`,
+      )
+      .run(JID, JID);
+    const ids = new MessageRepo(t.ctx.db).pendingLocal().map((r) => r.id);
+    expect(ids).toContain('WA-R-1');
+    expect(ids).not.toContain('WA-IN-1');
+  });
+
+  describe('a WhatsApp error ack', () => {
+    const insertSent = (id: string, chatJid: string, status = 'sent') =>
+      t.ctx.db
+        .prepare(
+          `INSERT INTO messages(id, chat_jid, from_me, type, body, timestamp, status, created_at)
+           VALUES (?, ?, 1, 'text', 'hello', 1700000005000, ?, 1700000005000)`,
+        )
+        .run(id, chatJid, status);
+    const rowOf = (id: string) =>
+      t.ctx.db.prepare('SELECT status, error FROM messages WHERE id = ?').get(id) as {
+        status: string;
+        error: string | null;
+      };
+
+    const seedGroup = () =>
+      getMessages(t.ctx).ingest(
+        {
+          id: 'G-IN-0',
+          chatJid: GROUP,
+          senderJid: JID,
+          senderName: 'Gus',
+          fromMe: false,
+          type: 'text',
+          body: 'hi all',
+          quotedId: null,
+          timestamp: 1_700_000_000_000,
+          media: null,
+        },
+        'live',
+      );
+
+    it('in a group says some members may not have it, not that it failed outright', async () => {
+      await seedGroup();
+      insertSent('G-1', GROUP);
+      getMessages(t.ctx).applyStatus({ id: 'G-1', chatJid: GROUP, status: 'failed', error: '479' });
+      expect(rowOf('G-1')).toEqual({ status: 'failed', error: GROUP_DELIVERY_ERROR });
+    });
+
+    it('is cleared by a later delivered or read receipt (someone has it)', async () => {
+      await seedGroup();
+      insertSent('G-2', GROUP);
+      const svc = getMessages(t.ctx);
+      svc.applyStatus({ id: 'G-2', chatJid: GROUP, status: 'failed' });
+      svc.applyStatus({ id: 'G-2', chatJid: GROUP, status: 'sent' });
+      expect(rowOf('G-2').status).toBe('failed');
+      svc.applyStatus({ id: 'G-2', chatJid: GROUP, status: 'read' });
+      expect(rowOf('G-2')).toEqual({ status: 'read', error: null });
+    });
+
+    it('in a direct chat stays "Delivery failed" and never downgrades a delivered message', async () => {
+      await seed();
+      insertSent('D-1', JID);
+      insertSent('D-2', JID, 'delivered');
+      const svc = getMessages(t.ctx);
+      svc.applyStatus({ id: 'D-1', chatJid: JID, status: 'failed' });
+      svc.applyStatus({ id: 'D-2', chatJid: JID, status: 'failed' });
+      expect(rowOf('D-1')).toEqual({ status: 'failed', error: 'Delivery failed' });
+      expect(rowOf('D-2').status).toBe('delivered');
+    });
+
+    it('that raced ahead of the send is cleared when a receipt follows before the rename', async () => {
+      const { cookie } = await createUserAndLogin(t);
+      await seed();
+      const id = `FAKE-OUT-${FAKE_RUN}-1`;
+      const svc = getMessages(t.ctx);
+      svc.applyStatus({ id, chatJid: JID, status: 'failed' });
+      svc.applyStatus({ id, chatJid: JID, status: 'sent' });
+      svc.applyStatus({ id, chatJid: JID, status: 'delivered' });
+      await t.app.inject({
+        method: 'POST',
+        url: `/api/chats/${enc(JID)}/messages`,
+        headers: authHeaders(cookie),
+        payload: { text: 'made it', clientId: 'c-race' },
+      });
+      await waitFor(() => rowOf(id) !== undefined);
+      await settle();
+      expect(rowOf(id)).toEqual({ status: 'delivered', error: null });
+    });
+
+    it('is ignored for a message someone else sent', async () => {
+      await seed();
+      getMessages(t.ctx).applyStatus({ id: 'IN-0', chatJid: JID, status: 'failed' });
+      expect(rowOf('IN-0').status).not.toBe('failed');
+    });
   });
 
   describe('an AI reply', () => {

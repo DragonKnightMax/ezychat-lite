@@ -102,6 +102,8 @@ export interface WaMessageStatusUpdate {
   id: string;
   chatJid: string;
   status: 'sent' | 'delivered' | 'read' | 'failed';
+  /** `failed` only: the error code WhatsApp gave, when it gave one (for the log). */
+  error?: string;
 }
 
 export interface WaAdapterEvents {
@@ -141,6 +143,12 @@ export interface WaSendOptions {
    * Only for adapters with `capabilities.mentions`.
    */
   mentions?: string[];
+  /**
+   * Send under this WhatsApp message id instead of a new one (Retry of a message WhatsApp already
+   * took): phones that already have that id ignore the copy, so no one sees it twice. An adapter
+   * that cannot choose the id ignores it.
+   */
+  messageId?: string;
 }
 
 /** The message a reaction points at: WhatsApp matches it by chat, id, side and group author. */

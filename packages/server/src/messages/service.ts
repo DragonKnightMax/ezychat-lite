@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileTypeFromBuffer } from 'file-type';
@@ -54,6 +53,9 @@ export interface MediaFile {
 /** live media downloads (and on-demand redownloads) running at once */
 export const MEDIA_DOWNLOAD_CONCURRENCY = 2;
 export const MEDIA_DOWNLOAD_TIMEOUT_MS = 60_000;
+
+/** A group message WhatsApp took but reported an error for (some members' phones, not the send). */
+export const GROUP_DELIVERY_ERROR = 'Some members may not have received this';
 
 export interface MessageService {
   list(jid: string, q: MessageListQuery): { messages: Message[]; nextBefore: string | null };
@@ -286,6 +288,47 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
    */
   const manualRetries = new Set<string>();
 
+  /**
+   * Text for an ERROR ack. In a group WhatsApp reports one error for the whole message even when
+   * only some members' phones could not take it, so it is not called a plain failure there.
+   */
+  const deliveryError = (chatJid: string): string =>
+    waJidOf(chatJid).endsWith('@g.us') ? GROUP_DELIVERY_ERROR : 'Delivery failed';
+
+  /** Receipts that prove a phone took the message. */
+  const RECEIVED: ReadonlySet<MessageStatus> = new Set<MessageStatus>(['delivered', 'read']);
+
+  const logAckError = (id: string, u: WaMessageStatusUpdate): void => {
+    log.warn({ id, chatJid: u.chatJid, code: u.error ?? null }, 'whatsapp error ack');
+  };
+
+  /**
+   * A receipt for a send whose result has not been stored yet. A failure outranks a plain server ack
+   * (they may arrive in any order), but a delivered or read receipt proves someone has the message.
+   */
+  const rememberEarlyStatus = (id: string, status: WaMessageStatusUpdate['status']): void => {
+    if (earlyStatus.size > 500) earlyStatus.clear();
+    const prev = earlyStatus.get(id);
+    if (prev === 'failed' && !RECEIVED.has(status)) return;
+    if (!prev || status === 'failed' || STATUS_RANK[status] > STATUS_RANK[prev])
+      earlyStatus.set(id, status);
+  };
+
+  /** The row change a receipt makes to a stored outgoing message, or null for none. */
+  const nextStatus = (
+    r: MessageRow,
+    status: WaMessageStatusUpdate['status'],
+  ): { status: MessageStatus; error?: string | null } | null => {
+    if (status === 'failed') {
+      // In a group the error may concern only some members' phones.
+      if (r.status !== 'pending' && r.status !== 'sent') return null;
+      return { status, error: r.error ?? deliveryError(r.chat_jid) };
+    }
+    // Someone received it after all: it is not failed (a plain server ack proves nothing).
+    if (r.status === 'failed') return RECEIVED.has(status) ? { status, error: null } : null;
+    return STATUS_RANK[status] > STATUS_RANK[r.status] ? { status } : null;
+  };
+
   const sendJob = async (job: SendJob): Promise<SendResult> => {
     const inboxId = inboxOfKey(job.chatJid);
     const wa = connections.adapter(inboxId);
@@ -312,12 +355,15 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
     });
     inflight.set(job.chatJid, guard);
     const p = (async () => {
+      const resend = job.resendId ? { messageId: job.resendId } : {};
+      const withResend = (o: WaSendOptions | undefined): WaSendOptions | undefined =>
+        job.resendId ? { ...o, ...resend } : o;
       if (job.kind === 'text') {
         const reply = replyOptions(job.quotedId);
         return wa.sendText(
           job.targetJid,
           job.text ?? '',
-          job.mentions?.length ? { ...reply, mentions: job.mentions } : reply,
+          withResend(job.mentions?.length ? { ...reply, mentions: job.mentions } : reply),
         );
       }
       if (job.kind === 'template') {
@@ -338,7 +384,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
             ? { voiceNote: { seconds, waveform: voiceNoteWaveform(buffer) } }
             : {}),
         },
-        replyOptions(job.quotedId),
+        withResend(replyOptions(job.quotedId)),
       );
     })();
     try {
@@ -365,12 +411,15 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
         }
         const early = earlyStatus.get(waId);
         earlyStatus.delete(waId);
-        if (early === 'failed') {
-          // an ERROR ack arrived before the local -> WA id rename: keep the failure
-          repo.update(waId, { status: 'failed', error: 'Delivery failed' });
+        // A retry under the same WhatsApp id keeps its row, so receipts may already have moved it on.
+        const current = repo.get(waId)?.status;
+        if (early === 'failed' || current === 'failed') {
+          // an ERROR ack arrived before the send result: keep the failure
+          repo.update(waId, { status: 'failed', error: deliveryError(job.chatJid) });
         } else {
-          const status: MessageStatus =
-            early && STATUS_RANK[early] > STATUS_RANK.sent ? early : 'sent';
+          let status: MessageStatus = 'sent';
+          for (const s of [early, current])
+            if (s && STATUS_RANK[s] > STATUS_RANK[status]) status = s;
           repo.update(waId, { status, error: null });
         }
       })();
@@ -498,6 +547,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       targetJid: jobTarget(r),
       createdAt: r.created_at,
       ...(r.quoted_id ? { quotedId: r.quoted_id } : {}),
+      ...(r.id.startsWith('local-') ? {} : { resendId: waMessageId(r.id) }),
     };
     if (r.template_name) {
       let params: string[] = [];
@@ -1007,29 +1057,13 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       if (!r.template_name) requireWindow(r.chat_jid);
       const t = now();
       if (!r.id.startsWith('local-')) {
-        // Failed after reaching WhatsApp (ERROR ack, row already renamed to the WA id): turn it back into
-        // a pending local row so the queue re-sends it (and it survives a restart via pendingLocal()).
+        // WhatsApp already took it (ERROR ack, row carries the WhatsApp id). Re-send under that same id
+        // (jobFromRow sets resendId): phones that already have it ignore the copy, so a group that mostly
+        // received it never sees it twice. The row keeps its id; pendingLocal() restores it after a restart.
         if (r.type !== 'text' && !r.media_path)
           throw errors.conflict('This message can no longer be re-sent');
         if (r.type === 'text' && !r.body)
           throw errors.conflict('This message can no longer be re-sent');
-        const clientId = r.client_id ?? randomUUID();
-        const localId = `local-${clientId}`;
-        if (repo.exists(localId)) throw errors.conflict('Message is already being re-sent');
-        ctx.db.transaction(() => {
-          repo.rename(r.id, localId);
-          repo.update(localId, {
-            status: 'pending',
-            error: null,
-            created_at: t,
-            client_id: clientId,
-          });
-        })();
-        const moved = repo.get(localId)!;
-        emitStatus({ ...moved, id: r.id }, localId);
-        manualRetries.add(localId);
-        enqueueRow(moved);
-        return present(moved);
       }
       repo.update(id, { status: 'pending', error: null, created_at: t });
       const updated = repo.get(id)!;
@@ -1042,24 +1076,16 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
     applyStatus(u, inboxId = PRIMARY_INBOX_ID) {
       // a receipt names the WhatsApp id; the row of this inbox carries the inbox suffix
       const id = messageKey(inboxId, u.id);
+      if (u.status === 'failed') logAckError(id, u);
       const r = repo.get(id);
       if (!r) {
-        // may belong to a send whose ack has not been processed yet
-        if (earlyStatus.size > 500) earlyStatus.clear();
-        const prev = earlyStatus.get(id);
-        // a failure is sticky: a later (or reordered) ack must not mask it
-        if (prev === 'failed') return;
-        if (!prev || u.status === 'failed' || STATUS_RANK[u.status] > STATUS_RANK[prev])
-          earlyStatus.set(id, u.status);
+        rememberEarlyStatus(id, u.status); // may belong to a send whose ack has not been processed yet
         return;
       }
-      if (u.status === 'failed') {
-        if (r.status !== 'pending' && r.status !== 'sent') return;
-        repo.update(id, { status: 'failed', error: r.error ?? 'Delivery failed' });
-      } else {
-        if (r.status === 'failed' || STATUS_RANK[u.status] <= STATUS_RANK[r.status]) return;
-        repo.update(id, { status: u.status });
-      }
+      if (!r.from_me) return;
+      const next = nextStatus(r, u.status);
+      if (!next) return;
+      repo.update(id, next);
       emitStatus(repo.get(id)!);
     },
 

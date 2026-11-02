@@ -473,7 +473,14 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
     for (const { key, update } of updates) {
       if (!key.id || !key.remoteJid || !key.fromMe) continue;
       const status = mapAck(update.status);
-      if (status) this.emitTyped('messageStatus', { id: key.id, chatJid: key.remoteJid, status });
+      if (!status) continue;
+      const code = status === 'failed' ? update.messageStubParameters?.[0] : undefined;
+      this.emitTyped('messageStatus', {
+        id: key.id,
+        chatJid: key.remoteJid,
+        status,
+        ...(typeof code === 'string' && code ? { error: code } : {}),
+      });
     }
   }
 
@@ -689,7 +696,15 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
         : undefined;
     let res: WAMessage | undefined;
     try {
-      res = await sock.sendMessage(chatJid, content, quoted ? { quoted } : undefined);
+      const options = {
+        ...(quoted ? { quoted } : {}),
+        ...(opts?.messageId ? { messageId: opts.messageId } : {}),
+      };
+      res = await sock.sendMessage(
+        chatJid,
+        content,
+        Object.keys(options).length ? options : undefined,
+      );
     } catch (err) {
       // connection dropped mid-send: report as unavailable so the queue keeps the job pending
       if (isConnectionError(err) || this.sock !== sock || this._status.state !== 'open') {

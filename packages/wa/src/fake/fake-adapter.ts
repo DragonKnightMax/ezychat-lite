@@ -45,6 +45,7 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
   private inCounter = 0;
   private outCounter = 0;
   private nextSendError: Error | null = null;
+  private skipDelivery = false;
   private readonly media = new Map<string, Buffer>();
   private readonly groups = new Map<string, WaGroupInfo>();
   private readonly abouts = new Map<string, string>();
@@ -182,13 +183,14 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
   private afterSend(chatJid: string, id: string): SendResult {
     const timestamp = Date.now();
     this.emitTyped('messageStatus', { id, chatJid, status: 'sent' });
-    setImmediate(() => this.emitTyped('messageStatus', { id, chatJid, status: 'delivered' }));
+    if (this.skipDelivery) this.skipDelivery = false;
+    else setImmediate(() => this.emitTyped('messageStatus', { id, chatJid, status: 'delivered' }));
     return { id, timestamp };
   }
 
   async sendText(chatJid: string, text: string, opts?: WaSendOptions): Promise<SendResult> {
     this.beforeSend();
-    const id = `${this.idPrefix}-OUT-${FAKE_RUN}-${++this.outCounter}`;
+    const id = opts?.messageId ?? `${this.idPrefix}-OUT-${FAKE_RUN}-${++this.outCounter}`;
     this.sent.push({
       chatJid,
       text,
@@ -201,7 +203,7 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
 
   async sendMedia(chatJid: string, file: WaSendFile, opts?: WaSendOptions): Promise<SendResult> {
     this.beforeSend();
-    const id = `${this.idPrefix}-OUT-${FAKE_RUN}-${++this.outCounter}`;
+    const id = opts?.messageId ?? `${this.idPrefix}-OUT-${FAKE_RUN}-${++this.outCounter}`;
     this.sent.push({ chatJid, file, id, ...(opts?.quotedId ? { reply: opts } : {}) });
     this.media.set(id, file.buffer);
     return this.afterSend(chatJid, id);
@@ -377,6 +379,11 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
 
   simulateStatus(s: Partial<WaStatus>): void {
     this.setStatus(s);
+  }
+
+  /** The next send gets its server ack but no delivered receipt (no phone took it). */
+  skipNextDelivery(): void {
+    this.skipDelivery = true;
   }
 
   failNextSend(err: Error = new Error('Fake send failure')): void {
