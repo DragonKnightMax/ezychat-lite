@@ -2,11 +2,10 @@
 // message service and send queue, fake WhatsApp. Covers the rules in docs/features/mcp-send-message.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { User } from '@ezychat/shared';
-import { setMcpEnabled } from '../src/mcp/settings.js';
 import { sendClientId } from '../src/mcp/send.js';
 import { productTitle } from '../src/mcp/server.js';
 import { makeTestApp, type TestApp } from './helpers.js';
-import { data, mcpClient, rpc, waitFor, type ToolResult } from './mcp-helpers.js';
+import { data, mcpClient, rpc, waitFor, type ToolResult, sendTokens } from './mcp-helpers.js';
 
 const LID = '9001@lid';
 const PN = '60123456789@s.whatsapp.net';
@@ -28,25 +27,7 @@ const requestId = () => `req-test-${++n}-abcdef`;
 
 beforeAll(async () => {
   t = await makeTestApp({ listen: true });
-  const auth = t.ctx.services.auth!;
-  admin = auth.createUser({
-    username: 'owner',
-    displayName: 'Owner',
-    role: 'admin',
-    password: 'password123',
-    mustChangePassword: false,
-  });
-  adminCookie = `sid=${auth.createSession(admin.id, { ip: '127.0.0.1', userAgent: 't' })}`;
-  const tokens = t.ctx.services.apiTokens!;
-  readOnly = tokens.create(admin.id, { name: 'reader', expiresInDays: 90 }, 'ip').secret;
-  const created = tokens.create(
-    admin.id,
-    { name: 'sender', expiresInDays: 90, canSend: true },
-    'ip',
-  );
-  sender = created.secret;
-  senderId = created.token.id;
-  setMcpEnabled(t.ctx, true);
+  ({ admin, adminCookie, readOnly, sender, senderId } = sendTokens(t));
   t.wa.simulateIncoming({
     chatJid: LID,
     chatJidAlt: PN,

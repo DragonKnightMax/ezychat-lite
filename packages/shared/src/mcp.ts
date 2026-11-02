@@ -197,6 +197,46 @@ export const McpSendMessageInput = z.strictObject({
 });
 export type McpSendMessageInput = z.infer<typeof McpSendMessageInput>;
 
+/** Largest image the send_image tool accepts (decoded bytes; WhatsApp compresses photos anyway). */
+export const MCP_SEND_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/** Longest caption of an image (WhatsApp shows up to 1024 characters under a photo). */
+export const MCP_SEND_MAX_CAPTION = 1024;
+
+export const McpSendImageInput = z.strictObject({
+  jid: McpSendMessageInput.shape.jid,
+  imageUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .optional()
+    .describe(
+      'A public https link to the image (JPEG, PNG or WebP, up to 5 MB). Pass imageUrl or imageBase64, not both',
+    ),
+  imageBase64: z
+    .string()
+    .max(Math.ceil(MCP_SEND_MAX_IMAGE_BYTES / 3) * 4 + 64)
+    .optional()
+    .describe(
+      'The image file as base64 (JPEG, PNG or WebP, up to 5 MB; a data: URL prefix is allowed). Pass imageUrl or imageBase64, not both',
+    ),
+  caption: z
+    .string()
+    .trim()
+    .max(MCP_SEND_MAX_CAPTION)
+    .optional()
+    .describe('Text shown under the image, exactly as the user approved it'),
+  fileName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .optional()
+    .describe('A file name for the image, for example product.jpg'),
+  requestId: McpSendMessageInput.shape.requestId,
+  quotedMessageId: McpSendMessageInput.shape.quotedMessageId,
+});
+export type McpSendImageInput = z.infer<typeof McpSendImageInput>;
+
 /** Digits of a phone number with its country code, or null (spaces, dashes, brackets and a leading + allowed). */
 export function normalizeNewChatPhone(raw: string): string | null {
   const digits = raw

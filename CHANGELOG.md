@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **AI assistants can send images.** A connected AI assistant (MCP) with **Can send WhatsApp messages** has a new
+  `send_image` tool: it sends a JPEG, PNG or WebP photo (up to 5 MB, from a public https link or as a file) with an
+  optional caption into an existing chat, with the same limits, approval and "via AI assistant" mark as text replies.
 - **Reports per WhatsApp number.** With two or more numbers, Admin → Reports has an inbox choice next to the period:
   **All inboxes** shows every number together (as before), or pick one number to see only its customers, replies,
   AI hand-offs and WhatsApp Safety findings.

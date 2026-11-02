@@ -178,7 +178,7 @@ create an access token and give your tool the address and the token as an `Autho
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Read              | `get_stats`, `list_chats`, `get_chat`, `get_messages`, `get_activity`                                                                                    |
 | AI agent          | `list_ai_agents`, `get_ai_agent_setup`, `get_ai_context_item`, `try_ai_reply`, `update_ai_setup`, `get_ai_setup_history`, `get_ai_setup_version`         |
-| Send (off)        | `send_message`: only for an app or token set to **Can send WhatsApp messages**                                                                           |
+| Send (off)        | `send_message` (text), `send_image` (photo + caption): only for an app or token set to **Can send WhatsApp messages**                                    |
 | New numbers (off) | `send_to_new_number`: only with **Can also message new numbers** as well, up to 20 a day; WhatsApp can ban a number that messages people who did not ask |
 
 - Access is off until an admin turns it on. **Remove** in **Connected apps** disconnects an app.

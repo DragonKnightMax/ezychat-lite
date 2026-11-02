@@ -17,6 +17,9 @@ import { MCP_PATH, isMcpEnabled } from './settings.js';
 import { handleMcpRequest } from './transport.js';
 import { clearMcpNotice } from '../lite-import/notice.js';
 
+/** Largest /mcp request body: a 5 MB image as base64 plus the JSON-RPC envelope. */
+export const MCP_BODY_LIMIT = 8 * 1024 * 1024;
+
 // resource_metadata tells an MCP client where to find the sign-in (RFC 9728, MCP authorization).
 const unauthorized = (req: FastifyRequest) =>
   new HttpError(401, ErrorCode.UNAUTHORIZED, 'A valid access token is required', {
@@ -92,7 +95,9 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
       principals.set(req, authenticate(req));
     });
 
-    scope.post(MCP_PATH, async (req, reply) => {
+    // send_image takes an image of up to 5 MB as base64 (about 6.7 MB of JSON). The token is checked
+    // in onRequest, before the body is read, so only a valid token can send a large body.
+    scope.post(MCP_PATH, { bodyLimit: MCP_BODY_LIMIT }, async (req, reply) => {
       const principal = principals.get(req)!;
       // An AI assistant reached the new address after a Lite import: its "connect again" flag is done.
       if (clearMcpNotice(ctx.settings))

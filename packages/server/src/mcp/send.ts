@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
-import { normalizeNewChatPhone, type Message } from '@ezychat/shared';
+import { fileTypeFromBuffer } from 'file-type';
+import { MCP_SEND_MAX_IMAGE_BYTES, normalizeNewChatPhone, type Message } from '@ezychat/shared';
 import type { AppContext } from '../context.js';
 import type { ApiPrincipal } from '../api-tokens/index.js';
+import {
+  BlockedAddressError,
+  ResponseTooLargeError,
+  guardedFetch,
+  type NetPolicy,
+} from '../connectors/mcp/net.js';
 import { audit } from '../db/audit.js';
 import { HttpError } from '../http/errors.js';
 import { WindowLimiter } from '../http/window-limiter.js';
@@ -47,6 +54,70 @@ export interface InboxSendPort {
     principal: ApiPrincipal,
     input: { phone: string; text: string; requestId: string; inboxId?: number },
   ): Promise<NewNumberResult>;
+  /** An image (public https link or base64) with an optional caption into an existing chat. */
+  sendImage(principal: ApiPrincipal, input: SendImageInput): Promise<SendResult>;
+}
+
+export interface SendImageInput {
+  jid: string;
+  imageUrl?: string;
+  imageBase64?: string;
+  caption?: string;
+  fileName?: string;
+  requestId: string;
+  quotedMessageId?: string;
+}
+
+/** Image types WhatsApp shows as a photo; anything else is refused (checked on the bytes). */
+export const MCP_IMAGE_TYPES: ReadonlySet<string> = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+/** Downloads an image link; throws SendError with a message for the model. */
+export type ImageFetcher = (url: string) => Promise<Buffer>;
+
+/**
+ * The default image download: https only, never this computer or a private network (checked on the
+ * address actually connected to), same-origin redirects only, 10 s, at most 5 MB.
+ */
+export function guardedImageFetcher(policy?: Omit<NetPolicy, 'maxResponseBytes'>): ImageFetcher {
+  const get = guardedFetch({
+    allowLoopback: false,
+    ...policy,
+    maxResponseBytes: MCP_SEND_MAX_IMAGE_BYTES,
+  });
+  return async (url) => {
+    let res: Response;
+    try {
+      res = await get(url, { method: 'GET', headers: { accept: 'image/*' } });
+      if (!res.ok) throw new SendError(`The image link answered ${res.status}; check the link.`);
+      return Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      if (err instanceof SendError) throw err;
+      if (err instanceof BlockedAddressError)
+        throw new SendError('The image link must be a public internet address.');
+      if (err instanceof ResponseTooLargeError) throw new SendError(IMAGE_TOO_LARGE);
+      if (err instanceof TypeError && err.message === 'url_not_https')
+        throw new SendError('The image link must start with https://.');
+      if (err instanceof TypeError && err.message === 'url_private')
+        throw new SendError('The image link must be a public internet address.');
+      throw new SendError('The image could not be downloaded from that link; check the link.');
+    }
+  };
+}
+
+const IMAGE_TOO_LARGE = `The image is larger than ${MCP_SEND_MAX_IMAGE_BYTES / 1024 / 1024} MB.`;
+
+/** Bytes of a base64 image (a data: URL prefix and line breaks allowed), or a SendError. */
+export function decodeImageBase64(raw: string): Buffer {
+  const b64 = raw.replace(/^data:[\w.+-]+\/[\w.+-]+;base64,/i, '').replace(/\s+/g, '');
+  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 === 1)
+    throw new SendError('imageBase64 is not valid base64.');
+  const buf = Buffer.from(b64, 'base64');
+  if (buf.length > MCP_SEND_MAX_IMAGE_BYTES) throw new SendError(IMAGE_TOO_LARGE);
+  return buf;
 }
 
 /** Per-token limits: a runaway assistant loop cannot flood customers. */
@@ -62,12 +133,30 @@ export const NEW_NUMBER_WARNING =
   'messages people who did not ask for it. Tell the user this, and message new numbers only when the ' +
   'person agreed to be contacted.';
 
+/** A message-service refusal as a SendError for the model; anything unexpected as it is. */
+function sendFailure(err: unknown): unknown {
+  if (err instanceof SendError) return err;
+  if (err instanceof HttpError && err.code === WINDOW_CLOSED)
+    return new SendError(
+      "window_closed: this chat's reply window has closed (the customer has not written " +
+        'recently), so WhatsApp allows only an approved template now; a person can send one ' +
+        'from the inbox.',
+    );
+  // Expected checks of the message service (moved number, quote not in this chat, ...).
+  if (err instanceof HttpError && err.status < 500) return new SendError(err.message);
+  return err;
+}
+
 /** The message service's clientId for this token + requestId (≤ 64 chars, never reused by the inbox). */
 export function sendClientId(tokenId: number, requestId: string): string {
   return 'mcp-' + createHash('sha256').update(`${tokenId}:${requestId}`).digest('hex').slice(0, 40);
 }
 
-export function createInboxSendPort(ctx: AppContext, deps?: { now?: () => number }): InboxSendPort {
+export function createInboxSendPort(
+  ctx: AppContext,
+  deps?: { now?: () => number; fetchImage?: ImageFetcher },
+): InboxSendPort {
+  const fetchImage = deps?.fetchImage ?? guardedImageFetcher();
   const chats = getChats(ctx);
   const messages = getMessages(ctx);
   const log = ctx.log.child({ mod: 'mcp' });
@@ -102,21 +191,63 @@ export function createInboxSendPort(ctx: AppContext, deps?: { now?: () => number
 
   return {
     sendText(principal, input) {
-      if (!principal.scopes.has('inbox:send'))
-        throw new SendError('This access token cannot send messages.');
-      // A chat of an inbox the token owner may not open is "not found", never a hint it exists. A
-      // phone or JID with chats in several inboxes is never sent from a guessed number.
-      const found = findChats(ctx, input.jid, principal.user);
-      if (found.length > 1) throw new SendError(ambiguousChat(ctx, input.jid, found));
-      const chat = found[0];
-      if (!chat)
-        throw new SendError(
-          `No chat found for ${input.jid}. Only existing chats can receive a message` +
-            (principal.scopes.has('inbox:send_new')
-              ? '; use send_to_new_number for a number that is not in the inbox.'
-              : '.'),
+      return send(principal, targetChat(principal, input.jid), input);
+    },
+
+    async sendImage(principal, input) {
+      const chatJid = targetChat(principal, input.jid);
+      if (Boolean(input.imageUrl) === Boolean(input.imageBase64))
+        throw new SendError('Pass the image as imageUrl or imageBase64 (one of them).');
+      const caption = input.caption?.trim() || undefined;
+      const clientId = sendClientId(principal.tokenId, input.requestId);
+      // A retried requestId returns the stored message: nothing is downloaded, sent or counted again.
+      const before = messages.byClientId(clientId);
+      if (before) {
+        if (
+          before.chatJid !== chatJid ||
+          before.type !== 'image' ||
+          (before.body ?? undefined) !== caption
+        )
+          throw new SendError(
+            'This requestId was already used for a different message; use a new requestId.',
+          );
+        return result(before, true);
+      }
+      countSend(principal);
+      const buffer = input.imageBase64
+        ? decodeImageBase64(input.imageBase64)
+        : await fetchImage(input.imageUrl!);
+      if (!buffer.length) throw new SendError('The image is empty.');
+      // Checked on the bytes, never the link, name or label.
+      const type = await fileTypeFromBuffer(buffer).catch(() => undefined);
+      if (!type || !MCP_IMAGE_TYPES.has(type.mime))
+        throw new SendError('Only JPEG, PNG or WebP images can be sent.');
+      const base = (input.fileName?.trim() || 'image').replace(/\.[A-Za-z0-9]{1,5}$/, '');
+      let msg: Message;
+      try {
+        msg = await messages.sendMedia(
+          chatJid,
+          {
+            buffer,
+            fileName: `${base}.${type.ext}`,
+            ...(caption ? { caption } : {}),
+            ...(input.quotedMessageId ? { quotedId: input.quotedMessageId } : {}),
+          },
+          principal.user.id,
+          clientId,
+          { viaTokenId: principal.tokenId },
         );
-      return send(principal, chat.jid, input);
+      } catch (err) {
+        throw sendFailure(err);
+      }
+      audit(ctx.db, {
+        userId: principal.user.id,
+        action: 'mcp.send',
+        ip: null,
+        // Never the caption or the image: which token sent which message into which chat.
+        meta: { tokenId: principal.tokenId, chatJid, messageId: msg.id, type: 'image' },
+      });
+      return result(msg, false);
     },
 
     async sendToNewNumber(principal, input) {
@@ -183,6 +314,38 @@ export function createInboxSendPort(ctx: AppContext, deps?: { now?: () => number
     },
   };
 
+  /**
+   * The existing chat a send goes to. A chat of an inbox the token owner may not open is "not found",
+   * never a hint it exists. A phone or JID with chats in several inboxes is never sent from a guessed
+   * number.
+   */
+  function targetChat(principal: ApiPrincipal, jid: string): string {
+    if (!principal.scopes.has('inbox:send'))
+      throw new SendError('This access token cannot send messages.');
+    const found = findChats(ctx, jid, principal.user);
+    if (found.length > 1) throw new SendError(ambiguousChat(ctx, jid, found));
+    const chat = found[0];
+    if (!chat)
+      throw new SendError(
+        `No chat found for ${jid}. Only existing chats can receive a message` +
+          (principal.scopes.has('inbox:send_new')
+            ? '; use send_to_new_number for a number that is not in the inbox.'
+            : '.'),
+      );
+    return chat.jid;
+  }
+
+  /** Counts one new message against the token's limits, or refuses it. */
+  function countSend(principal: ApiPrincipal) {
+    for (const { limiter, what } of limiters) {
+      const hit = limiter.hit(String(principal.tokenId));
+      if (!hit.allowed)
+        throw new SendError(
+          `Too many messages from this token in ${what}; try again in ${hit.retryAfterSec} s.`,
+        );
+    }
+  }
+
   /** Sends into a chat that exists; idempotent per token + requestId; counted and audited. */
   function send(
     principal: ApiPrincipal,
@@ -194,15 +357,7 @@ export function createInboxSendPort(ctx: AppContext, deps?: { now?: () => number
     try {
       // A retried requestId returns the stored message without sending or counting it again.
       const before = messages.byClientId(clientId);
-      if (!before) {
-        for (const { limiter, what } of limiters) {
-          const hit = limiter.hit(String(principal.tokenId));
-          if (!hit.allowed)
-            throw new SendError(
-              `Too many messages from this token in ${what}; try again in ${hit.retryAfterSec} s.`,
-            );
-        }
-      }
+      if (!before) countSend(principal);
       msg = messages.sendText(
         chatJid,
         { text: input.text, clientId, quotedId: input.quotedMessageId },
@@ -217,16 +372,7 @@ export function createInboxSendPort(ctx: AppContext, deps?: { now?: () => number
         return result(msg, true);
       }
     } catch (err) {
-      if (err instanceof SendError) throw err;
-      if (err instanceof HttpError && err.code === WINDOW_CLOSED)
-        throw new SendError(
-          "window_closed: this chat's reply window has closed (the customer has not written " +
-            'recently), so WhatsApp allows only an approved template now; a person can send one ' +
-            'from the inbox.',
-        );
-      // Expected checks of the message service (moved number, quote not in this chat, ...).
-      if (err instanceof HttpError && err.status < 500) throw new SendError(err.message);
-      throw err;
+      throw sendFailure(err);
     }
     audit(ctx.db, {
       userId: principal.user.id,

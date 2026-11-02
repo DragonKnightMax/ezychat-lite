@@ -97,6 +97,7 @@ export interface MessageService {
     },
     userId: number,
     clientId: string,
+    opts?: { viaTokenId?: number },
   ): Promise<Message>;
   retry(id: string, userId: number): Message;
   /** A WhatsApp receipt from `inboxId` (default inbox 1); `u.id` is the WhatsApp message id. */
@@ -1002,7 +1003,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       });
     },
 
-    async sendMedia(jid, file, userId, clientId) {
+    async sendMedia(jid, file, userId, clientId, opts) {
       const existing = repo.byClientId(clientId);
       if (existing) return present(existing);
       requireSendable(jid);
@@ -1045,6 +1046,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
         client_id: clientId,
         wa_remote_jid: replyTarget(jid),
         voice_note: file.voiceNote ? 1 : 0,
+        sent_via_token_id: opts?.viaTokenId ?? null,
       });
     },
 
