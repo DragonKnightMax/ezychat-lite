@@ -7,6 +7,7 @@ import {
   TAG_FILTER,
   tagsByChat,
 } from '../customers/sql.js';
+import { seedFromLinked } from '../customers/linked.js';
 import type { DB } from '../db/index.js';
 import { chatKey, parseChatKey } from '../inboxes/keys.js';
 
@@ -245,12 +246,14 @@ export class ChatRepo {
     const supplied = init.name?.trim() || '';
     const meaningful = supplied && supplied !== waJid && supplied !== jidUser(waJid);
     const name = contact?.saved_name || (meaningful ? supplied : contact?.push_name || supplied);
-    this.db
+    const { changes } = this.db
       .prepare(
         `INSERT INTO chats (jid, type, name, unread_count, status, updated_at, phone, inbox_id, wa_jid)
          VALUES (?, ?, ?, 0, 'open', ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
       )
       .run(key, type, name, now, type === 'dm' ? this.phoneFor(waJid) : null, inboxId, waJid);
+    // A new chat of a customer we already know in another inbox starts with their profile.
+    if (changes && type === 'dm') seedFromLinked(this.db, key);
     return this.get(key)!;
   }
 
@@ -394,7 +397,8 @@ export class ChatRepo {
   getContact(jid: string): ContactRow | null {
     return (
       (this.db.prepare('SELECT * FROM contacts WHERE jid = ?').get(jid) as
-        ContactRow | undefined) ?? null
+        | ContactRow
+        | undefined) ?? null
     );
   }
 

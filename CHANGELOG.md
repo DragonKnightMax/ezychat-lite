@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **All inboxes** shows every number together (as before), or pick one number to see only its customers, replies,
   AI hand-offs and WhatsApp Safety findings.
 
+### Fixed
+
+- **One customer, same details in every inbox.** With two or more WhatsApp numbers, a customer who chats with
+  both now shows the same saved name, company, email, other phone and address in each inbox: an edit in one
+  inbox updates the other, and a new chat of a known customer starts with their details. Tags stay per inbox.
+
 ## [0.1.68] - 2026-11-01
 
 ### Fixed

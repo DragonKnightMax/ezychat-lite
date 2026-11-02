@@ -251,6 +251,40 @@ it.each([
     ]);
   } else expect(events()).toHaveLength(1);
 });
+it('writes the details to the same person’s chat in another inbox, keeping that chat’s tags', async () => {
+  // a removed second inbox still holds the customer's chat (read only for admins)
+  t.ctx.db
+    .prepare(
+      "INSERT INTO inboxes (id, name, tone, auth_dir, own_jid, created_at, removed_at) VALUES (2, 'Two', 'info', 'wa-auth-inboxes/2', NULL, 1, 2)",
+    )
+    .run();
+  t.ctx.db
+    .prepare(
+      "INSERT INTO chats (jid, type, name, updated_at, inbox_id, wa_jid) VALUES (?, 'dm', '', 0, 2, ?)",
+    )
+    .run(`${JID}#2`, JID);
+  const repo = new CustomerRepo(t.ctx.db);
+  repo.save(
+    `${JID}#2`,
+    { name: null, company: null, email: null, otherPhone: null, address: null },
+    ['Lead'],
+    null,
+    1,
+  );
+  const updated: string[] = [];
+  t.ctx.bus.on('chat:updated', (c) => updated.push(c.jid));
+  enable();
+  await receive();
+  await vi.waitFor(() => expect(events()).toHaveLength(1));
+  expect(repo.get(`${JID}#2`)).toMatchObject({
+    name: 'Jay Low',
+    email: 'jay@example.com',
+    address: '8 Jalan Baru',
+    tags: ['Lead'],
+  });
+  expect(updated).toEqual(expect.arrayContaining([JID, `${JID}#2`]));
+});
+
 it('does not audit unchanged or duplicate fields', async () => {
   enable();
   await receive();

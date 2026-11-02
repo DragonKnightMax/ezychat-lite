@@ -11,12 +11,16 @@ import { audit } from '../db/audit.js';
 import { errors } from '../http/errors.js';
 import { PRIMARY_INBOX_ID, chatKey, inboxOfKey, parseChatKey } from '../inboxes/keys.js';
 import { getChats } from '../wa-bridge/index.js';
+import { linkedChats, seedAllFromLinked } from './linked.js';
 import { CustomerRepo, PROFILE_FIELDS, type ProfileFields } from './repo.js';
 
 export interface CustomerService {
   /** The direct chat's profile (empty when never saved). Throws 404 for a missing chat, 400 for a group. */
   profile(chatJid: string, viewer?: Viewer): CustomerProfileResponse;
-  /** Replaces the whole profile; audits which fields changed (never values). No change, no write. */
+  /**
+   * Replaces the whole profile; the contact fields (not the tags) also go to the same person's chats
+   * in the other inboxes (`linked.ts`). Audits which fields changed (never values). No change, no write.
+   */
   save(
     chatJid: string,
     body: CustomerProfileBody,
@@ -108,24 +112,35 @@ export function createCustomerService(ctx: AppContext): CustomerService {
         PROFILE_FIELDS.map((f) => [f, body[f].trim() || null]),
       ) as ProfileFields;
       // Compare and write in one synchronous transaction: nothing can interleave.
-      const changed = ctx.db.transaction((): string[] => {
+      const written = ctx.db.transaction((): string[] => {
         const tags = repo.canonicalTags(body.tags, jid);
+        const linked = linkedChats(ctx.db, jid);
+        const same = (other: string) => {
+          const p = repo.get(other) ?? EMPTY;
+          return PROFILE_FIELDS.every((f) => p[f] === fields[f]);
+        };
         const before = repo.get(jid) ?? EMPTY;
         const diff: string[] = PROFILE_FIELDS.filter((f) => before[f] !== fields[f]);
         if (before.tags.join('\u001f') !== tags.join('\u001f')) diff.push('tags');
-        if (!diff.length) return diff;
-        repo.save(jid, fields, tags, actor.userId, Date.now());
+        // Linked chats that drifted apart are brought back in line even when this one is unchanged.
+        const stale = linked.filter((l) => !same(l));
+        if (!diff.length && !stale.length) return [];
+        const now = Date.now();
+        if (diff.length) repo.save(jid, fields, tags, actor.userId, now);
+        // Tags stay per inbox: each linked chat keeps its own.
+        for (const other of stale) repo.save(other, fields, repo.tags(other), actor.userId, now);
+        const targets = diff.length ? [jid, ...stale] : stale;
         // Which fields changed, never their values (personal data).
         audit(ctx.db, {
           userId: actor.userId,
           action: 'customer.profile_update',
           ip: actor.ip,
-          meta: { chatJid: jid, changed: diff },
+          meta: { chatJid: jid, changed: diff, linkedChats: stale.length },
         });
-        return diff;
+        return targets;
       })();
-      if (changed.length) {
-        const chat = chats().get(jid);
+      for (const target of written) {
+        const chat = chats().get(target);
         if (chat) ctx.bus.emit('chat:updated', chat);
       }
       return service.profile(jid, { isAdmin: !!actor.isAdmin });
@@ -180,4 +195,10 @@ export function createCustomerService(ctx: AppContext): CustomerService {
 
 export function initCustomers(ctx: AppContext): void {
   ctx.services.customers = createCustomerService(ctx);
+  // Permanent start-up step: chats of one person linked before profiles were synced across inboxes.
+  const seeded = seedAllFromLinked(ctx.db);
+  if (seeded)
+    ctx.log
+      .child({ mod: 'customers' })
+      .info({ seeded }, 'Customer profiles copied to linked chats');
 }

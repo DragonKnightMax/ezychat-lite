@@ -13,6 +13,7 @@ import {
 import type { AppContext } from '../context.js';
 import { audit } from '../db/audit.js';
 import { getChats, getMessages } from '../wa-bridge/index.js';
+import { linkedChats } from './linked.js';
 import { CustomerRepo, PROFILE_FIELDS, type ProfileFields } from './repo.js';
 import { enrichmentPrompt } from './enrichment-prompt.js';
 
@@ -144,12 +145,16 @@ export function createEnrichmentService(ctx: AppContext): EnrichmentService {
       // All async work is over. Recheck and commit synchronously: staff edits and newer messages win.
       if (!canCommit(message, cancel, before)) return;
       if (fields.length) {
+        const linked = linkedChats(ctx.db, jid);
         ctx.db.transaction(() => {
           const current = repo.get(jid);
           const next = Object.fromEntries(
             PROFILE_FIELDS.map((f) => [f, updates[f] ?? current?.[f] ?? null]),
           ) as ProfileFields;
-          repo.save(jid, next, current?.tags ?? [], null, Date.now());
+          const now = Date.now();
+          // The same person's chats in other inboxes share the contact fields, not the tags (linked.ts).
+          repo.save(jid, next, current?.tags ?? [], null, now);
+          for (const other of linked) repo.save(other, next, repo.tags(other), null, now);
           audit(ctx.db, {
             userId: null,
             action: 'customer.enrichment_update',
@@ -166,8 +171,10 @@ export function createEnrichmentService(ctx: AppContext): EnrichmentService {
             },
           });
         })();
-        const chat = chats.get(jid);
-        if (chat) ctx.bus.emit('chat:updated', chat);
+        for (const target of [jid, ...linked]) {
+          const chat = chats.get(target);
+          if (chat) ctx.bus.emit('chat:updated', chat);
+        }
       }
       log.info(
         { event: 'customer_enrichment', changed: fields.length, ms: Date.now() - started },

@@ -272,7 +272,9 @@ cascades). `rowToChat` prefers the profile name and adds `tags`/`whatsappName`; 
 from `ChatRepo.get`/`list` (profile join + one batched tag query; SQL in `customers/sql.ts`). Every
 outbound Message goes through the message service's `present()` (group `senderProfile` via
 `AliasStore.route()`). `mergeChat` must move every table keyed by `chat_jid` (profiles via
-`customers/merge.ts`). When the AI reads profiles, put them in `currentSituation`/`conversation`,
+`customers/merge.ts`). One person's direct chats in several inboxes share the contact fields (not tags):
+`customers/linked.ts#linkedChats` (same JID or PN/LID pair, never a re-pointed number) is written on every
+save and enrichment, seeds a new chat in `ChatRepo.ensure`, and fills empty chats at start-up. When the AI reads profiles, put them in `currentSituation`/`conversation`,
 never earlier in the prompt.
 
 **Customer enrichment.** `customers/enrichment.ts` uses the shared AI connection independently of

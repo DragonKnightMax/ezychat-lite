@@ -295,8 +295,8 @@ describe('customer profiles of several inboxes', () => {
       message(`${PN}#2`),
     ]);
     expect(one!.senderProfile).toEqual({ chatJid: PN, name: 'Alice of one' });
-    // inbox 2 has its own chat with Alice, without a saved name
-    expect(two!.senderProfile).toBeNull();
+    // inbox 2 has its own chat with Alice, and it carries the same (synced) profile
+    expect(two!.senderProfile).toEqual({ chatJid: `${PN}#2`, name: 'Alice of one' });
     expect(dm).not.toHaveProperty('senderProfile');
     customers.save(`${PN}#2`, CustomerProfileBody.parse({ name: 'Alice of two' }), {
       userId: user.id,
@@ -304,6 +304,10 @@ describe('customer profiles of several inboxes', () => {
     });
     expect(customers.senderProfiles([PN], 2).get(PN)).toEqual({
       chatJid: `${PN}#2`,
+      name: 'Alice of two',
+    });
+    expect(customers.senderProfiles([PN], 1).get(PN)).toEqual({
+      chatJid: PN,
       name: 'Alice of two',
     });
     // the WhatsApp facts read contacts by WhatsApp JID, not by the chat key

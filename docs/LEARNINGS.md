@@ -865,6 +865,10 @@ into AGENTS.md.
   find rows by a key both versions write (`upgrade-from-oldest.test.ts` covers it).
 - A chat key is opaque (`<waJid>#<inboxId>` outside inbox 1): read the JID shape (`@lid`, `@g.us`, phone)
   from `chats.wa_jid` / `waJidOf`, and send `waJid`/`waMessageId` to WhatsApp, never the key.
+- Data about a person (not a conversation) must not stay keyed by the chat key alone: the same person has
+  one chat per inbox. Customer contact fields sync across `linkedChats` (same JID or PN/LID pair, never a
+  re-pointed number); per-inbox data such as tags stays per chat so access scoping holds
+  (`inbox-access.test.ts` pins it). Run the access tests when widening any write across inboxes.
 - The linked account is never a contact, chat or alias (`aliases.learn` ignores own pairs), and in
   groups WhatsApp shows it only by its LID. Anything that names people (mentions, member lists) must
   also check `status.me.jid` and `status.me.lid` (from `sock.user.lid`) and name it from `status.me.name`;
