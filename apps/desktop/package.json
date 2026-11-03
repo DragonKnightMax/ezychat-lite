@@ -53,9 +53,9 @@
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
+    "@vscode/sudo-prompt": "^9.3.2",
     "better-sqlite3": "^13.0.3",
-    "sherpa-onnx-node": "2.0.1",
-    "sudo-prompt": "^9.2.1"
+    "sherpa-onnx-node": "2.0.1"
   },
   "peerDependencies": {
     "electron": ">=44"

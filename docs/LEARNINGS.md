@@ -254,6 +254,11 @@ into AGENTS.md.
   from a packaged build: `npm run dist -w @ezychat/desktop -- --dir --config.directories.output=release-check`,
   `node scripts/smoke-packaged.mjs apps/desktop/release-check`, then the packaged server with
   `ELECTRON_RUN_AS_NODE=1` on temp data, `--fake-wa`, port 7432 and `e2e/marketing-screenshots.mjs 7432`.
+- An Electron major bump can bring a newer Node that drops old APIs (Node 23+ has no `util.isObject`): tests on
+  the system Node do not see it. Run every macOS/Windows-only path's library once under the new runtime
+  (`ELECTRON_RUN_AS_NODE=1 electron -e "require(…)…"`); unmaintained `sudo-prompt` broke every Mac update and
+  service change in every release, because no one ran a real Mac update (now `@vscode/sudo-prompt`). A
+  platform-only privileged path gets one real run on that OS before its first release.
   Log it as a `real:` Dev Build row. Combine the critical updates into one PR so one smoke covers them.
   A critical `server-host` change gets the same packaged run, with the server started through the packaged
   `app.asar.unpacked/dist/server-host.cjs`. Run `prettier --write docs/dev-build-checks.md` after a new row:

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import util from 'node:util';
+import { exec as sudoExec } from '@vscode/sudo-prompt';
 import {
   createServiceManager,
   elevatedWindowsOutcome,
@@ -24,9 +26,27 @@ describe('elevated outcome', () => {
     expect(() => elevatedWindowsOutcome(1, '', '')).toThrow('Elevated command failed.');
   });
 
-  it('knows sudo-prompt’s cancel message on macOS', () => {
+  it('knows the admin prompt’s cancel message on macOS', () => {
     expect(isMacPromptCancelled('User did not grant permission.')).toBe(true);
     expect(isMacPromptCancelled('Command failed: exit 3')).toBe(false);
+  });
+
+  it('opens the macOS admin prompt on a Node without util.isObject (Electron 45+)', async () => {
+    // sudo-prompt 9.2.1 called util.isObject/isFunction, which Node 23 removed: every macOS
+    // update install and service change failed with "Node.util.isObject is not a function".
+    const legacy = util as unknown as Record<string, unknown>;
+    const saved = Object.entries(legacy).filter(([k]) => k === 'isObject' || k === 'isFunction');
+    delete legacy.isObject;
+    delete legacy.isFunction;
+    try {
+      const err = await new Promise<Error | undefined>((resolve) => {
+        sudoExec('sudo true', { name: 'EzyChat' }, (e) => resolve(e));
+      });
+      // The argument checks passed; the command is refused before any prompt opens.
+      expect(err?.message).toBe('Command should not be prefixed with "sudo".');
+    } finally {
+      Object.assign(legacy, Object.fromEntries(saved));
+    }
   });
 });
 

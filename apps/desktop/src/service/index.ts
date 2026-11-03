@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join, posix } from 'node:path';
-import { exec as sudoExec } from 'sudo-prompt';
+import { exec as sudoExec } from '@vscode/sudo-prompt';
 import { servicePortFile, serviceRunDir } from '../paths.js';
 import { activeProduct, type Product } from '../product.js';
 import {
@@ -150,7 +150,7 @@ export function elevatedWindowsOutcome(code: number, log: string | null, stderr:
   throw new Error(log || stderr.trim() || 'Elevated command failed.');
 }
 
-/** sudo-prompt's error when the macOS admin prompt is cancelled. */
+/** The admin prompt's error (`@vscode/sudo-prompt`) when the macOS admin prompt is cancelled. */
 export function isMacPromptCancelled(message: string): boolean {
   return /did not grant permission|User canceled/i.test(message);
 }
@@ -199,7 +199,7 @@ export async function runElevatedWindows(script: string): Promise<string> {
   }
 }
 
-/** Runs a bash script as root via the macOS admin prompt (sudo-prompt). */
+/** Runs a bash script as root via the macOS admin prompt (`@vscode/sudo-prompt`). */
 async function runElevatedMac(script: string, name: string): Promise<string> {
   const dir = mkdtempSync(join(tmpdir(), 'wati-svc-'));
   const file = join(dir, 'task.sh');

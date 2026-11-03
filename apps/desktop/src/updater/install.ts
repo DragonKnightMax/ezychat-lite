@@ -4,7 +4,7 @@ import { createReadStream } from 'node:fs';
 import { lstat, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, posix, win32 } from 'node:path';
-import { exec as sudoExec } from 'sudo-prompt';
+import { exec as sudoExec } from '@vscode/sudo-prompt';
 import { activeProduct, escapeRegExp } from '../product.js';
 import { shQuote } from '../service/macos.js';
 import {

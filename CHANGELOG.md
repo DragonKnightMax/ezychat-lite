@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **macOS: in-app updates and the background service work.** On a Mac, installing an update or changing the
+  background service stopped with "Node.util.isObject is not a function". The Mac password prompt now uses a
+  maintained component. Macs install this version once from the download page; later updates work in the app.
+
 ## [0.1.71] - 2026-11-03
 
 ### Added
