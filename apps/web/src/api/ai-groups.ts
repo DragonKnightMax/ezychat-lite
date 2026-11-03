@@ -3,6 +3,7 @@ import {
   AiAgentGroups,
   AiGroupChat,
   type AiAgentDirectBody,
+  type AiAgentGroupChatsBody,
   type AiGroupChatBody,
 } from '@ezychat/shared';
 import { api } from './client';
@@ -59,6 +60,31 @@ export function useSetAnswerDirect(agentId: number) {
   });
 }
 
+/**
+ * Gives groups of the agent's inbox to this agent (with or without "Reads every message") or takes
+ * them back. A group another agent holds answers 409 `group_has_agent`.
+ */
+export function useSetAgentGroupChats(agentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AiAgentGroupChatsBody) =>
+      api(`/ai/agents/${agentId}/group-chats`, {
+        method: 'PUT',
+        body,
+        schema: AiAgentGroups,
+      }),
+    onSuccess: (saved, body) => {
+      qc.setQueryData(agentGroupsKey(agentId), saved);
+      // Other agents' lists and each group's Group info follow.
+      void qc.invalidateQueries({
+        queryKey: [...aiGroupsKey, 'agent'],
+        predicate: (q) => q.queryKey[2] !== agentId,
+      });
+      for (const jid of body.jids) void qc.invalidateQueries({ queryKey: groupChatAiKey(jid) });
+    },
+  });
+}
+
 /** Whether the AI answers tags and quotes in this group (anyone who may open the chat). */
 export function useGroupChatAi(jid: string | null) {
   return useQuery({
@@ -70,26 +96,24 @@ export function useGroupChatAi(jid: string | null) {
   });
 }
 
-/** Admins: switch one group on or off (Group info and the agent page list). */
+/** Admins: switch one group on or off, choose its agent and "Reads every message" (Group info). */
 export function useSetGroupChatAi() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ jid, enabled }: AiGroupChatBody & { jid: string }) =>
+    mutationFn: ({ jid, enabled, agentId, listen }: AiGroupChatBody & { jid: string }) =>
       api(`/chats/${encodeURIComponent(jid)}/ai-group`, {
         method: 'PUT',
-        body: { enabled } satisfies AiGroupChatBody,
+        body: {
+          enabled,
+          ...(agentId !== undefined && { agentId }),
+          ...(listen !== undefined && { listen }),
+        } satisfies AiGroupChatBody,
         schema: AiGroupChat,
       }),
     onSuccess: (saved, { jid }) => {
       qc.setQueryData(groupChatAiKey(jid), saved);
-      qc.setQueriesData<AiAgentGroups>({ queryKey: [...aiGroupsKey, 'agent'] }, (old) =>
-        old
-          ? {
-              ...old,
-              groups: old.groups.map((g) => (g.jid === jid ? { ...g, enabled: saved.enabled } : g)),
-            }
-          : old,
-      );
+      // The agent pages list the groups each agent holds: read them again.
+      void qc.invalidateQueries({ queryKey: [...aiGroupsKey, 'agent'] });
     },
   });
 }

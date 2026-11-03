@@ -11,6 +11,9 @@
 // Reply suggestions: drafts from the best-matching business-context sentence (LEAK copies internalKnowledge).
 // Fix English: grammar fixes from a fixed list of slips (have/has, ship/shipped, you/your, a/an, i, capitals).
 // Hand-off rules: consultation, CHECKIN, RESOLVE and HUMAN (see mockDecision); check: e2e/devbuild-handoff-check.mjs.
+// Group agents (--max-agents 2): in a group that reads every message, a message with "Policy no:" and
+// "Amount:" calls add_sheet_row on the tab Claims and repeats what it said; a claim without an amount
+// asks for it; anything else gets no_reply. Check: e2e/devbuild-claims-check.mjs.
 // Data lives in a fresh OS temp folder (prefix ezychat-agents-devbuild-). Checks: e2e/devbuild-agents-check.mjs,
 // e2e/devbuild-suggestions-check.mjs, e2e/devbuild-calendar-check.mjs.
 import { mkdtemp, readFile } from 'node:fs/promises';
@@ -33,6 +36,7 @@ const arg = (name: string) => {
 const port = Number(arg('--port') ?? 7491);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid port');
 const maxInboxes = arg('--max-inboxes') === undefined ? undefined : Number(arg('--max-inboxes'));
+const maxAgents = arg('--max-agents') === undefined ? undefined : Number(arg('--max-agents'));
 const dataDir = await mkdtemp(join(tmpdir(), 'ezychat-agents-devbuild-'));
 const logger = await createLogger({ dataDir, stdout: false });
 const { version } = JSON.parse(
@@ -58,6 +62,7 @@ const ctx = await createContext(
     webDistDir: resolve('apps/web/dist'),
     version,
     ...(maxInboxes === undefined ? {} : { maxInboxes }),
+    ...(maxAgents === undefined ? {} : { maxAgents }),
   },
   { wa: new FakeWaAdapter(), log: logger.log },
 );
@@ -86,6 +91,27 @@ async function mockDecision(prompt: AiPrompt, signal: AbortSignal): Promise<AiDe
     [...(input.conversation ?? [])].reverse().find((turn) => turn.speaker === 'customer')?.text ??
     '';
   const chatKey = JSON.stringify(input.conversation?.[0] ?? '');
+  // A group that reads every message: claims go to the sheet, everything else gets no reply.
+  const situation = (
+    input as { currentSituation?: { group?: { newMessages?: unknown; messageToAnswer?: string } } }
+  ).currentSituation?.group;
+  if (situation?.newMessages !== undefined) {
+    const text = String(situation.messageToAnswer ?? '');
+    const policy = /Policy no:\s*(\S+)/i.exec(text)?.[1];
+    const amount = /Amount:\s*(?:RM\s*)?([\d.,]+)/i.exec(text)?.[1];
+    const what = /What happened:\s*(.+)/i.exec(text)?.[1]?.trim();
+    if (policy && amount) {
+      const values: Record<string, string> = { 'Policy no': policy, Amount: amount };
+      if (what) values['What happened'] = what;
+      const output = await runTool(prompt, 'add_sheet_row', { tab: 'Claims', values }, signal);
+      return {
+        reply: output === null ? 'sheet=not-offered' : `Recorded: ${output}`,
+        action: 'answer',
+      };
+    }
+    if (policy) return { reply: `What is the claim amount for ${policy}?`, action: 'answer' };
+    return { reply: '', action: 'no_reply' };
+  }
   if (last.includes('BOOK')) {
     const output = await runTool(prompt, 'check_free_times', {}, signal);
     if (output === null) return { reply: 'calendar=not-offered', action: 'answer' };

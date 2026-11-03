@@ -3,6 +3,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   CalendarCheck,
   CalendarSearch,
+  ListPlus,
   MessageSquare,
   TableProperties,
   TriangleAlert,
@@ -305,6 +306,7 @@ function SheetsAgentSettings({ onConnect }: { onConnect: () => void }) {
 const SHEETS_ICON = {
   looked_up: TableProperties,
   lead_added: UserPlus,
+  row_added: ListPlus,
   failed: TriangleAlert,
 } as const;
 
@@ -322,8 +324,17 @@ function SheetsActivityList() {
         description={t('connectors.sheetsAct.hint')}
       />
     );
-  const line = (r: SheetsActivity) =>
-    t(`connectors.sheetsAct.${r.kind}`, { agent: r.agentName, customer: r.customer });
+  const line = (r: SheetsActivity) => {
+    const names = {
+      agent: r.agentName,
+      customer: r.customer,
+      tab: r.tab ?? '',
+      group: r.group ?? '',
+    };
+    if (r.kind === 'row_added' && r.group) return t('connectors.sheetsAct.row_addedGroup', names);
+    if (r.kind === 'looked_up' && r.tab) return t('connectors.sheetsAct.looked_upTab', names);
+    return t(`connectors.sheetsAct.${r.kind}`, names);
+  };
   return (
     <Card className="gap-3">
       <CardHeader>

@@ -191,6 +191,20 @@ export function useSaveSheetsSettings(agentId: number) {
   });
 }
 
+/**
+ * Reads the agent's spreadsheet again from Google (tab names and first rows) and clears the AI's
+ * column cache. One a 10 s per install (429 `rate_limited`).
+ */
+export function useRefreshSheetTabs(agentId: number) {
+  return useMutation({
+    mutationFn: () =>
+      api(`/connectors/google-sheets/agents/${agentId}/refresh`, {
+        method: 'POST',
+        schema: SpreadsheetInfo,
+      }),
+  });
+}
+
 export function useSheetsActivity(enabled = true) {
   return useQuery({
     queryKey: sheetsActivityKey,

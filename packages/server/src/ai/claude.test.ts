@@ -142,6 +142,30 @@ describe('generateClaude', () => {
     });
   });
 
+  it('sends PDFs the person sent as document blocks after the text and images', async () => {
+    const fetcher = stubFetch(() => message(decision('Recorded INV-1042')));
+    await generateClaude(
+      settings,
+      KEY,
+      {
+        ...prompt,
+        images: [{ mime: 'image/png', base64: 'iVBORw0KGgo=' }],
+        pdfs: [{ name: 'INV-1042.pdf', base64: 'JVBERi0xLjQ=', text: 'Invoice', pages: 1 }],
+      },
+      signal(),
+    );
+    const content = (
+      call(fetcher).body.messages as Array<{ content: Array<Record<string, unknown>> }>
+    )[0]!.content;
+    expect(content.map((part) => part.type)).toEqual(['text', 'image', 'document']);
+    expect(content[2]).toMatchObject({
+      type: 'document',
+      source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0xLjQ=' },
+    });
+    // The file goes as a file: its text layer is not added as text.
+    expect(String(call(fetcher).init.body)).not.toContain('Files the person sent');
+  });
+
   it('uses the saved model, and the default for a model that is not a Claude model', async () => {
     const fetcher = stubFetch(() => message(decision('OK')));
     await generateClaude({ ...settings, model: 'claude-opus-5-5' }, KEY, prompt, signal());

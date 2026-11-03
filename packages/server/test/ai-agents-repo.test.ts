@@ -12,11 +12,16 @@ import {
   agentById,
   agentByUserId,
   agentForInbox,
+  agentsForInbox,
   createAgentRow,
   defaultAgent,
   deleteAgentRow,
+  inboxHasDirectAgent,
   listAgents,
   migrateMemberSetting,
+  releaseAgentGroups,
+  setAgentAnswerDirect,
+  setAgentAnswerGroups,
   setAgentInbox,
   updateAgentTexts,
 } from '../src/ai/agents.js';
@@ -175,24 +180,90 @@ describe('agents repo', { timeout: 30_000 }, () => {
     expect(() => updateAgentTexts(db, 999, { instructions: 'x' }, NOW)).toThrow(AgentError);
   });
 
-  it('refuses to create a second agent on a taken inbox', () => {
+  it('a second agent on an inbox starts group-only; a second direct agent is refused', () => {
     const { db } = upgradedWithMember();
-    const userId = insertAiUser(db, 'Other');
+    const first = listAgents(db)[0]!;
+    const second = createAgentRow(
+      db,
+      {
+        userId: insertAiUser(db, 'Claims'),
+        inboxId: 1,
+        preset: 'custom',
+        instructions: null,
+        handoffRules: null,
+      },
+      NOW,
+    );
+    expect(second).toMatchObject({ inboxId: 1, answerDirect: false });
+    expect(agentsForInbox(db, 1).map((a) => a.id)).toEqual([first.id, second.id]);
+    expect(inboxHasDirectAgent(db, 1, second.id)).toBe(true);
+    expect(inboxHasDirectAgent(db, 1, first.id)).toBe(false);
+    expect(inboxHasDirectAgent(db, null, null)).toBe(false);
     let error: unknown;
     try {
       createAgentRow(
         db,
-        { userId, inboxId: 1, preset: 'sales', instructions: null, handoffRules: null },
+        {
+          userId: insertAiUser(db, 'Other'),
+          inboxId: 1,
+          preset: 'sales',
+          instructions: null,
+          handoffRules: null,
+          answerDirect: true,
+        },
         NOW,
       );
     } catch (e) {
       error = e;
     }
     expect(error).toBeInstanceOf(AgentError);
-    expect((error as AgentError).code).toBe('inbox_has_agent');
+    expect((error as AgentError).code).toBe('inbox_has_direct_agent');
+    expect(() => setAgentAnswerDirect(db, second.id, true, NOW)).toThrow(
+      expect.objectContaining({ code: 'inbox_has_direct_agent' }),
+    );
+    expect(() => setAgentAnswerDirect(db, 999, false, NOW)).toThrow(
+      expect.objectContaining({ code: 'agent_not_found' }),
+    );
+    // the main agent of the inbox is its direct one, even when a group-only one is older
+    setAgentAnswerDirect(db, first.id, false, NOW);
+    setAgentAnswerDirect(db, second.id, true, NOW);
+    expect(agentForInbox(db, 1)?.id).toBe(second.id);
   });
 
-  it('setAgentInbox throws inbox_has_agent for a taken inbox and allows free inboxes and NULL', () => {
+  it("releases an agent's groups when it moves, its groups go off or it is deleted", () => {
+    const { db } = upgradedWithMember();
+    addInbox(db, 2);
+    const agent = listAgents(db)[0]!;
+    const row = (jid: string) =>
+      db
+        .prepare(
+          'SELECT enabled, agent_id AS agentId, listen FROM ai_group_chats WHERE chat_jid = ?',
+        )
+        .get(jid);
+    const give = (jid: string) =>
+      db
+        .prepare(
+          'INSERT OR REPLACE INTO ai_group_chats (chat_jid, enabled, agent_id, listen, updated_at) VALUES (?, 1, ?, 1, 0)',
+        )
+        .run(jid, agent.id);
+    give('g1@g.us');
+    setAgentAnswerGroups(db, agent.id, true, NOW);
+    expect(row('g1@g.us')).toEqual({ enabled: 1, agentId: agent.id, listen: 1 });
+    setAgentAnswerGroups(db, agent.id, false, NOW);
+    expect(row('g1@g.us')).toEqual({ enabled: 0, agentId: null, listen: 0 });
+    expect(() => setAgentAnswerGroups(db, 999, false, NOW)).toThrow(
+      expect.objectContaining({ code: 'agent_not_found' }),
+    );
+    give('g2@g.us');
+    setAgentInbox(db, agent.id, 2, NOW);
+    expect(row('g2@g.us')).toEqual({ enabled: 0, agentId: null, listen: 0 });
+    give('g3@g.us');
+    expect(releaseAgentGroups(db, 999)).toBe(0);
+    deleteAgentRow(db, agent.id, NOW);
+    expect(row('g3@g.us')).toEqual({ enabled: 0, agentId: null, listen: 0 });
+  });
+
+  it('setAgentInbox refuses a second direct agent and allows free inboxes and NULL', () => {
     const { db } = upgradedWithMember();
     addInbox(db, 2);
     addInbox(db, 3);
@@ -209,7 +280,7 @@ describe('agents repo', { timeout: 30_000 }, () => {
       NOW,
     );
     expect(() => setAgentInbox(db, second.id, 1, NOW)).toThrow(
-      expect.objectContaining({ code: 'inbox_has_agent' }),
+      expect.objectContaining({ code: 'inbox_has_direct_agent' }),
     );
     expect(agentById(db, second.id)?.inboxId).toBe(2);
     setAgentInbox(db, second.id, 2, NOW); // its own inbox: no error

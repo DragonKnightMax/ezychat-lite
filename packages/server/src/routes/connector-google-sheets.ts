@@ -147,6 +147,12 @@ export default async function connectorGoogleSheetsRoutes(app: FastifyInstance, 
     return sheets.putSettings(agentId, body, actor(req));
   });
 
+  // Settings → Refresh: tab names and column names read from Google again (1 a 10 s per install).
+  app.post('/connectors/google-sheets/agents/:agentId/refresh', admin, async (req) => {
+    const { agentId } = parse(AgentParams, req.params);
+    return sheets.refresh(agentId);
+  });
+
   app.get('/connectors/google-sheets/activity', admin, async () => ({
     activity: sheets.activity(),
   }));

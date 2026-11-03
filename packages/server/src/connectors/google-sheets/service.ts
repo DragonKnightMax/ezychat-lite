@@ -1,7 +1,8 @@
 /**
  * Google Sheets connector (core; design docs/features/google-sheets/design.md). One Google account
- * per install (its own sign-in, separate from Google Calendar). Per AI agent: one spreadsheet, a
- * tab it may look things up in and a tab it may add new leads to (off until an admin turns it on).
+ * per install (its own sign-in, separate from Google Calendar). Per AI agent: one spreadsheet and
+ * each tab's access, Off, Read or Add rows (design docs/features/group-agents/design.md, Part A);
+ * the agent's instructions say when to use them.
  *
  * Logs carry events, ids, counts and states only: never tokens, sheet values, names or numbers.
  */
@@ -24,19 +25,25 @@ import { audit } from '../../db/audit.js';
 import { HttpError, errors } from '../../http/errors.js';
 import { getChats } from '../../wa-bridge/index.js';
 import { createGoogleAccount } from '../google-account.js';
-import { customerWrote } from '../google-calendar/contact.js';
 import { GoogleError } from '../google-calendar/google.js';
-import { customerTexts } from '../google-calendar/repo.js';
 import { FAKE_SHEETS_APP, FAKE_SHEETS_ENDPOINTS, FakeGoogleSheets } from './fake.js';
 import { matchRows, type MatchResult } from './match.js';
+import type { SheetRecordContext } from './record.js';
 import {
   addActivity,
-  insertLead,
-  leadAddedSince,
+  insertRow,
   listActivity,
+  memberContact,
+  newestInbound,
+  personTexts,
   readSettings,
+  rowAdded,
   writeSettings,
+  type ActivityInput,
+  type SheetRowKey,
 } from './repo.js';
+import { legacyLeadsTabOf, upgradeSheetsSettings } from './upgrade.js';
+import { autoColumn, columnKey, headerColumns, matchColumns, personWrote } from './values.js';
 import {
   SHEETS_ENDPOINTS,
   SHEETS_REQUIRED_SCOPES,
@@ -58,7 +65,16 @@ const META_TTL_MS = 5 * 60_000;
 /** A look-up reads the tab again after this long (several look-ups in one turn share one read). */
 const VALUES_TTL_MS = 60_000;
 const MAX_CACHED = 50;
-export const LEAD_REQUEST_CHARACTERS = 500;
+/** A tab's column names (its first row) are read again after this long, or on Refresh. */
+export const COLUMNS_TTL_MS = 5 * 60_000;
+const MAX_CACHED_COLUMNS = 500;
+/** Refresh reads Google at most once in this time per install. */
+export const REFRESH_INTERVAL_MS = 10_000;
+/** A value the AI passes for one cell. */
+export const SHEET_VALUE_CHARACTERS = 2000;
+/** Google's per-minute write quota (429): wait and try again for at most this long in one turn. */
+export const QUOTA_RETRY_MS = 60_000;
+const QUOTA_WAITS_MS = [5_000, 10_000, 20_000, 25_000];
 /** A picker window stays usable this long; at most this many open at once. */
 export const PICKER_TTL_MS = 10 * 60_000;
 const MAX_PICKERS = 20;
@@ -77,24 +93,54 @@ interface PickerSession {
 
 const sha = (text: string) => createHash('sha256').update(text).digest('hex');
 
-export type AddLeadResult =
-  | { ok: true; already: boolean }
-  | { ok: false; reason: 'not_allowed' | 'group' | 'no_name' }
-  | { ok: false; reason: 'not_from_customer'; field: 'name' | 'email' };
+export type AddRowResult =
+  | { ok: true; already: boolean; tab: string }
+  | { ok: false; reason: 'not_allowed'; tabs: string[] }
+  | { ok: false; reason: 'no_columns'; tab: string }
+  | { ok: false; reason: 'unknown_columns'; tab: string; unknown: string[]; columns: string[] }
+  | { ok: false; reason: 'not_from_person'; tab: string; columns: string[] };
 
 export interface GoogleSheetsServiceOptions {
   /** Overrides the client (tests); default from the build's Google app, or the fake with --fake-wa. */
   client?: SheetsClient | null;
   fake?: FakeGoogleSheets | null;
   now?: () => number;
+  /** Waits before a retry after Google's per-minute quota (tests pass a fast one). */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
-/** What one agent may do now (connected and switched on), else null. */
+/** What one agent may do now (connected, a spreadsheet and at least one tab on), else null. */
 export interface UsableSheets {
   settings: SheetsAgentSettings;
   spreadsheetId: string;
-  lookupTab: string | null;
-  leadsTab: string | null;
+  /** Tabs on Read, in the saved order. */
+  readTabs: string[];
+  /** Tabs on Add rows, in the saved order. */
+  addTabs: string[];
+}
+
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason);
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/** The duplicate guard's hash of the AI's values (column keys sorted; never stored as text). */
+function valuesHash(values: Readonly<Record<string, string>>): string {
+  const pairs = Object.entries(values)
+    .map(([name, value]) => [columnKey(name), oneLine(value)] as const)
+    .filter(([, value]) => value)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return sha(JSON.stringify(pairs));
 }
 
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
@@ -105,6 +151,7 @@ export function createGoogleSheetsService(
 ) {
   const log = ctx.log.child({ mod: 'google-sheets' });
   const now = options.now ?? Date.now;
+  const sleep = options.sleep ?? abortableSleep;
   // The fake replaces Google only with --fake-wa (never in service mode) and no Google app
   // configured: a Dev Build with GOOGLE_OAUTH_CLIENT_ID/_SECRET talks to real Google.
   const fake =
@@ -143,13 +190,25 @@ export function createGoogleSheetsService(
 
   const metas = new Map<string, { at: number; meta: SpreadsheetMeta }>();
   const values = new Map<string, { at: number; rows: string[][] }>();
+  // Column names per agent, spreadsheet and tab (the tools' descriptions and the row check).
+  const columnCache = new Map<string, { at: number; columns: string[] }>();
+  const columnKeyOf = (agentId: number, spreadsheetId: string, tab: string) =>
+    `${agentId}\n${spreadsheetId}\n${tab}`;
+  const clearColumns = (agentId?: number) => {
+    for (const key of [...columnCache.keys()])
+      if (agentId === undefined || key.startsWith(`${agentId}\n`)) columnCache.delete(key);
+  };
   const clearCaches = () => {
     metas.clear();
     values.clear();
+    clearColumns();
   };
+  let lastRefreshAt = Number.NEGATIVE_INFINITY;
+  // Rows being added now (a second identical call waits for nothing and adds nothing).
+  const adding = new Set<string>();
   account.onChange(clearCaches);
-  const remember = <T>(map: Map<string, T>, key: string, value: T) => {
-    if (map.size >= MAX_CACHED) map.delete(map.keys().next().value!);
+  const remember = <T>(map: Map<string, T>, key: string, value: T, limit = MAX_CACHED) => {
+    if (!map.has(key) && map.size >= limit) map.delete(map.keys().next().value!);
     map.set(key, value);
   };
 
@@ -176,24 +235,112 @@ export function createGoogleSheetsService(
     return rows;
   }
 
+  /**
+   * The column names (first row) of `tabs` for one agent, cached 5 minutes; tabs read together in
+   * one request. Google errors are thrown.
+   */
+  async function tabColumns(
+    agentId: number,
+    spreadsheetId: string,
+    tabs: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<Map<string, string[]>> {
+    const out = new Map<string, string[]>();
+    const missing: string[] = [];
+    for (const tab of tabs) {
+      const cached = columnCache.get(columnKeyOf(agentId, spreadsheetId, tab));
+      if (cached && now() - cached.at < COLUMNS_TTL_MS) out.set(tab, cached.columns);
+      else missing.push(tab);
+    }
+    if (missing.length) {
+      const rows = await account.withToken((token) =>
+        client!.firstRows(token, spreadsheetId, missing, signal),
+      );
+      for (const tab of missing) {
+        const columns = headerColumns(rows.get(tab));
+        remember(
+          columnCache,
+          columnKeyOf(agentId, spreadsheetId, tab),
+          { at: now(), columns },
+          MAX_CACHED_COLUMNS,
+        );
+        out.set(tab, columns);
+      }
+    }
+    return out;
+  }
+
+  /** Google's answer as the route shows it: rejected 400, out of reach 503. */
+  function googleHttpError(error: unknown): HttpError {
+    if (error instanceof GoogleError && error.kind === 'rejected')
+      return errors.validation(
+        'EzyChat cannot open this spreadsheet. Choose it again with Choose a sheet.',
+      );
+    return new HttpError(503, 'google_unavailable', 'Google Sheets could not be reached');
+  }
+
   /** A sheet the account cannot open answers 400; Google out of reach 503. */
   async function checkedMeta(id: string): Promise<SpreadsheetMeta> {
     try {
       return await meta(id, true);
     } catch (error) {
-      if (error instanceof GoogleError && error.kind === 'rejected')
-        throw errors.validation(
-          'EzyChat cannot open this spreadsheet. Choose it again with Choose a sheet.',
-        );
-      throw new HttpError(503, 'google_unavailable', 'Google Sheets could not be reached');
+      throw googleHttpError(error);
     }
+  }
+
+  /** The spreadsheet, its tabs and each tab's column names, read from Google now. */
+  async function checkedInfo(id: string): Promise<SpreadsheetInfo> {
+    const found = await checkedMeta(id);
+    let rows: Map<string, string[]>;
+    try {
+      rows = await account.withToken((token) =>
+        client!.firstRows(
+          token,
+          id,
+          found.tabs.map((tab) => tab.title),
+        ),
+      );
+    } catch (error) {
+      throw googleHttpError(error);
+    }
+    return {
+      id,
+      name: found.name,
+      tabs: found.tabs.map((tab) => ({ ...tab, columns: headerColumns(rows.get(tab.title)) })),
+      checkedAt: now(),
+      url: googleSheetUrl(id),
+    };
+  }
+
+  /** Appends rows, waiting out Google's per-minute quota (429) for at most a minute in all. */
+  async function appendWithQuota(
+    spreadsheetId: string,
+    tab: string,
+    rows: string[][],
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await account.withToken(async (token) => {
+      let waited = 0;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await client!.append(token, spreadsheetId, tab, rows, signal);
+        } catch (error) {
+          const wait = QUOTA_WAITS_MS[attempt];
+          const quota = error instanceof GoogleError && error.status === 429;
+          if (!quota || wait === undefined || waited + wait > QUOTA_RETRY_MS) throw error;
+          log.info({ event: 'google_sheets_quota_wait', ms: wait }, 'Google Sheets quota: waiting');
+          await sleep(wait, signal);
+          waited += wait;
+        }
+      }
+    });
   }
 
   function timeZone(): string {
     return resolveAiTimeZone(ctx.settings.get<unknown>(AI_TIMEZONE_SETTING, null));
   }
 
-  /** The customer's name and WhatsApp number as the team saved them (never for a group). */
+  /** The customer's name, email and WhatsApp number as the team saved them (never for a group). */
   function savedContact(chatJid: string): {
     name: string | null;
     email: string | null;
@@ -253,19 +400,59 @@ export function createGoogleSheetsService(
       if (!linked() || !agentById(ctx.db, agentId)) return null;
       const settings = readSettings(ctx.db, agentId);
       if (!settings.spreadsheetId) return null;
-      const lookupTab = settings.lookup ? settings.lookupTab : null;
-      const leadsTab = settings.addLeads ? settings.leadsTab : null;
-      if (!lookupTab && !leadsTab) return null;
-      return { settings, spreadsheetId: settings.spreadsheetId, lookupTab, leadsTab };
+      const readTabs = settings.tabs.filter((t) => t.access === 'read').map((t) => t.title);
+      const addTabs = settings.tabs.filter((t) => t.access === 'add').map((t) => t.title);
+      if (!readTabs.length && !addTabs.length) return null;
+      return { settings, spreadsheetId: settings.spreadsheetId, readTabs, addTabs };
     },
 
-    /** Settings tab: the spreadsheet behind a pasted link (name and tabs). */
+    /** The column names of these tabs of the agent's spreadsheet (cached 5 minutes). */
+    columns(
+      agentId: number,
+      spreadsheetId: string,
+      tabs: readonly string[],
+      signal?: AbortSignal,
+    ): Promise<Map<string, string[]>> {
+      return tabColumns(agentId, spreadsheetId, tabs, signal);
+    },
+
+    /** Settings tab: the spreadsheet behind a pasted link (name, tabs and their columns). */
     async spreadsheetInfo(link: string): Promise<SpreadsheetInfo> {
       if (!linked()) throw new HttpError(409, 'not_connected', 'Connect a Google account first');
       const id = spreadsheetIdFromLink(link);
       if (!id) throw errors.validation('Paste the link of a Google Sheets spreadsheet');
-      const found = await checkedMeta(id);
-      return { id, name: found.name, tabs: found.tabs, url: googleSheetUrl(id) };
+      return checkedInfo(id);
+    },
+
+    /**
+     * Settings → Refresh: the agent's spreadsheet, tabs and column names read from Google again
+     * (at most once in 10 s per install); the AI uses the new columns from its next reply.
+     */
+    async refresh(agentId: number): Promise<SpreadsheetInfo> {
+      if (!agentById(ctx.db, agentId)) throw errors.notFound('Agent');
+      const settings = readSettings(ctx.db, agentId);
+      if (!settings.spreadsheetId) throw errors.validation('Choose a spreadsheet first');
+      if (!linked()) throw new HttpError(409, 'not_connected', 'Connect a Google account first');
+      const at = now();
+      if (at - lastRefreshAt < REFRESH_INTERVAL_MS)
+        throw errors.rateLimited(Math.ceil((lastRefreshAt + REFRESH_INTERVAL_MS - at) / 1000));
+      lastRefreshAt = at;
+      clearColumns(agentId);
+      for (const key of [...values.keys()])
+        if (key.startsWith(`${settings.spreadsheetId}\n`)) values.delete(key);
+      const info = await checkedInfo(settings.spreadsheetId);
+      for (const tab of info.tabs)
+        remember(
+          columnCache,
+          columnKeyOf(agentId, settings.spreadsheetId, tab.title),
+          { at, columns: tab.columns },
+          MAX_CACHED_COLUMNS,
+        );
+      log.info(
+        { event: 'google_sheets_refresh', agentId, tabs: info.tabs.length },
+        'Spreadsheet tabs read again',
+      );
+      return info;
     },
 
     getSettings(agentId: number): SheetsAgentSettings {
@@ -281,37 +468,31 @@ export function createGoogleSheetsService(
       if (!agentById(ctx.db, agentId)) throw errors.notFound('Agent');
       const parsed = SheetsAgentSettings.parse(next);
       const before = readSettings(ctx.db, agentId);
-      let saved: SheetsAgentSettings = parsed;
-      if (!parsed.spreadsheetId)
-        saved = {
-          ...parsed,
-          spreadsheetName: null,
-          lookupTab: null,
-          leadsTab: null,
-          addLeads: false,
-        };
+      let saved: SheetsAgentSettings;
+      let droppedTabs = 0;
+      if (!parsed.spreadsheetId) saved = { spreadsheetId: null, spreadsheetName: null, tabs: [] };
       else if (linked()) {
-        // The spreadsheet and both tabs must exist for the connected account.
+        // The spreadsheet must open for the connected account. A tab Google no longer lists loses
+        // its access on this Save (Settings marked it removed before the admin saved).
         const found = await checkedMeta(parsed.spreadsheetId);
         const titles = new Set(found.tabs.map((tab) => tab.title));
-        if (parsed.lookupTab && !titles.has(parsed.lookupTab))
-          throw errors.validation('Choose a tab of this spreadsheet to look up');
-        if (parsed.leadsTab && !titles.has(parsed.leadsTab))
-          throw errors.validation('Choose a tab of this spreadsheet for new leads');
-        saved = { ...parsed, spreadsheetName: found.name };
+        const tabs = parsed.tabs.filter((tab) => titles.has(tab.title));
+        droppedTabs = parsed.tabs.length - tabs.length;
+        saved = { ...parsed, spreadsheetName: found.name, tabs };
       } else if (parsed.spreadsheetId !== before.spreadsheetId)
         throw new HttpError(409, 'not_connected', 'Connect a Google account first');
       else saved = { ...parsed, spreadsheetName: before.spreadsheetName };
-      const fields = (Object.keys(saved) as Array<keyof SheetsAgentSettings>).filter(
-        (key) => key !== 'spreadsheetName' && before[key] !== saved[key],
-      );
+      const fields: string[] = [];
+      if (before.spreadsheetId !== saved.spreadsheetId) fields.push('spreadsheetId');
+      if (JSON.stringify(before.tabs) !== JSON.stringify(saved.tabs)) fields.push('tabs');
       writeSettings(ctx.db, agentId, saved, now());
+      clearColumns(agentId);
       if (fields.length)
         audit(ctx.db, {
           userId: actor.userId,
           action: 'google_sheets.agent_settings',
           ip: actor.ip,
-          meta: { agentId, fields },
+          meta: { agentId, fields, ...(droppedTabs ? { droppedTabs } : {}) },
         });
       return saved;
     },
@@ -320,66 +501,147 @@ export function createGoogleSheetsService(
       return listActivity(ctx.db);
     },
 
-    addActivity(row: Parameters<typeof addActivity>[1]) {
+    addActivity(row: ActivityInput) {
       addActivity(ctx.db, row, now());
     },
 
-    /** The rows of the look-up tab that answer `query` (whole tab when it is small). */
-    async lookup(usable: UsableSheets, query: string, signal?: AbortSignal): Promise<MatchResult> {
-      const rows = await tabValues(usable.spreadsheetId, usable.lookupTab!, signal);
+    /** The agent's older leads tab (it may still be empty; see upgrade.ts), else null. */
+    legacyLeadsTab(agentId: number): string | null {
+      return legacyLeadsTabOf(ctx, agentId);
+    },
+
+    /** The group's name when `chatJid` is a group, else null (Activity shows it). */
+    groupName(chatJid: string | null): string | null {
+      if (!chatJid) return null;
+      const chat = getChats(ctx).get(chatJid);
+      return chat?.type === 'group' ? chat.name || null : null;
+    },
+
+    /** The rows of a Read tab that answer `query` (whole tab when it is small). */
+    async lookup(
+      usable: UsableSheets,
+      tab: string,
+      query: string,
+      signal?: AbortSignal,
+    ): Promise<MatchResult> {
+      const rows = await tabValues(usable.spreadsheetId, tab, signal);
       return matchRows(rows, query);
     },
 
     /**
-     * Adds this chat's customer as one row of the leads tab. Guards: switched on for this agent, a
-     * direct chat, at most one row per chat and spreadsheet in 24 hours, a name (saved, or written
-     * by the customer in this chat) and an email only as the customer wrote it. Google errors are
-     * thrown (the tool hands over).
+     * Adds one row to a tab on Add rows (design group-agents Part A). Guards: the tab is on Add
+     * rows for this agent, the column names are the tab's own, every value the AI passes (auto
+     * columns aside) was written by the person this row is for unless a file they sent was given
+     * to the model, and the same row (chat, tab, newest message, values) is never added twice.
+     * Values are written RAW. Google errors are thrown (the tool hands over).
      */
-    async addLead(
+    async addRow(
       agentId: number,
       chatJid: string,
-      input: { request: string; name?: string; email?: string },
+      input: { tab: string; values: Record<string, string> },
+      record: SheetRecordContext | undefined,
       signal?: AbortSignal,
-    ): Promise<AddLeadResult> {
+    ): Promise<AddRowResult> {
       const usable = service.usable(agentId);
-      if (!usable?.leadsTab) return { ok: false, reason: 'not_allowed' };
-      const chat = getChats(ctx).get(chatJid);
-      if (!chat || chat.type === 'group') return { ok: false, reason: 'group' };
-      if (leadAddedSince(ctx.db, chatJid, usable.spreadsheetId, now()))
-        return { ok: true, already: true };
-      const saved = savedContact(chatJid);
-      const texts = customerTexts(ctx.db, chatJid);
-      const given = { name: input.name?.trim(), email: input.email?.trim() };
-      for (const field of ['name', 'email'] as const) {
-        const value = given[field];
-        if (value && !customerWrote(texts, field, value))
-          return { ok: false, reason: 'not_from_customer', field };
-      }
-      const name = given.name || saved.name;
-      if (!name) return { ok: false, reason: 'no_name' };
-      const agentName = agentById(ctx.db, agentId)?.displayName ?? '';
-      const row = [
-        localTime(now()),
-        oneLine(name).slice(0, 100),
-        saved.phone ? `+${saved.phone}` : '',
-        oneLine(given.email || saved.email || '').slice(0, 254),
-        oneLine(input.request).slice(0, LEAD_REQUEST_CHARACTERS),
-        agentName,
-      ];
-      const tab = usable.leadsTab;
-      const current = await tabValues(usable.spreadsheetId, tab, signal);
-      const rows = current.some((r) => r.some((cell) => cell.trim()))
-        ? [row]
-        : [[...SHEETS_LEAD_COLUMNS], row];
-      await account.withToken((token) =>
-        client!.append(token, usable.spreadsheetId, tab, rows, signal),
+      const tab =
+        usable?.addTabs.find((title) => title === input.tab) ??
+        usable?.addTabs.find((title) => columnKey(title) === columnKey(input.tab));
+      if (!usable || !tab) return { ok: false, reason: 'not_allowed', tabs: usable?.addTabs ?? [] };
+      let header = (await tabColumns(agentId, usable.spreadsheetId, [tab], signal)).get(tab) ?? [];
+      // An older leads tab still empty: the lead header goes in with the first row, as before.
+      const writeHeader = !header.some(Boolean) && service.legacyLeadsTab(agentId) === tab;
+      if (writeHeader) header = [...SHEETS_LEAD_COLUMNS];
+      const columns = header.filter(Boolean);
+      if (!columns.length) return { ok: false, reason: 'no_columns', tab };
+      const given = Object.fromEntries(
+        Object.entries(input.values)
+          .map(([name, value]) => [name.trim(), oneLine(String(value ?? ''))] as const)
+          .filter(([name]) => name),
       );
-      values.delete(`${usable.spreadsheetId}\n${tab}`);
-      insertLead(ctx.db, { agentId, chatJid, spreadsheetId: usable.spreadsheetId }, now());
-      addActivity(ctx.db, { kind: 'lead_added', agentId, chatJid }, now());
-      log.info({ event: 'google_sheets_lead_added', agentId }, 'AI added a lead row');
-      return { ok: true, already: false };
+      const matched = matchColumns(header, given);
+      if (!matched.ok)
+        return { ok: false, reason: 'unknown_columns', tab, unknown: matched.unknown, columns };
+
+      const chat = getChats(ctx).get(chatJid);
+      const group = chat?.type === 'group';
+      const newest = newestInbound(ctx.db, chatJid);
+      // No record context (a direct chat's turn): the customer, the newest inbound message.
+      let personJids = record?.personJids ?? null;
+      if (!personJids && group && newest?.senderJid) personJids = [newest.senderJid];
+      const filesGiven = record?.filesGiven ?? false;
+      if (!filesGiven) {
+        const texts = personTexts(ctx.db, chatJid, personJids);
+        const refused = [...matched.byIndex]
+          .filter(([i, value]) => value && !autoColumn(header[i]!) && !personWrote(texts, value))
+          .map(([i]) => header[i]!);
+        if (refused.length) return { ok: false, reason: 'not_from_person', tab, columns: refused };
+      }
+
+      const key: SheetRowKey = {
+        chatJid,
+        spreadsheetId: usable.spreadsheetId,
+        tab,
+        messageId: record?.messageIds.at(-1) ?? newest?.id ?? null,
+        valuesHash: valuesHash(given),
+      };
+      const flight = JSON.stringify(key);
+      if (adding.has(flight) || rowAdded(ctx.db, key)) return { ok: true, already: true, tab };
+
+      // EzyChat's own columns, unless the AI passed a value for one.
+      const person = group
+        ? personJids?.length
+          ? memberContact(ctx.db, chatJid, personJids[personJids.length - 1]!)
+          : { name: newest?.senderName ?? null, phone: null }
+        : (() => {
+            const saved = savedContact(chatJid);
+            return { name: saved.name, phone: saved.phone };
+          })();
+      const auto: Record<string, string> = {
+        date: localTime(now()),
+        name: person.name ?? '',
+        whatsapp: person.phone ? `+${person.phone}` : '',
+        group: group ? (chat?.name ?? '') : '',
+        aiagent: agentById(ctx.db, agentId)?.displayName ?? '',
+        source: record?.fileNames.length ? record.fileNames.join(', ') : 'Message',
+      };
+      const row = header.map((name, i) => {
+        const value = matched.byIndex.get(i);
+        if (value !== undefined && value !== '') return value.slice(0, SHEET_VALUE_CHARACTERS);
+        const which = name ? autoColumn(name) : null;
+        return which ? oneLine(auto[which] ?? '').slice(0, SHEET_VALUE_CHARACTERS) : '';
+      });
+      while (row.length && !row[row.length - 1]) row.pop();
+
+      adding.add(flight);
+      try {
+        await appendWithQuota(
+          usable.spreadsheetId,
+          tab,
+          writeHeader ? [header, row] : [row],
+          signal,
+        );
+        values.delete(`${usable.spreadsheetId}\n${tab}`);
+        if (writeHeader)
+          remember(
+            columnCache,
+            columnKeyOf(agentId, usable.spreadsheetId, tab),
+            { at: now(), columns: header },
+            MAX_CACHED_COLUMNS,
+          );
+        insertRow(ctx.db, { ...key, agentId }, now());
+      } finally {
+        adding.delete(flight);
+      }
+      addActivity(
+        ctx.db,
+        { kind: 'row_added', agentId, chatJid, tab, group: group ? chat?.name || null : null },
+        now(),
+      );
+      log.info(
+        { event: 'google_sheets_row_added', agentId, columns: matched.byIndex.size },
+        'AI added a sheet row',
+      );
+      return { ok: true, already: false, tab };
     },
 
     /**
@@ -484,6 +746,8 @@ export function createGoogleSheetsService(
 export type GoogleSheetsService = ReturnType<typeof createGoogleSheetsService>;
 
 export function initGoogleSheets(ctx: AppContext) {
+  // Older saves become tab access (permanent, idempotent; after the AI agents exist).
+  upgradeSheetsSettings(ctx);
   ctx.services.googleSheets = createGoogleSheetsService(ctx);
 }
 

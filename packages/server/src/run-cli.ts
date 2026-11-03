@@ -19,6 +19,11 @@ export interface CliProduct {
   extensions?: readonly ServerExtension[];
   /** Most linked WhatsApp numbers (inboxes); default 1 (Lite: no inbox UI). */
   maxInboxes?: number;
+  /**
+   * Most AI agents (several may share one number: one for direct chats, others for groups);
+   * default `maxInboxes` (Lite 1). `--max-agents` (dev with fake WhatsApp) overrides it.
+   */
+  maxAgents?: number;
   /** Process exit (tests replace it); default process.exit. */
   exit?: (code: number) => never;
   /** Test hook for --import-lite: throws to simulate a failure at a named point. */
@@ -26,7 +31,7 @@ export interface CliProduct {
 }
 
 const USAGE =
-  'Usage: server --data <dir> [--port <n>] [--host <h>] [--mode standalone|service|dev] [--fake-wa] [--web-dist <dir>] [--reset-admin] [--max-inboxes <n> (dev with --fake-wa)] [--ignore-moved]\n' +
+  'Usage: server --data <dir> [--port <n>] [--host <h>] [--mode standalone|service|dev] [--fake-wa] [--web-dist <dir>] [--reset-admin] [--max-inboxes <n>] [--max-agents <n>] (dev with --fake-wa) [--ignore-moved]\n' +
   '       server --data <dir> --restore-moved\n' +
   '       server --lite-summary <lite data dir>\n' +
   '       server --data <dir> --import-lite <lite data dir> [--import-plan <file.json>]\n';
@@ -161,7 +166,8 @@ export async function runCli(
     ...serverCfg
   } = cfg;
   try {
-    await startServer(serverCfg, {
+    const maxAgents = serverCfg.maxAgents ?? product?.maxAgents;
+    await startServer(maxAgents !== undefined ? { ...serverCfg, maxAgents } : serverCfg, {
       extensions: product?.extensions,
       edition: product?.edition,
       maxInboxes: product?.maxInboxes,

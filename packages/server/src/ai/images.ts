@@ -3,6 +3,8 @@ import type { AiPromptImage } from './provider-types.js';
 
 /** At most this many customer images (the newest in the batch) go to one answer. */
 export const AI_MAX_IMAGES = 3;
+/** An agent that records rows from photos (a tab on Add rows) reads up to this many per turn. */
+export const AI_MAX_RECORD_IMAGES = 10;
 /** Larger images are skipped (the request would be slow and costly). */
 export const AI_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 /** How long an answer waits for a live image that is still downloading from WhatsApp. */

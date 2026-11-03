@@ -146,8 +146,13 @@ Web: `WebExtension.inboxTypes` fills the type choice and slots of Admin → Inbo
 `--mode dev --fake-wa` adds the `fake-api` type (`POST /api/dev/fake-api-inbox`, `POST /api/dev/fake-window`).
 
 **AI agents.** Design `docs/superpowers/specs/2026-10-22-custom-agents-design.md`. An install has up to
-`maxAgents = maxInboxes` AI agents (Lite 1, 409 `agent_limit`), at most one per inbox (409
-`inbox_has_agent`); table `ai_agents` (`ai/agents.ts` is its only SQL: name and on/off stay on the `kind='ai'`
+`maxAgents` AI agents (`runCli({ maxAgents })`, default `maxInboxes`; Lite 1, 409 `agent_limit`; `--max-agents` only with
+`--mode dev --fake-wa`). Several agents may share an inbox (design `docs/features/group-agents/design.md`, migration 032
+rebuilds `ai_agents` without the inbox UNIQUE), but only one answers its direct chats (409 `inbox_has_direct_agent`; a
+new agent there starts group-only); each group names its agent in `ai_group_chats.agent_id` (`PUT
+/api/ai/agents/:agentId/group-chats`, 409 `group_has_agent`; `PUT /api/chats/:jid/ai-group` {enabled, agentId?, listen?},
+400 `agent_required`). `listen` ("Reads every message") starts a turn 8 s after the last live member message of a batch
+(no tag needed, `no_reply` allowed; loop guard = 10 AI messages with no person's message between them); table `ai_agents` (`ai/agents.ts` is its only SQL: name and on/off stay on the `kind='ai'`
 `users` row, preset `sales|faq|custom`, `instructions`/`handoff_rules` NULL = preset defaults, a saved blank
 stays blank). Each agent owns its Business context items and setup versions (`agent_id`; every item SQL has
 `AND agent_id = ?`) and answers only chats of its inbox (`agentForChat`; an AI assignee outside its inbox is
@@ -348,9 +353,13 @@ with its own Google sign-in (`connectors/google-account.ts`: the calendar's PKCE
 the encrypted `google_sheets_tokens` setting; scope `drive.file`: only files picked in Google's file picker, whose page
 `picker-page.ts` is host-only with its own CSP and needs `GOOGLE_PICKER_API_KEY`/`_APP_ID`). `connectors/google-sheets/`
 (`repo.ts` is its only SQL, migration 030, routes `/api/connectors/google-sheets/*`, admins): per agent one spreadsheet
-(picked, checked with Google), Read rows (`read_sheet_rows`, one tab, A1:Z1000, `match.ts` picks ≤ 20 rows) and Add leads
-(`add_lead_row`, off by default; one row per chat and spreadsheet in 24 h, direct chats only, never Try it or a group
-answer, name/email only saved or written by the customer, values appended with `valueInputOption=RAW`). Activity and
+(picked, checked with Google) and per tab Off / Read / Add rows (`tabs`; old `lookupTab`/`leadsTab` saves are mapped on
+read, `upgrade.ts` adds a leads line to the agent's instructions once). Tools `read_sheet_rows {tab, query}` and
+`add_sheet_row {tab, values}` list only the agent's tabs with their first-row columns (cached 5 min, `POST
+…/agents/:agentId/refresh` clears it); the agent's instructions say what to record. `add_sheet_row` fills Date, Name,
+WhatsApp, Group, AI agent, Source, accepts other values only from the person's messages or a file they sent
+(`values.ts`), never twice for the same message+values, no daily cap, RAW, also in group turns (the only write there),
+never Try it. Activity and
 logs keep who and when only, never row values. `--fake-wa` without a Google app uses `FakeGoogleSheets`
 (`/api/dev/fake-google-sheets*`, demo sheet `FAKE_SPREADSHEET_ID`).
 

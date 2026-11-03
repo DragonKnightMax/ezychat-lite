@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
-import { DEFAULT_SHEETS_SETTINGS } from '@ezychat/shared';
+import { DEFAULT_SHEETS_SETTINGS, type SheetsAgentSettings } from '@ezychat/shared';
 import { AgentConnectorsCard } from './AgentConnectorsCard';
 import { ConnectorDetailPage } from './ConnectorDetailPage';
 import { ConnectorsGalleryPage } from './ConnectorsGalleryPage';
@@ -118,7 +118,7 @@ describe('Google Sheets: Settings', () => {
     expect(location()).toBe(`${GS}?tab=overview`);
   });
 
-  it("chooses a sheet in Google's file picker, picks tabs and saves both switches", async () => {
+  it("chooses a sheet in Google's file picker, sets each tab's access and saves the tabs", async () => {
     const w = connected({
       pickerProgress: [
         { status: 'pending', sheet: null },
@@ -130,13 +130,9 @@ describe('Google Sheets: Settings', () => {
     vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     page(`${GS}?tab=settings`);
     const user = userEvent.setup();
-    // Add leads needs a sheet first.
-    expect(
-      (
-        await screen.findByRole('switch', { name: 'Save interested customers (leads)' })
-      ).hasAttribute('disabled'),
-    ).toBe(true);
-    await user.click(screen.getByTestId('sheets-choose'));
+    // No sheet yet: no tab list.
+    await user.click(await screen.findByTestId('sheets-choose'));
+    expect(screen.queryByTestId('sheets-tabs')).toBeNull();
     await waitFor(() =>
       expect(tab.location.href).toBe(
         'http://127.0.0.1:7420/api/connectors/google-sheets/picker-page?token=t',
@@ -150,15 +146,45 @@ describe('Google Sheets: Settings', () => {
         .getByRole('link', { name: /Open in Google Sheets/ })
         .getAttribute('href'),
     ).toBe(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`);
-    // The first tab is chosen for look-ups.
-    expect(screen.getByTestId('sheets-lookup-tab').textContent).toContain('Menu');
     expect(screen.getByTestId('sheets-choose').textContent).toContain('Choose another sheet');
 
-    await user.click(screen.getByRole('switch', { name: 'Save interested customers (leads)' }));
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(screen.getByText('Choose a tab.')).toBeTruthy();
-    await user.click(screen.getByTestId('sheets-leads-tab'));
-    await user.click(screen.getByRole('option', { name: 'Leads' }));
+    // Every tab starts Off, with its column names; EzyChat's own columns are tinted.
+    const menu = screen.getByRole('radiogroup', { name: 'Menu' });
+    expect(within(menu).getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    const leadColumns = screen.getByRole('list', { name: 'Columns of Leads' });
+    const auto = [...leadColumns.querySelectorAll('[data-auto]')].map((c) => c.textContent);
+    expect(auto).toEqual(['Date', 'Name', 'WhatsApp']);
+    expect(within(leadColumns).getByText('Email').hasAttribute('data-auto')).toBe(false);
+    // A tab with an empty first row can only stay Off.
+    const notes = screen.getByRole('radiogroup', { name: 'Notes' });
+    expect(within(notes).getAllByRole('radio')).toHaveLength(1);
+    expect(within(notes).getByRole('radio', { name: 'Off' })).toBeTruthy();
+    expect(
+      screen.getByText('Add column names in the first row of this tab before the AI can use it.'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Filled in by EzyChat Lite when the tab has these columns: Date, Name, WhatsApp, Group, AI agent, Source\./,
+      ),
+    ).toBeTruthy();
+
+    await user.click(within(menu).getByRole('radio', { name: 'Read' }));
+    const leads = screen.getByRole('radiogroup', { name: 'Leads' });
+    await user.click(within(leads).getByRole('radio', { name: 'Add rows' }));
+    // Back to Off and on again: an Off tab is not listed.
+    await user.click(within(menu).getByRole('radio', { name: 'Off' }));
+    await user.click(within(menu).getByRole('radio', { name: 'Read' }));
+
+    // Refresh of a sheet that is not saved yet reads it with the plain look-up.
+    await user.click(screen.getByTestId('sheets-refresh'));
+    await waitFor(() =>
+      expect(screen.getByTestId('sheets-checked').textContent).toBe('no changes'),
+    );
+    expect(writes(fetchMock)).toContain('POST /api/connectors/google-sheets/spreadsheet');
+    expect(writes(fetchMock)).not.toContain('POST /api/connectors/google-sheets/agents/1/refresh');
+
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(writes(fetchMock)).toContain('PUT /api/connectors/google-sheets/agents/1'),
@@ -167,11 +193,100 @@ describe('Google Sheets: Settings', () => {
       ...DEFAULT_SHEETS_SETTINGS,
       spreadsheetId: SHEET_ID,
       spreadsheetName: 'Kopi Apong prices',
-      lookupTab: 'Menu',
-      addLeads: true,
-      leadsTab: 'Leads',
+      tabs: [
+        { title: 'Leads', access: 'add' },
+        { title: 'Menu', access: 'read' },
+      ],
     });
     expect(toast.success).toHaveBeenCalledWith('Google Sheets settings saved');
+  });
+
+  it('marks a new tab, changed columns and added columns after Refresh', async () => {
+    const before = { ...SHEET, checkedAt: Date.now() - 5 * 60_000 };
+    const after = {
+      ...SHEET,
+      checkedAt: Date.now(),
+      tabs: [
+        { title: 'Menu', rows: 1000, columns: ['Item', 'Price', 'Stock'] },
+        {
+          title: 'Leads',
+          rows: 1000,
+          columns: ['Date', 'Name', 'WhatsApp', 'Email', 'Request', 'Product'],
+        },
+        { title: 'Notes', rows: 1000, columns: ['Date', 'Note'] },
+        { title: 'Repairs', rows: 1000, columns: ['Date', 'Policy no'] },
+      ],
+    };
+    const fetchMock = stubServer(
+      connected({
+        sheetSettings: {
+          1: {
+            ...DEFAULT_SHEETS_SETTINGS,
+            spreadsheetId: SHEET_ID,
+            spreadsheetName: 'Kopi Apong prices',
+            tabs: [{ title: 'Leads', access: 'add' }],
+          },
+        },
+        sheetRefresh: [before, after],
+      }),
+    );
+    page(`${GS}?tab=settings`);
+    // Opening Settings reads the tabs once with Refresh.
+    expect((await screen.findByTestId('sheets-checked')).textContent).toBe('Checked 5 minutes ago');
+    expect(screen.queryByText('New tab')).toBeNull();
+    // Nothing changed yet: Save stays off.
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('sheets-refresh'));
+    await waitFor(() =>
+      expect(screen.getByTestId('sheets-checked').textContent).toBe(
+        'Checked just now · 1 new tab, 2 tabs changed',
+      ),
+    );
+    const row = (title: string) => screen.getByRole('radiogroup', { name: title }).closest('li')!;
+    expect(within(row('Repairs')).getByText('New tab')).toBeTruthy();
+    expect(within(row('Leads')).getByText('Columns changed')).toBeTruthy();
+    expect(within(row('Notes')).getByText('Columns changed')).toBeTruthy();
+    expect(within(row('Menu')).queryByText('Columns changed')).toBeNull();
+    const added = [...row('Leads').querySelectorAll('[data-added]')].map((c) => c.textContent);
+    expect(added).toEqual(['Product (new column)']);
+    // A new tab starts Off; Notes has column names now, so it can be read.
+    expect(
+      within(row('Repairs')).getByRole('radio', { name: 'Off' }).getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(within(row('Notes')).getByRole('radio', { name: 'Read' })).toBeTruthy();
+    // Refresh again with nothing new.
+    await user.click(screen.getByTestId('sheets-refresh'));
+    await waitFor(() =>
+      expect(screen.getByTestId('sheets-checked').textContent).toBe(
+        'Checked just now · no changes',
+      ),
+    );
+    expect(
+      fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/agents/1/refresh')),
+    ).toHaveLength(3);
+  });
+
+  it('falls back to the plain look-up when Refresh is busy on open, and says so on a press', async () => {
+    const fetchMock = stubServer(
+      connected({
+        sheetSettings: {
+          1: {
+            ...DEFAULT_SHEETS_SETTINGS,
+            spreadsheetId: SHEET_ID,
+            spreadsheetName: 'Kopi Apong prices',
+            tabs: [],
+          },
+        },
+        sheetRefresh: ['busy'],
+      }),
+    );
+    page(`${GS}?tab=settings`);
+    expect(await screen.findByRole('radiogroup', { name: 'Menu' })).toBeTruthy();
+    expect(writes(fetchMock)).toContain('POST /api/connectors/google-sheets/spreadsheet');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.setup().click(screen.getByTestId('sheets-refresh'));
+    expect(await screen.findByRole('alert')).toBeTruthy();
   });
 
   it.each([
@@ -205,34 +320,56 @@ describe('Google Sheets: Settings', () => {
     expect(screen.getByTestId('sheets-choose')).toBeTruthy();
   });
 
-  it('loads the saved sheet with its tabs and shows a paused banner while Google fails', async () => {
+  it('loads the saved sheet, flags a tab Google no longer lists and drops it on Save', async () => {
     const saved = {
       ...DEFAULT_SHEETS_SETTINGS,
       spreadsheetId: SHEET_ID,
       spreadsheetName: 'Kopi Apong prices',
-      lookupTab: 'Old tab',
+      tabs: [
+        { title: 'Menu', access: 'read' as const },
+        { title: 'Old tab', access: 'add' as const },
+      ],
     };
-    const fetchMock = stubServer(
-      world({
-        sheets: sheetsStatus('expired'),
-        sheetSettings: { 2: saved },
-        agents: [agent(1, 'Aina'), agent(2, 'Ben')],
-      }),
-    );
+    const w = world({
+      sheets: sheetsStatus('expired'),
+      sheetSettings: { 2: saved },
+      agents: [agent(1, 'Aina'), agent(2, 'Ben')],
+    });
+    const fetchMock = stubServer(w);
     page(`${GS}?tab=settings&agent=2`);
     expect(await screen.findByText('Paused: sign in to Google again')).toBeTruthy();
     expect(screen.getByText('Ben does not use the sheet until it works again.')).toBeTruthy();
     expect(within(screen.getByTestId('sheets-chosen')).getByText('Kopi Apong prices')).toBeTruthy();
-    // A tab Google no longer lists stays shown until it is changed.
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.map((c) => c[0])).toContain(
-        '/api/connectors/google-sheets/spreadsheet',
-      ),
+    const gone = await screen.findByTestId('sheets-tab-gone');
+    expect(within(gone).getByText('Old tab')).toBeTruthy();
+    expect(within(gone).getByText('No longer in the sheet')).toBeTruthy();
+    expect(writes(fetchMock)).toContain('POST /api/connectors/google-sheets/agents/2/refresh');
+    const menu = screen.getByRole('radiogroup', { name: 'Menu' });
+    expect(within(menu).getByRole('radio', { name: 'Read' }).getAttribute('aria-checked')).toBe(
+      'true',
     );
-    expect(screen.getByTestId('sheets-lookup-tab').textContent).toContain('Old tab');
+    // Dropping the tab is a change the admin saves (never silently).
     const user = userEvent.setup();
-    await user.click(screen.getByRole('switch', { name: 'Answer questions from the sheet' }));
-    expect(screen.queryByTestId('sheets-lookup-tab')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(writes(fetchMock)).toContain('PUT /api/connectors/google-sheets/agents/2'),
+    );
+    expect(w.sheetSettings[2]!.tabs).toEqual([{ title: 'Menu', access: 'read' }]);
+  });
+
+  it('keeps the saved tabs when Google cannot be read', async () => {
+    const saved = {
+      ...DEFAULT_SHEETS_SETTINGS,
+      spreadsheetId: 'unknown-sheet-0000000000000000',
+      spreadsheetName: 'Gone',
+      tabs: [{ title: 'Menu', access: 'read' as const }],
+    };
+    stubServer(connected({ sheetSettings: { 1: saved } }));
+    page(`${GS}?tab=settings`);
+    expect(
+      await screen.findByText('Could not read the tabs from Google. Press Refresh to try again.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true);
   });
 });
 
@@ -249,6 +386,30 @@ describe('Google Sheets: Activity and the agent page', () => {
             agentName: 'Aina',
             chatJid: 'a',
             customer: 'Mei Ying',
+            tab: null,
+            group: null,
+          },
+          {
+            id: 4,
+            at: Date.now(),
+            kind: 'row_added',
+            agentId: 2,
+            agentName: 'Claims agent',
+            chatJid: 'g',
+            customer: 'Hafiz',
+            tab: 'Claims',
+            group: 'Claims KL',
+          },
+          {
+            id: 3,
+            at: Date.now(),
+            kind: 'row_added',
+            agentId: 1,
+            agentName: 'Aina',
+            chatJid: 'a',
+            customer: 'Ali',
+            tab: 'Leads',
+            group: null,
           },
           {
             id: 1,
@@ -258,6 +419,8 @@ describe('Google Sheets: Activity and the agent page', () => {
             agentName: 'Aina',
             chatJid: 'a',
             customer: 'Mei Ying',
+            tab: 'Menu',
+            group: null,
           },
           {
             id: 0,
@@ -267,6 +430,8 @@ describe('Google Sheets: Activity and the agent page', () => {
             agentName: 'Aina',
             chatJid: 'a',
             customer: 'Ali',
+            tab: null,
+            group: null,
           },
         ],
       }),
@@ -274,7 +439,11 @@ describe('Google Sheets: Activity and the agent page', () => {
     page(`${GS}?tab=activity`);
     const list = await screen.findByTestId('sheets-activity');
     expect(within(list).getByText('Aina added Mei Ying as a lead')).toBeTruthy();
-    expect(within(list).getByText('Aina looked up the sheet for Mei Ying')).toBeTruthy();
+    expect(within(list).getByText('Aina looked up Menu for Mei Ying')).toBeTruthy();
+    expect(
+      within(list).getByText('Claims agent added a row to Claims for Hafiz in Claims KL'),
+    ).toBeTruthy();
+    expect(within(list).getByText('Aina added a row to Leads for Ali')).toBeTruthy();
     expect(within(list).getByText('Aina could not reach Google Sheets for Ali')).toBeTruthy();
     cleanup();
     stubServer(connected());
@@ -283,17 +452,27 @@ describe('Google Sheets: Activity and the agent page', () => {
   });
 
   it.each([
-    [{ lookupTab: 'Menu' }, 'Answers from the sheet'],
+    [[{ title: 'Menu', access: 'read' }], 'Reads Menu'],
     [
-      { lookupTab: 'Menu', addLeads: true, leadsTab: 'Leads' },
-      'Answers from the sheet and saves leads',
+      [
+        { title: 'Menu', access: 'read' },
+        { title: 'Leads', access: 'add' },
+        { title: 'Claims', access: 'add' },
+      ],
+      'Reads Menu · Adds rows to Leads, Claims',
     ],
-    [{ lookup: false, addLeads: true, leadsTab: 'Leads' }, 'Saves leads'],
-    [{ lookup: false }, 'Off for this agent'],
+    [[{ title: 'Leads', access: 'add' }], 'Adds rows to Leads'],
+    [[], 'Off for this agent'],
   ])('sums up the agent’s Google Sheets on the agent page', async (patch, summary) => {
     stubServer(
       connected({
-        sheetSettings: { 3: { ...DEFAULT_SHEETS_SETTINGS, spreadsheetId: SHEET_ID, ...patch } },
+        sheetSettings: {
+          3: {
+            ...DEFAULT_SHEETS_SETTINGS,
+            spreadsheetId: SHEET_ID,
+            tabs: patch as SheetsAgentSettings['tabs'],
+          },
+        },
       }),
     );
     renderAt('/admin/members/ai/3', <AgentConnectorsCard agentId={3} name="Aina" />, {

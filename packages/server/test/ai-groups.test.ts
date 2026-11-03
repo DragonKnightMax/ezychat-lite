@@ -602,7 +602,16 @@ describe('routes', { timeout: 30_000 }, () => {
       enabled: true,
       inboxName: t.ctx.inboxes.repo.get(1)!.name,
       groups: [
-        { jid: G, name: 'Kopi Lovers Club', memberCount: null, enabled: true, paused: false },
+        {
+          jid: G,
+          name: 'Kopi Lovers Club',
+          memberCount: null,
+          enabled: true,
+          paused: false,
+          agentId,
+          agentName: 'Aina',
+          listen: false,
+        },
       ],
       loopGuard: AI_GROUP_LOOP_GUARD,
       answerDirect: true,
@@ -622,13 +631,16 @@ describe('routes', { timeout: 30_000 }, () => {
 
     const status = await call('GET', group, agent.cookie);
     expect(status.statusCode).toBe(200);
+    // "Answer in groups" off turned the AI off in its groups (agent cleared, never moved).
     expect(status.json()).toEqual({
-      enabled: true,
+      enabled: false,
       agentId,
       agentName: 'Aina',
       agentEnabled: true,
       agentAnswersGroups: false,
       paused: false,
+      listen: false,
+      agents: [],
     });
     const put = await call('PUT', group, admin.cookie, { enabled: false });
     expect(put.json()).toMatchObject({ enabled: false, agentEnabled: true });
@@ -663,7 +675,14 @@ describe('routes', { timeout: 30_000 }, () => {
     ]);
     expect(audits.at(-1)).toEqual([
       'ai.group_switch',
-      { chatJid: G, groupName: 'Kopi Lovers Club', enabled: false },
+      {
+        chatJid: G,
+        groupName: 'Kopi Lovers Club',
+        enabled: false,
+        agentId: null,
+        listen: false,
+        before: { enabled: false, agentId: null, listen: false },
+      },
     ]);
   });
 
@@ -725,7 +744,14 @@ describe('migration 024', { timeout: 30_000 }, () => {
     const table = t.ctx.db.prepare('PRAGMA table_info(ai_group_chats)').all() as Array<{
       name: string;
     }>;
-    expect(table.map((c) => c.name)).toEqual(['chat_jid', 'enabled', 'updated_at', 'updated_by']);
+    expect(table.map((c) => c.name)).toEqual([
+      'chat_jid',
+      'enabled',
+      'updated_at',
+      'updated_by',
+      'agent_id',
+      'listen',
+    ]);
   });
 });
 

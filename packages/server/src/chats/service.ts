@@ -8,8 +8,8 @@ import type {
 } from '@ezychat/shared';
 import type { WaChatInfo, WaContactInfo, WaContactAlias } from '@ezychat/wa';
 import type { AppContext } from '../context.js';
-import { agentForInbox } from '../ai/agents.js';
-import { answersDirect } from '../ai/direct.js';
+import { agentByUserId } from '../ai/agents.js';
+import { answersDirect, directAgentOf } from '../ai/direct.js';
 import { audit } from '../db/audit.js';
 import { HttpError, errors } from '../http/errors.js';
 import { canOpen, scopeFor } from '../inboxes/access.js';
@@ -260,6 +260,7 @@ export function createChatService(ctx: AppContext, deps?: { now?: () => number }
               sourceLabel: lookup.sourceLabel,
               ...(lookup.calendar ? { calendar: lookup.calendar } : {}),
               ...(lookup.group ? { group: lookup.group } : {}),
+              ...(lookup.sheet ? { sheet: lookup.sheet } : {}),
             },
             at,
           }),
@@ -311,16 +312,17 @@ export function createChatService(ctx: AppContext, deps?: { now?: () => number }
           if (user.kind !== 'ai' && !canOpen(scopeFor(ctx, user), cur.inbox_id))
             throw new HttpError(400, 'assignee_no_access', 'The assignee cannot open this inbox');
           // an AI agent answers only its own inbox: on any other chat it would never reply
-          if (user.kind === 'ai' && agentForInbox(ctx.db, cur.inbox_id)?.userId !== user.id)
+          const aiAgent = user.kind === 'ai' ? agentByUserId(ctx.db, user.id) : null;
+          if (user.kind === 'ai' && aiAgent?.inboxId !== cur.inbox_id)
             throw new HttpError(
               400,
               'assignee_not_inbox_agent',
               "The assignee is not this inbox's AI agent",
             );
-          // a group-only agent ("Answer direct chats" off) never answers a direct chat
-          if (user.kind === 'ai' && cur.type === 'dm') {
-            const agent = agentForInbox(ctx.db, cur.inbox_id);
-            if (agent && !answersDirect(ctx, agent))
+          // only the inbox's direct agent answers a direct chat (a group-only agent never does)
+          if (aiAgent && cur.type === 'dm') {
+            const agent = aiAgent;
+            if (!answersDirect(ctx, agent) || directAgentOf(ctx, cur.inbox_id)?.id !== agent.id)
               throw new HttpError(
                 400,
                 'agent_no_direct_chats',

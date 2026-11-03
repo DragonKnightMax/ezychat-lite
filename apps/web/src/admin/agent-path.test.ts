@@ -10,6 +10,8 @@ const agent = (id: number): AiAgentSummary => ({
   preset: 'sales',
   inboxId: null,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
 });
 
 describe('aiAgentsPath', () => {

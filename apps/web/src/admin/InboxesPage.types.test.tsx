@@ -90,6 +90,8 @@ const AGENT: AiAgentSummary = {
   preset: 'faq',
   inboxId: 2,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
 };
 
 /** What the fake extension components received, so tests can drive their callbacks. */

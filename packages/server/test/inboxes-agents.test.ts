@@ -149,12 +149,12 @@ describe('Admin → Inboxes binding', { timeout: 30_000 }, () => {
     expect(JSON.parse(audit.meta)).toMatchObject({ inboxId: 3, fields: ['aiAgentId'] });
   });
 
-  it('PATCH to an inbox that has another agent answers 409 inbox_has_agent and changes nothing', async () => {
+  it('PATCH to an inbox that has another agent answers 409 inbox_has_direct_agent and changes nothing', async () => {
     const { t, ai, actor, req } = await setUp();
     const { one, two } = twoAgents(t, ai, actor);
     const res = await req('PATCH', '/api/inboxes/2', { aiAgentId: one.id, name: 'Renamed' });
     expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('inbox_has_agent');
+    expect(res.json().error.code).toBe('inbox_has_direct_agent');
     expect(agentById(t.ctx.db, one.id)!.inboxId).toBe(1);
     expect(agentById(t.ctx.db, two.id)!.inboxId).toBe(2);
     expect(t.ctx.inboxes.repo.get(2)!.name).not.toBe('Renamed');

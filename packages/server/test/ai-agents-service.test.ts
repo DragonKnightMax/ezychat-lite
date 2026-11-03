@@ -9,7 +9,7 @@ import {
   type AiMemberBody,
 } from '@ezychat/shared';
 import { createAiService, AI_FALLBACK_MS, type AiService } from '../src/ai/service.js';
-import { updateAgentTexts } from '../src/ai/agents.js';
+import { agentById, updateAgentTexts } from '../src/ai/agents.js';
 import { HANDOFF_REPLY } from '../src/ai/prompt.js';
 import type { AiPrompt, AiProvider } from '../src/ai/provider-types.js';
 import { tryAgentReply, type AgentToolsInput, type ServerExtension } from '../src/index.js';
@@ -350,7 +350,7 @@ describe('with three inboxes', { timeout: 30_000 }, () => {
     await incoming(2, 'in-2');
     chats.patch(key(2), { assignedTo: two.userId }, actor.userId);
     expect(() => ai.setAgentInbox(two.id, 1, actor)).toThrow(
-      expect.objectContaining({ status: 409, code: 'inbox_has_agent' }),
+      expect.objectContaining({ status: 409, code: 'inbox_has_direct_agent' }),
     );
     expect(chats.get(key(2))!.assignedTo).toBe(two.userId);
     ai.setAgentInbox(two.id, third, actor);
@@ -390,11 +390,12 @@ describe('with three inboxes', { timeout: 30_000 }, () => {
       two.id,
       three.agent.id,
     ]);
-    // A second agent for an inbox that has one is refused.
+    // A second agent for an inbox that has one starts group-only (several agents per number).
     ai.deleteAgent(three.agent.id, actor);
-    expect(() => ai.createAgent({ ...helpdesk, inboxId: 2 }, actor)).toThrow(
-      expect.objectContaining({ code: 'inbox_has_agent' }),
-    );
+    const groupOnly = ai.createAgent({ ...helpdesk, inboxId: 2 }, actor);
+    expect(groupOnly.agent.inboxId).toBe(2);
+    expect(agentById(t.ctx.db, groupOnly.agent.id)!.answerDirect).toBe(false);
+    expect(ai.agentForChat(key(2))?.id).toBe(two.id);
   });
 
   it('a new agent without texts starts from its preset; NULL texts mean the preset defaults', () => {
@@ -521,7 +522,7 @@ describe('per-agent tools and connection', { timeout: 30_000 }, () => {
     const saved = ai.saveAgent(two.id, { ...helpdesk, enabled: true, inboxId: third }, actor);
     expect(saved.agent.inboxId).toBe(third);
     expect(() => ai.saveAgent(two.id, { ...helpdesk, inboxId: 1 }, actor)).toThrow(
-      expect.objectContaining({ code: 'inbox_has_agent' }),
+      expect.objectContaining({ code: 'inbox_has_direct_agent' }),
     );
     expect(ai.agentStatus(two.id).agent).toMatchObject({ inboxId: third, enabled: true });
   });

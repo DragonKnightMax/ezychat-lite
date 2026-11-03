@@ -680,6 +680,31 @@ describe('ChatGPT prompt cache key', () => {
     await provider.shutdown();
   });
 
+  it('sends PDFs to the Codex request as their text layer, never as files', async () => {
+    t = await makeTestApp();
+    seedTokens(t.ctx);
+    const fetchMock = vi.fn(async (_url: unknown, _init?: RequestInit) => answer('Recorded'));
+    const provider = new DirectChatGptProvider(t.ctx, { fetch: fetchMock as typeof fetch });
+    await provider.generate(
+      { ...CHATGPT_SETTINGS, model: 'gpt-6-astra' },
+      null,
+      {
+        instructions: 'rules',
+        input: 'record this',
+        pdfs: [{ name: 'INV-7.pdf', base64: 'JVBERi0xLjQ=', text: 'Total RM 70', pages: 1 }],
+      },
+      new AbortController().signal,
+    );
+    const call = fetchMock.mock.calls.find((c) => c[0] === CODEX_BACKEND.responsesUrl)!;
+    const raw = String(call[1]!.body);
+    expect(raw).not.toContain('JVBERi0');
+    expect(raw).not.toContain('input_file');
+    expect(JSON.parse(raw).input[0].content.at(-1).text).toContain(
+      'PDF INV-7.pdf, 1 page:\nTotal RM 70',
+    );
+    await provider.shutdown();
+  });
+
   it('passes customer images from the prompt to the Codex request', async () => {
     t = await makeTestApp();
     seedTokens(t.ctx);

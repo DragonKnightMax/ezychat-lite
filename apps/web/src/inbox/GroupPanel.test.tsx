@@ -144,7 +144,7 @@ describe('GroupPanel', () => {
     );
     renderPanel(vi.fn(), true);
     const sw = await screen.findByRole('switch', {
-      name: 'AI agent answers when tagged or quoted',
+      name: 'AI agent in this group',
     });
     expect(sw.getAttribute('aria-checked')).toBe('true');
     cleanup();

@@ -43,6 +43,8 @@ function status(docs = documents()): AiAgentStatus {
       preset: 'sales',
       inboxId: 1,
       documentCount: docs.length,
+      answerDirect: true,
+      groupCount: 0,
     },
     settings: {
       displayName: 'Sales Assistant',

@@ -84,6 +84,17 @@ describe('describeEvent', () => {
     ).toBe('Jee Fong handed this chat to the team: a look-up in a connected system failed');
   });
 
+  it('says the AI added a row to a Google Sheets tab', () => {
+    const payload = {
+      title: 'Add a row to Claims',
+      sourceLabel: 'Google Sheets',
+      sheet: { action: 'row_added', tab: 'Claims' },
+    };
+    expect(describeEvent(event('ai_tool_used', 3, payload), dir)).toBe(
+      'AI added a row to Claims · Google Sheets',
+    );
+  });
+
   it('names Google Calendar checks and bookings with the booked time', () => {
     const source = { title: 'Check free times', sourceLabel: 'Google Calendar' };
     expect(

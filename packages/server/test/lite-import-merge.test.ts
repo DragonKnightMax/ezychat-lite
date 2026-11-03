@@ -481,8 +481,14 @@ describe('mergeLiteInbox', () => {
     const db = open(t.dir);
     try {
       expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_agent_settings').get()).toEqual({ n: 1 });
-      expect(db.prepare('SELECT chat_jid FROM sheets_leads').get()).toEqual({
+      expect(
+        db.prepare('SELECT chat_jid, tab, message_id, values_hash FROM sheets_leads').get(),
+      ).toEqual({
         chat_jid: `${LITE_CHAT}#3`,
+        tab: 'Leads',
+        // The duplicate guard keeps pointing at the same message under its new key.
+        message_id: 'M1#3',
+        values_hash: 'h1',
       });
       // The Calendar sign-in differs (none): its settings stay behind.
       expect(db.prepare('SELECT COUNT(*) AS n FROM calendar_agent_settings').get()).toEqual({
@@ -716,6 +722,11 @@ describe('mergeLiteInbox refusals and rollback', () => {
       'hidden_by_user_id',
     ])
       db.exec(`ALTER TABLE messages DROP COLUMN ${column}`);
+    // and 032 (group agents: its index and ai_group_chats columns; the agents table rebuild reruns)
+    db.exec('DROP INDEX idx_ai_group_chats_agent; DROP INDEX idx_ai_agents_inbox;');
+    db.exec(
+      'ALTER TABLE ai_group_chats DROP COLUMN listen; ALTER TABLE ai_group_chats DROP COLUMN agent_id;',
+    );
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

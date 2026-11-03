@@ -284,6 +284,7 @@
     "reopened": "{{actor}} 重新打开了此聊天",
     "aiToolUsed": "AI 查询了 {{title}} · {{source}}",
     "internalNote": "内部备注",
+    "sheetRowAdded": "AI 已在 {{tab}} 中添加一行 · {{source}}",
     "calendarChecked": "AI 查看了空闲时间 · {{source}}",
     "calendarBooked": "AI 预约了 {{when}} · {{source}}",
     "calendarBookedNoTime": "AI 预约了一个时间 · {{source}}",
@@ -671,7 +672,7 @@
     "badge": "被标记或引用时 AI 回答",
     "badgePaused": "AI 已暂停",
     "info": {
-      "title": "被标记或引用时由 AI 助理回答",
+      "title": "此群组中的 AI 代理",
       "hint": "仅当成员 @提及您的号码或引用 AI 的消息时，{{name}} 才会回答。",
       "noAgent": "此收件箱没有 AI 助理。",
       "agentDisabled": "{{name}} 已关闭。开启 {{name}} 之前，群组中不会有回答。",
@@ -680,8 +681,16 @@
       "readOnly": "只有管理员可以更改。",
       "on": "开启",
       "off": "关闭",
-      "paused": "已暂停：连续回答过多。同事发言后会重新开始。"
-    }
+      "paused": "已暂停：连续回答过多。同事发言后会重新开始。",
+      "agent": "代理",
+      "chooseAgent": "请为此群组选择 AI 代理，然后开启。",
+      "chooseAgentPlaceholder": "选择代理",
+      "listen": "读取每条消息",
+      "listenTipTitle": "什么是“读取每条消息”？",
+      "listenTip": "代理会看到每位成员的消息并按其指示处理：可能保存理赔、询问缺少的信息或保持沉默。关闭：只在有人标记或引用它时回答。",
+      "listenHint": "{{name}} 会读取每位成员的消息并按其指示处理。"
+    },
+    "badgeListen": "AI 读取每条消息"
   },
   "askEzy": {
     "button": "问 Ezy",

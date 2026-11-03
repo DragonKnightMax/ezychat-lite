@@ -10,7 +10,7 @@ import {
 } from '@ezychat/shared';
 import type { WaAdapter } from '@ezychat/wa';
 import type { AppContext } from '../context.js';
-import { agentById, agentForInbox, setAgentInbox } from '../ai/agents.js';
+import { agentById, agentForInbox, agentsForInbox, setAgentInbox } from '../ai/agents.js';
 import { ChatRepo, type ChatRow } from '../chats/repo.js';
 import { audit } from '../db/audit.js';
 import { HttpError, errors } from '../http/errors.js';
@@ -244,8 +244,10 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
   };
 
   /**
-   * Admin → Inboxes: the agent that answers this inbox (null = none). A move releases the
-   * agent's chats of its old inbox. Returns true when the binding changed.
+   * Admin → Inboxes: the inbox's main agent (null = none). null unbinds the main agent; another
+   * agent joins the inbox (an inbox may have several, only one answering direct chats: else 409
+   * `inbox_has_direct_agent`). A move releases the agent's chats of its old inbox. Returns true
+   * when the binding changed.
    */
   const bindAgent = (inboxId: number, agentId: number | null, actor: InboxActor): boolean => {
     const current = agentForInbox(ctx.db, inboxId);
@@ -255,7 +257,7 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
       return true;
     }
     requireAgent(agentId);
-    if (current) throw new HttpError(409, 'inbox_has_agent', 'This inbox already has an AI agent');
+    if (agentById(ctx.db, agentId)?.inboxId === inboxId) return false;
     aiService().setAgentInbox(agentId, inboxId, actor);
     return true;
   };
@@ -392,9 +394,8 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
       // unlink first: the message service fails this inbox's pending sends on 'removed'
       await connections.remove(id);
       repo.markRemoved(id, now());
-      // its AI agent answers no inbox now: unbind it and hand back its chats
-      const agent = agentForInbox(ctx.db, id);
-      if (agent) {
+      // its AI agents answer no inbox now: unbind them and hand back their chats
+      for (const agent of agentsForInbox(ctx.db, id)) {
         const ai = ctx.services.ai;
         // the service also stops the agent's running work (it refuses "no inbox" with one agent)
         if (ai && ai.maxAgents() > 1) ai.setAgentInbox(agent.id, null, actor);

@@ -474,6 +474,8 @@ describe('Settings → AI connection (inline)', () => {
           preset: 'sales',
           inboxId: 1,
           documentCount: 0,
+          answerDirect: true,
+          groupCount: 0,
         },
       ],
     });
@@ -490,6 +492,8 @@ describe('Settings → AI connection (inline)', () => {
       preset: 'sales' as const,
       inboxId: 1,
       documentCount: 0,
+      answerDirect: true,
+      groupCount: 0,
     };
     setup({ ...status(), agents: [agent, { ...agent, id: 6, userId: 10, inboxId: 2 }] });
     const link = await screen.findByRole('link', { name: 'Open AI agents' });

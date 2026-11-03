@@ -531,6 +531,8 @@ export function mergeTables(input: MergeInput): MergeOutcome {
           chat_jid: chat,
           agent_id: agentId,
           consent_message_id: maps.message(r.consent_message_id as string | null),
+          // sheets_leads (031): the duplicate guard's message (other tables have no such column).
+          message_id: maps.message((r.message_id as string | null | undefined) ?? null),
         });
       }
     };

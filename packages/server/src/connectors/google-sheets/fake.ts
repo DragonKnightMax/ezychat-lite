@@ -38,7 +38,23 @@ function demoSheets(): Map<string, { name: string; tabs: Map<string, string[][]>
               ['Catering for 20', '450.00', 'Yes', 'Order 3 days ahead'],
             ],
           ],
-          ['Leads', []],
+          ['Leads', [['Date', 'Name', 'WhatsApp', 'Email', 'Request', 'AI agent']]],
+          [
+            'Claims',
+            [
+              [
+                'Date',
+                'Name',
+                'WhatsApp',
+                'Group',
+                'Policy no',
+                'Amount',
+                'What happened',
+                'Source',
+              ],
+            ],
+          ],
+          ['Notes', []],
         ]),
       },
     ],
@@ -66,6 +82,9 @@ export class FakeGoogleSheets extends FakeGoogleAuth {
     return true;
   }
 
+  /** HTTP statuses the next appends answer instead of adding (e.g. 429: per-minute quota). */
+  readonly appendStatuses: number[] = [];
+
   /** The rows of one tab (tests and the dev route). */
   rows(spreadsheetId: string, tab: string): string[][] {
     return this.sheets.get(spreadsheetId)?.tabs.get(tab) ?? [];
@@ -79,6 +98,26 @@ export class FakeGoogleSheets extends FakeGoogleAuth {
     const method = (init?.method ?? 'GET').toUpperCase();
     const denied = this.authorize(url.pathname, init);
     if (denied) return denied;
+    const batch = /^\/v4\/spreadsheets\/([^/]+)\/values:batchGet$/.exec(url.pathname);
+    if (batch && method === 'GET') {
+      const sheet = this.granted.has(decodeURIComponent(batch[1]!))
+        ? this.sheets.get(decodeURIComponent(batch[1]!))
+        : undefined;
+      if (!sheet) return json(404, { error: { code: 404 } });
+      this.calls.push('batchGet');
+      const valueRanges = [];
+      for (const range of url.searchParams.getAll('ranges')) {
+        const title = /^'((?:[^']|'')*)'!/.exec(range)?.[1]?.replace(/''/g, "'");
+        const tab = title !== undefined ? sheet.tabs.get(title) : undefined;
+        if (!tab) return json(400, { error: { code: 400, message: 'Unable to parse range' } });
+        valueRanges.push({
+          range,
+          majorDimension: 'ROWS',
+          ...(tab[0] ? { values: [tab[0]] } : {}),
+        });
+      }
+      return json(200, { valueRanges });
+    }
     const match = /^\/v4\/spreadsheets\/([^/]+)(?:\/values\/([^/]+?)(:append)?)?$/.exec(
       url.pathname,
     );
@@ -104,6 +143,8 @@ export class FakeGoogleSheets extends FakeGoogleAuth {
     if (!tab) return json(400, { error: { code: 400, message: 'Unable to parse range' } });
     if (match[3] && method === 'POST') {
       this.calls.push('append');
+      const status = this.appendStatuses.shift();
+      if (status) return json(status, { error: { code: status } });
       if (url.searchParams.get('valueInputOption') !== 'RAW')
         return json(400, { error: { code: 400 } });
       const body = JSON.parse(String(init?.body)) as { values: string[][] };

@@ -57,6 +57,7 @@ describe('Google Sheets routes', () => {
       ['GET', '/api/connectors/google-sheets/picker/0123456789abcdef01234567'],
       ['GET', `/api/connectors/google-sheets/agents/${agentId}`],
       ['PUT', `/api/connectors/google-sheets/agents/${agentId}`],
+      ['POST', `/api/connectors/google-sheets/agents/${agentId}/refresh`],
       ['GET', '/api/connectors/google-sheets/activity'],
       ['GET', '/api/dev/fake-google-sheets'],
       ['POST', '/api/dev/fake-google-sheets'],
@@ -172,9 +173,29 @@ describe('Google Sheets routes', () => {
       id: FAKE_SPREADSHEET_ID,
       name: 'Demo price list',
       tabs: [
-        { title: 'Prices', rows: 1000 },
-        { title: 'Leads', rows: 1000 },
+        { title: 'Prices', rows: 1000, columns: ['Item', 'Price (RM)', 'In stock', 'Notes'] },
+        {
+          title: 'Leads',
+          rows: 1000,
+          columns: ['Date', 'Name', 'WhatsApp', 'Email', 'Request', 'AI agent'],
+        },
+        {
+          title: 'Claims',
+          rows: 1000,
+          columns: [
+            'Date',
+            'Name',
+            'WhatsApp',
+            'Group',
+            'Policy no',
+            'Amount',
+            'What happened',
+            'Source',
+          ],
+        },
+        { title: 'Notes', rows: 1000, columns: [] },
       ],
+      checkedAt: expect.any(Number),
       url: `https://docs.google.com/spreadsheets/d/${FAKE_SPREADSHEET_ID}/edit`,
     });
     const notALink = await post('/api/connectors/google-sheets/spreadsheet', admin, {
@@ -190,32 +211,104 @@ describe('Google Sheets routes', () => {
     const base = {
       ...DEFAULT_SHEETS_SETTINGS,
       spreadsheetId: FAKE_SPREADSHEET_ID,
-      lookupTab: 'Prices',
+      tabs: [{ title: 'Prices', access: 'read' }],
     };
-    // A tab the sheet does not have, and add-leads without a tab.
-    expect((await put(url, admin, { ...base, lookupTab: 'Nope' })).statusCode).toBe(400);
-    expect((await put(url, admin, { ...base, addLeads: true })).statusCode).toBe(400);
-    const saved = await put(url, admin, { ...base, addLeads: true, leadsTab: 'Leads' });
-    expect(saved.statusCode).toBe(200);
-    expect(saved.json()).toMatchObject({ spreadsheetName: 'Demo price list', addLeads: true });
-    expect((await get(url, admin)).json()).toMatchObject({
-      leadsTab: 'Leads',
-      lookupTab: 'Prices',
+    // A tab listed twice and an unknown access are refused.
+    expect(
+      (
+        await put(url, admin, {
+          ...base,
+          tabs: [
+            { title: 'Prices', access: 'read' },
+            { title: 'Prices', access: 'add' },
+          ],
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (await put(url, admin, { ...base, tabs: [{ title: 'Prices', access: 'write' }] })).statusCode,
+    ).toBe(400);
+    // A tab Google no longer lists loses its access on Save.
+    const saved = await put(url, admin, {
+      ...base,
+      tabs: [
+        { title: 'Prices', access: 'read' },
+        { title: 'Claims', access: 'add' },
+        { title: 'Gone', access: 'add' },
+      ],
     });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toEqual({
+      spreadsheetId: FAKE_SPREADSHEET_ID,
+      spreadsheetName: 'Demo price list',
+      tabs: [
+        { title: 'Prices', access: 'read' },
+        { title: 'Claims', access: 'add' },
+      ],
+    });
+    expect((await get(url, admin)).json()).toEqual(saved.json());
     const audit = t.ctx.db
       .prepare("SELECT meta FROM audit_log WHERE action = 'google_sheets.agent_settings'")
       .get() as { meta: string };
-    expect(JSON.parse(audit.meta).fields).toEqual([
-      'spreadsheetId',
-      'lookupTab',
-      'leadsTab',
-      'addLeads',
-    ]);
+    expect(JSON.parse(audit.meta)).toEqual({
+      agentId,
+      fields: ['spreadsheetId', 'tabs'],
+      droppedTabs: 1,
+    });
 
-    // Clearing the spreadsheet clears the tabs and turns adding leads off.
+    // Clearing the spreadsheet clears the tabs.
     const cleared = await put(url, admin, { ...(saved.json() as object), spreadsheetId: null });
-    expect(cleared.json()).toMatchObject({ lookupTab: null, leadsTab: null, addLeads: false });
+    expect(cleared.json()).toEqual(DEFAULT_SHEETS_SETTINGS);
     expect((await get('/api/connectors/google-sheets/agents/999', admin)).statusCode).toBe(404);
+  });
+
+  it('refreshes the tabs and columns from Google at most once in 10 seconds', async () => {
+    const { admin, agentId } = await setUp();
+    const refresh = (id = agentId) =>
+      post(`/api/connectors/google-sheets/agents/${id}/refresh`, admin);
+    expect((await refresh(999)).statusCode).toBe(404);
+    // No spreadsheet chosen yet.
+    expect((await refresh()).statusCode).toBe(400);
+    await connect(admin);
+    const svc = t.ctx.services.googleSheets!;
+    svc.fake!.grant(FAKE_SPREADSHEET_ID);
+    await put(`/api/connectors/google-sheets/agents/${agentId}`, admin, {
+      ...DEFAULT_SHEETS_SETTINGS,
+      spreadsheetId: FAKE_SPREADSHEET_ID,
+      tabs: [{ title: 'Claims', access: 'add' }],
+    });
+    // The AI reads the columns once (cached), then a column is added in Google.
+    expect(
+      (await svc.columns(agentId, FAKE_SPREADSHEET_ID, ['Claims'])).get('Claims'),
+    ).toHaveLength(8);
+    svc.fake!.rows(FAKE_SPREADSHEET_ID, 'Claims')[0]!.push('Branch');
+    expect(
+      (await svc.columns(agentId, FAKE_SPREADSHEET_ID, ['Claims'])).get('Claims'),
+    ).toHaveLength(8);
+    svc.fake!.sheets.get(FAKE_SPREADSHEET_ID)!.tabs.set('New tab', [['A']]);
+
+    const first = await refresh();
+    expect(first.statusCode).toBe(200);
+    const info = first.json() as {
+      tabs: Array<{ title: string; columns: string[] }>;
+      checkedAt: number;
+    };
+    expect(info.tabs.find((tab) => tab.title === 'Claims')!.columns.at(-1)).toBe('Branch');
+    expect(info.tabs.map((tab) => tab.title)).toContain('New tab');
+    expect(info.checkedAt).toEqual(expect.any(Number));
+    // The AI's next turn sees the new column without another read.
+    const batches = svc.fake!.calls.filter((c) => c === 'batchGet').length;
+    expect((await svc.columns(agentId, FAKE_SPREADSHEET_ID, ['Claims'])).get('Claims')).toContain(
+      'Branch',
+    );
+    expect(svc.fake!.calls.filter((c) => c === 'batchGet')).toHaveLength(batches);
+
+    const again = await refresh();
+    expect(again.statusCode).toBe(429);
+    expect(again.json().error.code).toBe('rate_limited');
+    // Signed out: nothing to read.
+    await post('/api/connectors/google-sheets/disconnect', admin);
+    expect((await refresh()).statusCode).toBe(409);
   });
 
   it('shows Google problems as states and recovers', async () => {

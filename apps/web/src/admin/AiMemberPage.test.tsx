@@ -57,6 +57,8 @@ function agentStatus(
     preset: 'sales',
     inboxId: 1,
     documentCount: documents.length,
+    answerDirect: true,
+    groupCount: 0,
     ...patch,
   };
   return {
@@ -840,8 +842,8 @@ describe('AI agent page', () => {
         preset: 'faq',
         instructions: FAQ.instructions,
         handoffRules: FAQ.handoffRules,
-        // Every inbox has an agent: the new one answers none until it is bound.
-        inboxId: null,
+        // Every inbox has an agent: the new one shares the first inbox (it works in groups there).
+        inboxId: 1,
       });
       expect(sessionStorage.getItem('wati.ai-draft.new-faq')).toBeNull();
     });
@@ -877,18 +879,12 @@ describe('AI agent page', () => {
       expect(screen.queryByTestId('agent-extension-sections')).toBeNull();
     });
 
-    it('says how to get an inbox when every inbox has an agent (Enterprise)', async () => {
+    it('starts a new agent on a shared inbox when every inbox has an agent (Enterprise)', async () => {
       setup(enterprise({ maxAgents: 3 }), '/admin/members/ai/new');
-      const hint = await screen.findByTestId('no-free-inbox');
-      expect(hint.textContent).toContain(
-        'Every inbox has an AI agent. Add an inbox to give this agent its own number.',
-      );
-      expect(within(hint).getByRole('link', { name: 'Add an inbox' }).getAttribute('href')).toBe(
-        '/admin/inboxes',
-      );
-      expect(within(screen.getByTestId('agent-inbox')).getByRole('combobox').textContent).toBe(
-        'None (the agent does not answer any chat)',
-      );
+      const select = within(await screen.findByTestId('agent-inbox')).getByRole('combobox');
+      await waitFor(() => expect(select.textContent).not.toBe(''));
+      expect(select.textContent).not.toBe('None (the agent does not answer any chat)');
+      expect(screen.queryByTestId('no-free-inbox')).toBeNull();
     });
 
     it('switches the starting texts directly while unedited, and asks once edited', async () => {
@@ -954,43 +950,17 @@ describe('AI agent page', () => {
       ).toBeTruthy();
     });
 
-    it('moving to an inbox with another agent warns, frees it, then saves the binding', async () => {
+    it('moving to an inbox with a direct-chat agent warns and saves without moving that agent', async () => {
       const { fetchMock } = setup(enterprise());
       const user = userEvent.setup();
       const select = within(await screen.findByTestId('agent-inbox')).getByRole('combobox');
       await waitFor(() => expect(select.textContent).toBe('Sales line'));
       await user.click(select);
       await user.click(await screen.findByRole('option', { name: 'Support line (has Help Desk)' }));
-      expect(screen.getByText(/Help Desk answers Support line now/)).toBeTruthy();
+      expect(screen.getByText(/Help Desk answers the direct chats of Support line/)).toBeTruthy();
       await user.click(screen.getByRole('button', { name: 'Save' }));
-      await waitFor(() =>
-        expect(writeLines(fetchMock)).toEqual(['PATCH /api/inboxes/2', 'PUT /api/ai/agents/5']),
-      );
-      expect(JSON.parse(String(writes(fetchMock)[0]![1]!.body))).toEqual({ aiAgentId: null });
+      await waitFor(() => expect(writeLines(fetchMock)).toEqual(['PUT /api/ai/agents/5']));
       expect(lastBody(fetchMock)).toMatchObject({ inboxId: 2 });
-    });
-
-    it('gives the inbox back to the other agent when the save after freeing it fails', async () => {
-      const { fetchMock } = setup(enterprise(), '/admin/members/ai/5', (url, init) =>
-        url === '/api/ai/agents/5' && init?.method === 'PUT'
-          ? json({ error: { code: 'inbox_has_agent', message: 'Inbox has agent' } }, 409)
-          : undefined,
-      );
-      const user = userEvent.setup();
-      const select = within(await screen.findByTestId('agent-inbox')).getByRole('combobox');
-      await waitFor(() => expect(select.textContent).toBe('Sales line'));
-      await user.click(select);
-      await user.click(await screen.findByRole('option', { name: 'Support line (has Help Desk)' }));
-      await user.click(screen.getByRole('button', { name: 'Save' }));
-      expect(
-        await screen.findByText('This inbox already has an AI agent. Choose another inbox.'),
-      ).toBeTruthy();
-      expect(writeLines(fetchMock)).toEqual([
-        'PATCH /api/inboxes/2',
-        'PUT /api/ai/agents/5',
-        'PATCH /api/inboxes/2',
-      ]);
-      expect(lastBody(fetchMock)).toEqual({ aiAgentId: 6 });
     });
 
     it('keeps the agent and shows why when Delete is refused', async () => {

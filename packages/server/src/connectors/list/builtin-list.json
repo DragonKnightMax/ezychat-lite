@@ -69,20 +69,20 @@
     "builtinId": "google-sheets",
     "name": "Google Sheets",
     "summary": {
-      "en": "Read prices or stock from a sheet; add new leads.",
-      "ms": "Baca harga atau stok daripada helaian; tambah prospek baharu.",
-      "zh-CN": "从表格读取价格或库存；添加新的潜在客户。"
+      "en": "Choose per tab: Off, Read or Add rows.",
+      "ms": "Pilih bagi setiap tab: Mati, Baca atau Tambah baris.",
+      "zh-CN": "为每个工作表选择：关闭、读取或添加行。"
     },
     "description": {
-      "en": "Keep prices, stock or a FAQ in a Google Sheet and let your AI agent read it. If you allow it, the AI also adds each new lead as a row. Sign in with Google, then choose the sheet.",
-      "ms": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan ejen AI anda membacanya. Jika anda benarkan, AI juga menambah setiap prospek baharu sebagai satu baris. Log masuk dengan Google, kemudian pilih helaian itu.",
-      "zh-CN": "把价格、库存或常见问题放在 Google 表格中，让 AI 代理读取。如果您允许，AI 还会把每个新的潜在客户添加为一行。使用 Google 登录，然后选择表格。"
+      "en": "Sign in with Google, choose a sheet, then set each tab to Off, Read or Add rows for each AI agent. The agent reads prices, stock or a FAQ from Read tabs, and adds rows your agent's instructions ask for (leads, claims, orders) to Add rows tabs.",
+      "ms": "Log masuk dengan Google, pilih helaian, kemudian tetapkan setiap tab kepada Mati, Baca atau Tambah baris bagi setiap ejen AI. Ejen membaca harga, stok atau soalan lazim daripada tab Baca, dan menambah baris yang diminta oleh arahan ejen anda (prospek, tuntutan, pesanan) ke tab Tambah baris.",
+      "zh-CN": "使用 Google 登录并选择表格，然后为每个 AI 代理把每个工作表设为关闭、读取或添加行。代理从“读取”工作表中查找价格、库存或常见问题，并按照代理指令的要求（潜在客户、理赔、订单）在“添加行”工作表中添加行。"
     },
     "category": "spreadsheets",
     "privacy": {
-      "en": "EzyChat can open only the spreadsheets you choose, reads only the tab you pick and writes only the lead rows it adds: date, the customer’s name, WhatsApp number, email and a short line on what they want. No chat history goes to Google. The sign-in is stored encrypted on this computer.",
-      "ms": "EzyChat hanya boleh membuka hamparan yang anda pilih, hanya membaca tab yang anda pilih dan hanya menulis baris prospek yang ditambahnya: tarikh, nama pelanggan, nombor WhatsApp, e-mel dan satu baris ringkas tentang kehendak mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini.",
-      "zh-CN": "EzyChat 只能打开您选择的电子表格，只读取您选的工作表，只写入它添加的潜在客户行：日期、客户姓名、WhatsApp 号码、电子邮件，以及一句简短的需求说明。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
+      "en": "EzyChat can open only the spreadsheets you choose and only the tabs you turn on. It only adds new rows, never changes or deletes one, and fills them only with what the person wrote or sent, plus the date, their name and WhatsApp number. No chat history goes to Google. The sign-in is stored encrypted on this computer.",
+      "ms": "EzyChat hanya boleh membuka hamparan yang anda pilih dan hanya tab yang anda hidupkan. Ia hanya menambah baris baharu, tidak pernah mengubah atau memadam baris, dan hanya mengisinya dengan apa yang ditulis atau dihantar oleh orang itu, serta tarikh, nama dan nombor WhatsApp mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini.",
+      "zh-CN": "EzyChat 只能打开您选择的电子表格，且只使用您开启的工作表。它只添加新行，从不修改或删除行，内容只来自对方所写或发送的信息，以及日期、姓名和 WhatsApp 号码。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
     },
     "tools": [
       {
@@ -93,23 +93,23 @@
           "zh-CN": "根据表格回答问题"
         },
         "description": {
-          "en": "Looks up prices, stock or other facts in your tab before it answers.",
-          "ms": "Mencari harga, stok atau fakta lain dalam tab anda sebelum menjawab.",
-          "zh-CN": "回答前先在您的工作表中查找价格、库存或其他信息。"
+          "en": "Looks up prices, stock or other facts in your Read tabs before it answers.",
+          "ms": "Mencari harga, stok atau fakta lain dalam tab Baca anda sebelum menjawab.",
+          "zh-CN": "回答前先在“读取”工作表中查找价格、库存或其他信息。"
         },
         "access": "read"
       },
       {
-        "name": "add_lead_row",
+        "name": "add_sheet_row",
         "title": {
-          "en": "Add a lead",
-          "ms": "Tambah prospek",
-          "zh-CN": "添加潜在客户"
+          "en": "Add rows",
+          "ms": "Tambah baris",
+          "zh-CN": "添加行"
         },
         "description": {
-          "en": "Adds a customer who wants to buy as one row, so your team can follow up.",
-          "ms": "Menambah pelanggan yang mahu membeli sebagai satu baris, supaya pasukan anda boleh membuat susulan.",
-          "zh-CN": "把想购买的客户添加为一行，方便您的团队跟进。"
+          "en": "Adds rows your agent's instructions ask for to your Add rows tabs, so your team can follow up.",
+          "ms": "Menambah baris yang diminta oleh arahan ejen anda ke tab Tambah baris, supaya pasukan anda boleh membuat susulan.",
+          "zh-CN": "按照代理指令的要求在“添加行”工作表中添加行，方便您的团队跟进。"
         },
         "access": "write"
       }

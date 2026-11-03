@@ -62,6 +62,8 @@ const salesAgent: AiAgentSummary = {
   preset: 'sales',
   inboxId: 1,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
 };
 const faqAgent: AiAgentSummary = {
   ...salesAgent,
@@ -305,7 +307,12 @@ describe('MembersPage', () => {
     setup(
       [users[0]!, { ...aiUser, disabled: true }],
       undefined,
-      { agents: [{ ...salesAgent, enabled: false, documentCount: 2 }], maxAgents: 1 },
+      {
+        agents: [
+          { ...salesAgent, enabled: false, documentCount: 2, answerDirect: true, groupCount: 0 },
+        ],
+        maxAgents: 1,
+      },
       true,
     );
     await screen.findAllByText('Business AI');
@@ -314,9 +321,17 @@ describe('MembersPage', () => {
   });
 
   it.each([
-    ['On', { enabled: true, documentCount: 2 }, true],
-    ['Needs business context', { enabled: true, documentCount: 0 }, true],
-    ['Needs connection', { enabled: true, documentCount: 2 }, false],
+    ['On', { enabled: true, documentCount: 2, answerDirect: true, groupCount: 0 }, true],
+    [
+      'Needs business context',
+      { enabled: true, documentCount: 0, answerDirect: true, groupCount: 0 },
+      true,
+    ],
+    [
+      'Needs connection',
+      { enabled: true, documentCount: 2, answerDirect: true, groupCount: 0 },
+      false,
+    ],
   ] as const)('shows an AI agent as %s, in the agent page words', async (word, patch, ready) => {
     setup(
       [users[0]!, aiUser],

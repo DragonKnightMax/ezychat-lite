@@ -16,6 +16,20 @@
   },
   "proposals": [
     {
+      "feature": "group-agents",
+      "creationOrder": 29,
+      "createdAt": "2026-11-03",
+      "design": "docs/features/group-agents/design.md",
+      "mock": "docs/features/group-agents/mock/preview.html",
+      "status": "confirmed",
+      "baselineFeature": "group-mentions",
+      "baselineGitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
+      "coverage": "Standalone preview of the new screens (members, Claims agent page, Google Sheets tab access, group chat with claim/PDF/photo/missing/chit-chat/Word simulation, the sheet, Activity), desktop 1280 / mobile 360, light/dark; the cumulative full-app clone is still owed.",
+      "note": "Several AI agents per WhatsApp number (Enterprise limit), group agent + listen mode, Google Sheets tab access per agent (Off / Read / Add rows).",
+      "confirmedAt": "2026-11-03",
+      "confirmation": "Owner wrote 2026-11-03 \"look good, implement it until it done with test, than create PR and merge\" after the preview screenshots (incl. Refresh). Confirmed on the standalone preview; no full-app clone."
+    },
+    {
       "feature": "in-app-feedback",
       "creationOrder": 28,
       "createdAt": "2026-11-03",
@@ -95,7 +109,8 @@
       "coverage": "Full app clone of the confirmed ai-handoff-rules reference; WhatsApp Safety: chat banner (title, up to two plain reasons, the AI line), checked file (Warning confirm dialog, High locked for agents with recorded refusal, admin download dialog, deleted file), chat bars (auto-blocked, blocked by admin with Unblock, reported as scam, customer may be hacked with Copy warning); Admin -> Safety (counts, Flagged To review/All with number, new/existing customer, reason, status and download chips; item sheet with ZIP contents, rules, AI check, team downloads and refusals, history; Mark safe + trust sender, Report as scam dialog with block, phone steps, NSRC 997, Cyber999; Unlock, Delete file, Open chat), Blocked tab, Settings (check messages, AI check, auto-block, delete locked files after 7/30/90 days, Enterprise online check) with InfoTips; mock-only simulator of six scenarios and the admin alert toast; routes /api/mock/safety*; desktop 1280 / mobile 360 touch, light/dark (safety-shots.mjs)",
       "confirmedAt": "2026-10-31",
       "confirmation": "Owner reviewed the screenshot page (chat warnings, locked file, hacked-customer bar, Admin -> Safety, report dialog, settings, auto-block) and confirmed 2026-10-31 (\"look good\"), answering: AI check on by default when the install has an AI configured; Safety page admins only.",
-      "gitRevision": "d2f5ee530a65158167763b7078e48bfb6083f27a"
+      "gitRevision": "d2f5ee530a65158167763b7078e48bfb6083f27a",
+      "folderRemoved": "2026-11-03 (group-agents: sixth feature folder); last on main at 32a58d6"
     },
     {
       "feature": "ai-direct-chats",

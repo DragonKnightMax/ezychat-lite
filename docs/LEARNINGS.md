@@ -186,6 +186,7 @@ into AGENTS.md.
   (`const f = () => f(qc)`); grep the new name in each touched file before typechecking.
 - Every response shape that two parallel agents share goes in `packages/shared` before they start: a zod schema
   written only on the web side hid a server/web mismatch (`tools` as a count vs a list of names).
+- The Stop hook commits on every stop while subagents write: snapshot commits during parallel work carry `[skip ci]` so CI and its failure notices don't fire on half-written code; SonarCloud still runs on them, so read its issue list only on the integrated head.
 
 ## Git, GitHub and CI
 
@@ -825,6 +826,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   when a folder must stay byte-identical (Lite's data during an import).
 - One-shot CLI commands that exit right away log through a synchronous pino destination; the rotating server logger
   opens its file asynchronously and loses the last lines.
+- A migration that rebuilds a table other tables reference with ON DELETE CASCADE must copy and restore those rows (`INSERT OR IGNORE`): migrations run with foreign keys on. Tests that rewind `user_version` must also undo the later migrations' columns and indexes.
 
 ## Security
 
@@ -1244,6 +1246,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   item: use `flatMap` so the helper keeps the filter. A deleted group message broke every live group AI turn.
 - A draft prompt that tells the model to use a value (a group member's name) must put that value in the fact-check
   `sources`, or the number check drops correct drafts ("Kopi88 Ali"). Group prompts send no customer details.
+- A connector gives access (which tabs, which tools), the agent's instructions say when and why: never hard-code a use case (leads, claims) into connector code; tool descriptions are built per turn from the allowed tabs and their live first rows.
+- A provider mode whose request format is undocumented for a content type (ChatGPT backend and PDFs) gets a text fallback, never a guessed part type.
 
 ## Desktop and web UI
 
@@ -1524,6 +1528,7 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
   invisible to `document.elementsFromPoint`: hit-test them with each span's `getClientRects()` from the
   textarea's own mouse/click events, and draw them with `text-transparent` (not `invisible`, which also hides
   the underline). Give one-letter marks a tint as well; a wavy underline under "i" or "a" is unreadable.
+- When the server lifts a uniqueness rule (one agent per inbox), grep the web for client flows that still enforce it (taking the slot from the other holder, "one per …" hints): unit tests written to the old rule keep passing, only a Dev Build screen review shows it.
 
 - Testing a refused file pick: `userEvent.upload` drops files that do not match the input's `accept` before the
   component sees them; use `userEvent.setup({ applyAccept: false })` when the test is about the app's own check.

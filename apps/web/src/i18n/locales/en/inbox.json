@@ -287,6 +287,7 @@
     "reopened": "{{actor}} reopened this chat",
     "aiToolUsed": "AI looked up {{title}} · {{source}}",
     "internalNote": "Internal note",
+    "sheetRowAdded": "AI added a row to {{tab}} · {{source}}",
     "calendarChecked": "AI checked free times · {{source}}",
     "calendarBooked": "AI booked {{when}} · {{source}}",
     "calendarBookedNoTime": "AI booked a time · {{source}}",
@@ -675,7 +676,7 @@
     "badge": "AI answers when tagged or quoted",
     "badgePaused": "AI paused",
     "info": {
-      "title": "AI agent answers when tagged or quoted",
+      "title": "AI agent in this group",
       "hint": "{{name}} answers only when a member @mentions your number or quotes an AI message.",
       "noAgent": "No AI agent works in this inbox.",
       "agentDisabled": "{{name}} is off. Nothing is answered in groups until you turn {{name}} on.",
@@ -684,8 +685,16 @@
       "readOnly": "Only admins can change this.",
       "on": "On",
       "off": "Off",
-      "paused": "Paused: many answers in a row. A teammate’s message starts it again."
-    }
+      "paused": "Paused: many answers in a row. A teammate’s message starts it again.",
+      "agent": "Agent",
+      "chooseAgent": "Choose the AI agent for this group, then switch it on.",
+      "chooseAgentPlaceholder": "Choose an agent",
+      "listen": "Reads every message",
+      "listenTipTitle": "What is Reads every message?",
+      "listenTip": "The agent sees every member message and follows its instructions: it may save a claim, ask for a missing detail or stay quiet. Off: it answers only when someone tags or quotes it.",
+      "listenHint": "{{name}} reads every member message and follows its instructions."
+    },
+    "badgeListen": "AI reads every message"
   },
   "askEzy": {
     "button": "Ask Ezy",

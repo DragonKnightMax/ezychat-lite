@@ -56,6 +56,8 @@ const DEFAULT_AGENT = {
   preset: 'sales' as const,
   inboxId: 1,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
 };
 const OTHER_AGENT = { ...DEFAULT_AGENT, id: 8, userId: 10, displayName: 'FAQ', inboxId: 2 };
 const AI_USER = {

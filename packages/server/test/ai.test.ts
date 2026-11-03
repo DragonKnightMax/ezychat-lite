@@ -442,8 +442,9 @@ it('cancels an older answer as soon as live media arrives and never lets delayed
   download(Buffer.from('fake-image'));
   await image;
   await vi.advanceTimersByTimeAsync(1200);
+  // reading a file that is not an image checks its type with real file I/O (ai/files.ts)
+  await vi.waitFor(() => expect(t.wa.sent).toHaveLength(1));
   expect(provider.generate).toHaveBeenCalledTimes(2);
-  expect(t.wa.sent).toHaveLength(1);
   expect(t.wa.sent[0]?.text).not.toBe('Outdated answer');
   expect(
     t.ctx.db
@@ -1502,8 +1503,9 @@ describe('customer images', () => {
       clock();
       await incomingMedia('photo', options);
       await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS);
+      // a file that is not an image is typed with real file I/O (ai/files.ts)
+      await vi.waitFor(() => expect(lastHandoff()).toBe('unsupported_message'));
       expect(provider.generate).not.toHaveBeenCalled();
-      expect(lastHandoff()).toBe('unsupported_message');
     });
   }
 

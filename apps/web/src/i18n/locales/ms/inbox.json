@@ -284,6 +284,7 @@
     "reopened": "{{actor}} membuka semula sembang ini",
     "aiToolUsed": "AI menyemak {{title}} · {{source}}",
     "internalNote": "Nota dalaman",
+    "sheetRowAdded": "AI menambah satu baris ke {{tab}} · {{source}}",
     "calendarChecked": "AI menyemak masa lapang · {{source}}",
     "calendarBooked": "AI menempah {{when}} · {{source}}",
     "calendarBookedNoTime": "AI menempah satu masa · {{source}}",
@@ -671,7 +672,7 @@
     "badge": "AI menjawab apabila ditanda atau dipetik",
     "badgePaused": "AI dijeda",
     "info": {
-      "title": "Ejen AI menjawab apabila ditanda atau dipetik",
+      "title": "Ejen AI dalam kumpulan ini",
       "hint": "{{name}} menjawab hanya apabila ahli @menyebut nombor anda atau memetik mesej AI.",
       "noAgent": "Tiada ejen AI dalam peti masuk ini.",
       "agentDisabled": "{{name}} dimatikan. Tiada jawapan dalam kumpulan sehingga anda menghidupkan {{name}}.",
@@ -680,8 +681,16 @@
       "readOnly": "Hanya pentadbir boleh menukar ini.",
       "on": "Hidup",
       "off": "Mati",
-      "paused": "Dijeda: terlalu banyak jawapan berturut-turut. Mesej rakan sepasukan memulakannya semula."
-    }
+      "paused": "Dijeda: terlalu banyak jawapan berturut-turut. Mesej rakan sepasukan memulakannya semula.",
+      "agent": "Ejen",
+      "chooseAgent": "Pilih ejen AI untuk kumpulan ini, kemudian hidupkannya.",
+      "chooseAgentPlaceholder": "Pilih ejen",
+      "listen": "Membaca setiap mesej",
+      "listenTipTitle": "Apakah Membaca setiap mesej?",
+      "listenTip": "Ejen melihat setiap mesej ahli dan mengikut arahannya: ia boleh menyimpan tuntutan, meminta butiran yang tiada atau berdiam. Mati: ia menjawab hanya apabila seseorang menanda atau memetiknya.",
+      "listenHint": "{{name}} membaca setiap mesej ahli dan mengikut arahannya."
+    },
+    "badgeListen": "AI membaca setiap mesej"
   },
   "askEzy": {
     "button": "Tanya Ezy",

@@ -261,6 +261,10 @@ export const AiAgentSummary = z.object({
    * on a clear "yes". Off: no check-in lines, the team closes chats. Missing (older servers) = off.
    */
   resolutionCheck: z.boolean().optional(),
+  /** The agent answers direct chats (at most one agent per number does). Older servers: true. */
+  answerDirect: z.boolean().default(true),
+  /** WhatsApp groups switched on for this agent. Older servers: 0. */
+  groupCount: z.number().int().nonnegative().default(0),
 });
 export type AiAgentSummary = z.infer<typeof AiAgentSummary>;
 /** Create or save one agent (same text limits as the AI member). */
@@ -432,6 +436,8 @@ export const AiToolUsedPayload = z.object({
   calendar: AiToolCalendarDetail.optional(),
   /** A WhatsApp group: the AI answered a tag or a quote, handed over, or paused (loop guard). */
   group: AiGroupEvent.optional(),
+  /** Google Sheets (core connector): the AI added a row to this tab. */
+  sheet: z.object({ action: z.literal('row_added'), tab: z.string().max(100) }).optional(),
 });
 export type AiToolUsedPayload = z.infer<typeof AiToolUsedPayload>;
 /** One extension tool call of a Try it answer: names and timing only, never input or output. */

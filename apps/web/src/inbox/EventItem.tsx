@@ -78,6 +78,9 @@ export function describeEvent(e: ChatEvent, dir: Directory): string {
           ? i18n.t('inbox:events.calendarBooked', { when, source })
           : i18n.t('inbox:events.calendarBookedNoTime', { source });
       }
+      // Google Sheets: "AI added a row to Claims".
+      if (used.data.sheet?.action === 'row_added')
+        return i18n.t('inbox:events.sheetRowAdded', { tab: used.data.sheet.tab, source });
       return i18n.t('inbox:events.aiToolUsed', { title: used.data.title, source });
     }
   }

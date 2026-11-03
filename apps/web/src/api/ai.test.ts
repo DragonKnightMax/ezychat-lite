@@ -25,6 +25,8 @@ const summary = (fields: Partial<AiAgentSummary> = {}): AiAgentSummary => ({
   preset: 'faq',
   inboxId: 2,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
   ...fields,
 });
 const agentStatus = (fields: Partial<AiAgentSummary> = {}): AiAgentStatus => ({

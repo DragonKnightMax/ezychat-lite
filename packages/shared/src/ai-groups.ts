@@ -29,6 +29,11 @@ export const AiGroupRow = z.object({
   enabled: z.boolean(),
   /** The loop guard holds now in this group (the AI waits for a teammate message). */
   paused: z.boolean().default(false),
+  /** The agent this group is given to (several agents per inbox), null = none. */
+  agentId: z.number().int().positive().nullable().default(null),
+  agentName: z.string().nullable().default(null),
+  /** "Reads every message": every live member message starts a turn (else tags and quotes only). */
+  listen: z.boolean().default(false),
 });
 export type AiGroupRow = z.infer<typeof AiGroupRow>;
 
@@ -57,6 +62,17 @@ export type AiAgentGroupsBody = z.infer<typeof AiAgentGroupsBody>;
 /** `PUT /api/ai/agents/:agentId/direct` (admins): "Answer direct chats"; answers `AiAgentGroups`. */
 export const AiAgentDirectBody = z.strictObject({ enabled: z.boolean() });
 export type AiAgentDirectBody = z.infer<typeof AiAgentDirectBody>;
+/**
+ * `PUT /api/ai/agents/:agentId/group-chats` (admins): give groups of the agent's inbox to this agent
+ * (`enabled` true, optionally with `listen`) or take them back (`enabled` false). A group another
+ * agent holds is refused (409 `group_has_agent`). Answers `AiAgentGroups`.
+ */
+export const AiAgentGroupChatsBody = z.strictObject({
+  jids: z.array(z.string().min(1).max(200)).min(1).max(200),
+  enabled: z.boolean(),
+  listen: z.boolean().optional(),
+});
+export type AiAgentGroupChatsBody = z.infer<typeof AiAgentGroupChatsBody>;
 
 /**
  * `GET /api/chats/:jid/ai-group` (anyone who may open the chat) and `PUT` (admins, body
@@ -74,7 +90,19 @@ export const AiGroupChat = z.object({
   agentAnswersGroups: z.boolean(),
   /** The loop guard holds now: the AI waits for a teammate message in this group. */
   paused: z.boolean(),
+  /** "Reads every message" in this group. */
+  listen: z.boolean().default(false),
+  /** Agents of the group's inbox with "Answer in groups" on (the choices for this group). */
+  agents: z.array(z.object({ id: z.number().int().positive(), name: z.string() })).default([]),
 });
 export type AiGroupChat = z.infer<typeof AiGroupChat>;
-export const AiGroupChatBody = z.strictObject({ enabled: z.boolean() });
+/**
+ * `agentId`: the agent for this group (else the group keeps its agent, or the inbox's only group
+ * agent; several and none chosen → 400 `agent_required`). `listen`: "Reads every message".
+ */
+export const AiGroupChatBody = z.strictObject({
+  enabled: z.boolean(),
+  agentId: z.number().int().positive().optional(),
+  listen: z.boolean().optional(),
+});
 export type AiGroupChatBody = z.infer<typeof AiGroupChatBody>;

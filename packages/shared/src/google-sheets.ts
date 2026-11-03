@@ -47,16 +47,38 @@ export type SpreadsheetLookupBody = z.infer<typeof SpreadsheetLookupBody>;
 export const SpreadsheetInfo = z.object({
   id: z.string(),
   name: z.string(),
-  tabs: z.array(z.object({ title: z.string(), rows: z.number().int().nonnegative() })),
+  tabs: z.array(
+    z.object({
+      title: z.string(),
+      rows: z.number().int().nonnegative(),
+      /** The tab's first row (column names); empty when the first row is empty. */
+      columns: z.array(z.string()).default([]),
+    }),
+  ),
+  /** When EzyChat last read the tabs from Google. */
+  checkedAt: z.number().int().nullable().default(null),
   url: z.string().url(),
 });
 export type SpreadsheetInfo = z.infer<typeof SpreadsheetInfo>;
 
-const Tab = z.string().trim().min(1).max(SHEET_TAB_CHARACTERS).nullable();
+/**
+ * What one AI agent may do with one tab (design docs/features/group-agents/design.md): `off`, `read`
+ * (look up rows) or `add` (add new rows). The agent's instructions say when; the tab's first row
+ * names the columns.
+ */
+export const SheetTabAccess = z.enum(['off', 'read', 'add']);
+export type SheetTabAccess = z.infer<typeof SheetTabAccess>;
+export const SheetTabSetting = z.object({
+  title: z.string().trim().min(1).max(SHEET_TAB_CHARACTERS),
+  access: SheetTabAccess,
+});
+export type SheetTabSetting = z.infer<typeof SheetTabSetting>;
+export const SHEETS_MAX_TABS = 50;
 
 /**
  * Per AI agent: `GET`/`PUT /api/connectors/google-sheets/agents/:agentId` (admins). The server
- * checks the spreadsheet and the tabs with Google before it saves them.
+ * checks the spreadsheet and the tabs with Google before it saves them. Older saves (`lookupTab`,
+ * `leadsTab`) are mapped to `tabs` by the server when read.
  */
 export const SheetsAgentSettings = z
   .object({
@@ -64,33 +86,27 @@ export const SheetsAgentSettings = z
     spreadsheetId: z.string().regex(SPREADSHEET_ID).nullable(),
     /** Its name when it was chosen (the server fills it in). */
     spreadsheetName: z.string().max(200).nullable(),
-    /** The tab the AI reads (first row = column names). */
-    lookupTab: Tab,
-    /** The AI may look up rows that match the customer's question. */
-    lookup: z.boolean(),
-    /** The tab new leads go into. */
-    leadsTab: Tab,
-    /** The AI may add the customer as a new row (name, WhatsApp number, request). */
-    addLeads: z.boolean(),
+    /** Access per tab; a tab that is not listed is off. */
+    tabs: z.array(SheetTabSetting).max(SHEETS_MAX_TABS).default([]),
   })
-  .refine((s) => !s.lookup || !s.spreadsheetId || !!s.lookupTab, {
-    path: ['lookupTab'],
-    message: 'choose the tab to look up',
-  })
-  .refine((s) => !s.addLeads || !s.spreadsheetId || !!s.leadsTab, {
-    path: ['leadsTab'],
-    message: 'choose the tab for new leads',
+  .refine((s) => new Set(s.tabs.map((t) => t.title)).size === s.tabs.length, {
+    path: ['tabs'],
+    message: 'a tab is listed twice',
   });
 export type SheetsAgentSettings = z.infer<typeof SheetsAgentSettings>;
 
 export const DEFAULT_SHEETS_SETTINGS: SheetsAgentSettings = {
   spreadsheetId: null,
   spreadsheetName: null,
-  lookupTab: null,
-  lookup: true,
-  leadsTab: null,
-  addLeads: false,
+  tabs: [],
 };
+
+/**
+ * Columns EzyChat fills in itself when a tab has them (matched ignoring case and spacing): the
+ * date, the person's name and WhatsApp number, the group's name, the source (file name or message)
+ * and the agent's name. The AI fills every other column.
+ */
+export const SHEETS_AUTO_COLUMNS = ['Date', 'Name', 'WhatsApp', 'Group', 'AI agent', 'Source'] as const;
 
 /** The columns of a lead row, in this order (written as the header of an empty tab). */
 export const SHEETS_LEAD_COLUMNS = [
@@ -103,7 +119,7 @@ export const SHEETS_LEAD_COLUMNS = [
 ] as const;
 
 /** One line of the connector's Activity tab: who and when, never chat text or row values. */
-export const SheetsActivityKind = z.enum(['looked_up', 'lead_added', 'failed']);
+export const SheetsActivityKind = z.enum(['looked_up', 'lead_added', 'row_added', 'failed']);
 export type SheetsActivityKind = z.infer<typeof SheetsActivityKind>;
 export const SheetsActivity = z.object({
   id: z.number().int(),
@@ -114,6 +130,10 @@ export const SheetsActivity = z.object({
   chatJid: z.string().nullable(),
   /** The customer's saved or WhatsApp name (shown to admins only). */
   customer: z.string(),
+  /** row_added / looked_up: the tab (older lines: null). */
+  tab: z.string().nullable().default(null),
+  /** The chat's name when it is a group (older lines: null). */
+  group: z.string().nullable().default(null),
 });
 export type SheetsActivity = z.infer<typeof SheetsActivity>;
 

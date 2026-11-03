@@ -68,6 +68,8 @@ export const CORE_AGENT_TOOL_NAMES: readonly string[] = [
   'book_appointment',
   // Google Sheets connector (connectors/google-sheets/tools.ts)
   'read_sheet_rows',
+  'add_sheet_row',
+  // Offered by older releases; stays reserved.
   'add_lead_row',
 ];
 /** An extension that has not handed over its tools by then is left out of the turn. */

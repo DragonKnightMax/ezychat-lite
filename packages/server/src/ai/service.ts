@@ -64,7 +64,11 @@ import {
 import { findLeak } from './leak-check.js';
 import {
   addressedToAi,
-  groupEnabled,
+  agentForChat,
+  backfillGroupAgents,
+  chatAgent,
+  directAgentTaken,
+  groupChatRow,
   groupLine,
   groupText,
   loopGuard,
@@ -72,10 +76,11 @@ import {
   pausedLineWritten,
   type GroupTrigger,
 } from './groups.js';
-import { answersDirect } from './direct.js';
+import { answersDirect, directAgentOf, directSlotTaken } from './direct.js';
 import { HttpError, errors, parse } from '../http/errors.js';
 import { getChats, getMessages } from '../wa-bridge/index.js';
 import { usersWhoCanOpen } from '../inboxes/access.js';
+import { getAliases } from '../chats/aliases.js';
 import { inboxOfKey } from '../inboxes/keys.js';
 import { AI_KNOWLEDGE_CHARACTERS, relevantKnowledge } from './knowledge.js';
 import { AgentTurnFailure, errorNameOf } from './agent/models.js';
@@ -105,8 +110,16 @@ import {
 } from './prompt.js';
 import { OPENAI_DEFAULT_MODEL } from './provider.js';
 import { claudeModelId } from './claude.js';
-import type { AiAssistCall, AiPromptImage, AiProvider, AiRewritePrompt } from './provider-types.js';
-import { AI_IMAGE_WAIT_MS, AI_LIVE_MEDIA_MS, AI_MAX_IMAGES, readPromptImage } from './images.js';
+import type {
+  AiAssistCall,
+  AiPromptImage,
+  AiPromptPdf,
+  AiProvider,
+  AiRewritePrompt,
+} from './provider-types.js';
+import { AI_LIVE_MEDIA_MS, AI_MAX_IMAGES, AI_MAX_RECORD_IMAGES } from './images.js';
+import { collectPromptFiles, promptFilesLog, skippedFilesNote } from './files.js';
+import { sheetsCanAddRows, type SheetRecordContext } from '../connectors/google-sheets/record.js';
 import { guardResolution, objectsToResolution } from './resolution.js';
 import {
   AI_CLAUDE_SECRET_KEY,
@@ -161,6 +174,13 @@ const groupTryDecision = (decision: AiDecision): AiDecision =>
       : { action: 'answer', reply: decision.reply, handoffReason: null };
 
 export const AI_FALLBACK_MS = 10_000;
+/**
+ * "Reads every message" groups: a turn starts this long after the last member message and sees
+ * every new one (a claim sent as text + photo + PDF is one turn).
+ */
+export const AI_GROUP_LISTEN_WINDOW_MS = 8_000;
+/** A listening group's batch keeps at most this many of the newest messages. */
+const AI_GROUP_LISTEN_BATCH_MAX = 30;
 /** Names of the fixed Claude models (`GET /api/ai/models` in Claude mode). */
 const CLAUDE_MODEL_LABELS: Record<(typeof CLAUDE_MODELS)[number], string> = {
   'claude-sonnet-5-5': 'Claude Sonnet 5.5',
@@ -206,7 +226,7 @@ const mcpAudit = (actor: Actor) =>
 type AgentHttpCode = AgentError['code'] | 'last_agent';
 const AGENT_ERRORS: Record<AgentHttpCode, [status: number, message: string]> = {
   agent_limit: [409, 'No more AI agents can be added in this edition'],
-  inbox_has_agent: [409, 'This inbox already has an AI agent'],
+  inbox_has_direct_agent: [409, 'Another AI agent already answers direct chats on this number'],
   agent_not_found: [404, 'AI agent not found'],
   internal_too_large: [
     409,
@@ -242,11 +262,14 @@ export interface AiService {
   status(): AiMemberStatus;
   /** Every agent, oldest first. */
   listAgents(): AiAgentSummary[];
-  /** Agents this edition allows (= maxInboxes; Lite 1). */
+  /** Agents this edition allows (`maxAgents`, default maxInboxes; Lite 1). */
   maxAgents(): number;
   /** 404 `agent_not_found` for an unknown or deleted agent. */
   agentStatus(agentId: number): AiAgentStatus;
-  /** 409 `agent_limit` at maxAgents, 409 `inbox_has_agent`; in Lite the agent always serves inbox 1. */
+  /**
+   * 409 `agent_limit` at maxAgents. A new agent in an inbox whose direct chats another agent answers
+   * starts group-only; 409 `inbox_has_direct_agent` when it cannot. Lite: always inbox 1.
+   */
   createAgent(body: AiAgentBody, actor: Actor): AiAgentStatus;
   saveAgent(agentId: number, body: AiAgentBody, actor: Actor): AiAgentStatus;
   /** The agent's "Ask if the question is answered" switch (audited, takes effect on the next reply). */
@@ -278,7 +301,10 @@ export interface AiService {
   ): AiAgentStatus;
   document(agentId: number | null, id: number): AiDocumentView;
   removeDocument(agentId: number | null, id: number, actor: Actor): AiAgentStatus;
-  /** The agent that answers this chat (the agent of its inbox), or null. */
+  /**
+   * The agent that answers this chat, or null: a group's own agent (group on, agent on with "Answer
+   * in groups"), a direct chat's the inbox's direct agent (`ai/groups.ts#agentForChat`).
+   */
   agentForChat(jid: string): AgentRow | null;
   /** Unassigns and pauses every open chat the agent owns (through chats.patch, so events fire). */
   releaseAgent(agentId: number): void;
@@ -391,10 +417,10 @@ export function createAiService(
   const generations = new Map<string, AbortController>();
   const running = new Set<Promise<void>>();
   let closed = false;
-  /** Lite 1; an Enterprise build one per inbox. */
-  const maxAgents = () => ctx.inboxes.connections.maxInboxes();
-  /** The agent of the chat's inbox: the only AI that may answer it. */
-  const agentOfChat = (jid: string) => agentForInbox(ctx.db, inboxOfKey(jid));
+  /** The edition's limit (`runCli({ maxAgents })`), else one per inbox: Lite 1. */
+  const maxAgents = () => ctx.config.maxAgents ?? ctx.inboxes.connections.maxInboxes();
+  /** The agent whose knowledge and work belong to the chat (it may be off: callers check). */
+  const agentOfChat = (jid: string) => chatAgent(ctx, jid);
   /** Every AI team member, deleted agents included (their messages stay in the history). */
   const aiUserIds = () =>
     new Set(
@@ -541,6 +567,8 @@ export function createAiService(
     customer: AiCustomer | null = null,
     /** A WhatsApp group answer (group rules and the group in the Current situation block). */
     group?: AiGroupSituation,
+    /** The batch's PDFs and the note on files left out (Current situation block). */
+    files?: { pdfs: AiPromptPdf[]; note: string | null },
   ) => ({
     ...buildAiPrompt(
       knowledge,
@@ -552,10 +580,12 @@ export function createAiService(
         timeZone: resolveAiTimeZone(ctx.settings.get<unknown>(AI_TIMEZONE_SETTING, null)),
         awaitingConfirmation,
         ...(group ? { group } : {}),
+        ...(files?.note ? { filesNote: files.note } : {}),
       },
       images,
       customer,
     ),
+    ...(files?.pdfs.length ? { pdfs: [...files.pdfs] } : {}),
     cacheId: `${installId()}#agent:${agentId}`,
   });
   const mediaPending = (id: string) =>
@@ -581,23 +611,52 @@ export function createAiService(
       signal.addEventListener('abort', done, { once: true });
       if (!mediaPending(id) || signal.aborted) done();
     });
-  /** The newest readable customer images of a batch (newest first), at most AI_MAX_IMAGES. */
-  async function batchImages(batch: readonly Message[], signal: AbortSignal) {
-    const images: AiPromptImage[] = [];
-    // One wait budget for the whole batch, not per image.
-    const deadline = Date.now() + AI_IMAGE_WAIT_MS;
-    for (const message of [...batch].reverse()) {
-      if (images.length >= AI_MAX_IMAGES || signal.aborted) break;
-      if (message.fromMe || message.type !== 'image') continue;
-      // Imported history media stays pending until someone opens it: never wait for it.
-      if (mediaPending(message.id) && Date.now() - message.timestamp > AI_LIVE_MEDIA_MS) continue;
-      await waitForMedia(message.id, signal, deadline);
-      const file = messages.mediaPath(message.id);
-      const image = file ? readPromptImage(file.path) : null;
-      if (image) images.push(image);
-    }
-    return images.reverse();
+  /**
+   * The photos and PDFs of a batch the model is given (`ai/files.ts`): up to 10 photos when the
+   * agent may add sheet rows (an invoice set), else 3; High-risk files never. The note says which
+   * files were left out (when the files module provides one).
+   */
+  async function batchFiles(batch: readonly Message[], agentId: number, signal: AbortSignal) {
+    const files = await collectPromptFiles(
+      batch,
+      {
+        waitForMedia,
+        mediaPending,
+        mediaPath: (id) => messages.mediaPath(id),
+        safetyLevel: (id) => ctx.services.safety?.levelOf(id) ?? null,
+      },
+      {
+        maxImages: sheetsCanAddRows(ctx, agentId) ? AI_MAX_RECORD_IMAGES : AI_MAX_IMAGES,
+        signal,
+        // the ChatGPT sign-in backend takes no files: it gets each PDF's text layer
+        textLayer: aiProviderSettings(ctx.settings).mode === 'chatgpt',
+      },
+    );
+    return { ...files, note: skippedFilesNote(files.skipped) };
   }
+  /** Who a sheet row of this turn is for (Google Sheets "Add rows"); `group` = the batch's senders. */
+  const recordContext = (
+    batch: readonly Message[],
+    files: { images: readonly unknown[]; pdfs: readonly unknown[] },
+    group: boolean,
+  ): SheetRecordContext => ({
+    personJids: group
+      ? [
+          ...new Set(
+            batch.flatMap((message) =>
+              message.senderJid ? [getAliases(ctx).resolve(message.senderJid)] : [],
+            ),
+          ),
+        ]
+      : null,
+    messageIds: batch.map((message) => message.id),
+    filesGiven: files.images.length + files.pdfs.length > 0,
+    fileNames: batch.flatMap((message) =>
+      (message.type === 'image' || message.type === 'document') && message.mediaName
+        ? [message.mediaName]
+        : [],
+    ),
+  });
   const state = (jid: string) =>
     ctx.db.prepare('SELECT * FROM ai_chat_state WHERE chat_jid = ?').get(jid) as State | undefined;
   /** One agent's Business context items with their text, oldest first (stable knowledge prefix). */
@@ -703,9 +762,18 @@ export function createAiService(
   };
   // WhatsApp groups (docs/features/ai-groups/design.md): addressed questions wait per group and are
   // answered one at a time; the AI never owns a group chat, so none of the direct-chat state applies.
-  /** Addressed group messages waiting for an answer, per group, oldest first. */
-  const groupQueues = new Map<string, Array<{ id: string; trigger: GroupTrigger }>>();
+  /**
+   * Group turns waiting, per group, oldest first: an addressed message (`tag` / `quote`), or a
+   * listening group's batch of new member messages (`listen`, `id` = its newest).
+   */
+  const groupQueues = new Map<
+    string,
+    Array<{ id: string; trigger: GroupTrigger | 'listen'; batch?: string[] }>
+  >();
   const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** "Reads every message": member messages collected per group until it is quiet for a while. */
+  const listenBatches = new Map<string, string[]>();
+  const listenTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const groupTurns = new Map<string, AbortController>();
   /** `<jid>\n<quoted message id>` of group answers being sent now: canSend lets only these out. */
   const groupSends = new Set<string>();
@@ -714,6 +782,10 @@ export function createAiService(
     if (timer) clearTimeout(timer);
     groupTimers.delete(jid);
     groupQueues.delete(jid);
+    const listening = listenTimers.get(jid);
+    if (listening) clearTimeout(listening);
+    listenTimers.delete(jid);
+    listenBatches.delete(jid);
     const turn = groupTurns.get(jid);
     groupTurns.delete(jid);
     if (turn) {
@@ -721,7 +793,8 @@ export function createAiService(
       failPendingAi(jid);
     }
   };
-  const groupJids = () => new Set([...groupTimers.keys(), ...groupTurns.keys()]);
+  const groupJids = () =>
+    new Set([...groupTimers.keys(), ...groupTurns.keys(), ...listenTimers.keys()]);
   const cancelAll = () => {
     for (const jid of new Set([...timers.keys(), ...generations.keys()])) cancel(jid);
     for (const jid of groupJids()) cancelGroup(jid);
@@ -820,7 +893,7 @@ export function createAiService(
     }
   });
   const eligible = (jid: string): boolean => {
-    const agent = agentOfChat(jid);
+    const agent = agentForChat(ctx, jid);
     const chat = chats.get(jid);
     const s = state(jid);
     return (
@@ -1037,16 +1110,14 @@ export function createAiService(
   const groupAgent = (jid: string): AgentRow | null => {
     if (closed || !gateOpen() || !ready()) return null;
     if (chats.get(jid)?.type !== 'group') return null;
-    const agent = agentOfChat(jid);
-    if (!agent?.enabled || !agent.answerGroups || !groupEnabled(ctx.db, jid)) return null;
-    return agent;
+    return agentForChat(ctx, jid);
   };
   /**
    * Loop guard: after AI_GROUP_LOOP_GUARD AI messages in a row without a teammate message the AI
    * waits; the first held question of the run writes the one "AI paused" line.
    */
-  const holdForLoopGuard = (jid: string, agent: AgentRow): boolean => {
-    const guard = loopGuard(ctx.db, jid);
+  const holdForLoopGuard = (jid: string, agent: AgentRow, listen = false): boolean => {
+    const guard = loopGuard(ctx.db, jid, listen);
     if (!guard.paused) return false;
     if (!pausedLineWritten(ctx.db, jid, guard.since)) {
       chats.addAiToolUsed(jid, agent.userId, [groupLine(agent, { kind: 'paused', member: null })]);
@@ -1060,7 +1131,7 @@ export function createAiService(
   /** Waiting questions of one group: at most this many (a burst beyond it gets no answer). */
   const GROUP_QUEUE_MAX = 5;
   const GROUP_DEBOUNCE_MS = 1000;
-  function scheduleGroup(jid: string) {
+  function scheduleGroup(jid: string, delay = GROUP_DEBOUNCE_MS) {
     if (groupTimers.has(jid) || groupTurns.has(jid) || groupTimers.size >= 200) return;
     const timer = setTimeout(() => {
       groupTimers.delete(jid);
@@ -1072,7 +1143,7 @@ export function createAiService(
         .catch(() => log.warn({ jid, reason: 'workflow_failed' }, 'AI group workflow failed'))
         .finally(() => running.delete(promise));
       running.add(promise);
-    }, GROUP_DEBOUNCE_MS);
+    }, delay);
     timer.unref?.();
     groupTimers.set(jid, timer);
   }
@@ -1108,13 +1179,14 @@ export function createAiService(
    */
   async function groupTurn(
     jid: string,
-    ask: { id: string; trigger: GroupTrigger },
+    ask: { id: string; trigger: GroupTrigger | 'listen'; batch?: string[] },
     signal: AbortSignal,
   ) {
     const agent = groupAgent(jid);
     if (!agent) return;
+    const listen = ask.trigger === 'listen';
     const still = () => !signal.aborted && groupAgent(jid)?.id === agent.id;
-    if (holdForLoopGuard(jid, agent)) return;
+    if (holdForLoopGuard(jid, agent, listen)) return;
     if (!replyWindowOpen(ctx, jid)) {
       log.info({ jid, agentId: agent.id, reason: 'window_closed' }, 'AI group question skipped');
       return;
@@ -1122,12 +1194,27 @@ export function createAiService(
     const chat = chats.get(jid)!;
     const history = messages.list(jid, { limit: AI_GROUP_CONTEXT_MESSAGES }).messages;
     const asked = history.find((message) => message.id === ask.id);
-    if (!asked) {
+    // Listening: the batch's member messages still in the chat (a deleted one is not read).
+    const batch = listen
+      ? history.filter(
+          (message) =>
+            (ask.batch ?? [ask.id]).includes(message.id) &&
+            !message.fromMe &&
+            message.deletedAt == null,
+        )
+      : asked
+        ? [asked]
+        : [];
+    if (!asked || !batch.length) {
       log.info({ jid, agentId: agent.id, reason: 'question_too_old' }, 'AI group question skipped');
       return;
     }
     const member = memberName(ctx, asked);
     const question = groupText(customerText(asked)).trim();
+    const batchTexts = batch.map((message) => ({
+      member: memberName(ctx, message) ?? 'Member',
+      text: groupText(customerText(message)).trim(),
+    }));
     const quoted = asked.quotedId
       ? history.find((message) => message.id === asked.quotedId)
       : undefined;
@@ -1137,9 +1224,32 @@ export function createAiService(
     const internalTexts = saved.filter((item) => item.internal).map((item) => item.text);
     const knowledge = relevantKnowledge(
       items.business,
-      [quoted ? customerText(quoted) : '', question].filter(Boolean).join('\n'),
+      listen
+        ? batchTexts.map((line) => line.text).join('\n')
+        : [quoted ? customerText(quoted) : '', question].filter(Boolean).join('\n'),
     );
-    const hasFacts = !!knowledge.trim() || agentLookupsAvailable(ctx, 'sales', agent.id);
+    const canRecord = sheetsCanAddRows(ctx, agent.id);
+    const hasFacts =
+      !!knowledge.trim() || agentLookupsAvailable(ctx, 'sales', agent.id) || canRecord;
+    const unsafe = batch.some((message) => ctx.services.safety?.levelOf(message.id) === 'high');
+    // Photos and PDFs of the batch (a tagged photo, a listening group's claim files).
+    const files =
+      !unsafe && hasFacts && batch.some((m) => m.type === 'image' || m.type === 'document')
+        ? await batchFiles(batch, agent.id, signal)
+        : { images: [], pdfs: [], skipped: [], note: null };
+    if (!still()) return;
+    if (listen && !unsafe) {
+      // A listening group gets no hand-over line for what it cannot read: it stays quiet.
+      const readable =
+        batchTexts.some((line) => line.text) || files.images.length + files.pdfs.length > 0;
+      if (!readable || !hasFacts) {
+        log.info(
+          { jid, agentId: agent.id, reason: readable ? 'missing_facts' : 'nothing_readable' },
+          'AI group messages skipped',
+        );
+        return;
+      }
+    }
     const toolCalls: string[] = [];
     let lookups: AgentToolInfo[] = [];
     let lookupFailed = false;
@@ -1152,8 +1262,13 @@ export function createAiService(
     let decision: AiDecision;
     try {
       // A tag or quote without text (a sticker, a voice note, a photo without caption) goes to the team.
-      if (ctx.services.safety?.levelOf(asked.id) === 'high') decision = handover('sensitive');
-      else if (!asked.body?.trim() || !question) decision = handover('unsupported_message');
+      if (unsafe) decision = handover('sensitive');
+      else if (
+        !listen &&
+        (!asked.body?.trim() || !question) &&
+        !(asked.type === 'document' && files.pdfs.length > 0)
+      )
+        decision = handover('unsupported_message');
       else if (!hasFacts) decision = handover('missing_facts');
       else {
         const lookupAbort = new AbortController();
@@ -1169,6 +1284,7 @@ export function createAiService(
             },
             onCall: (name) => toolCalls.push(name),
             lookupsOnly: true,
+            record: recordContext(batch, files, true),
           },
         );
         try {
@@ -1184,14 +1300,16 @@ export function createAiService(
                   knowledge,
                   groupConversation(history, aiUserIds()),
                   false,
-                  [],
+                  files.images,
                   null,
                   {
                     name: chat.name?.trim() || 'WhatsApp group',
                     member: member ?? 'Member',
                     trigger: ask.trigger,
                     message: question,
+                    ...(listen ? { messages: batchTexts } : {}),
                   },
+                  files,
                 ),
                 tools: {
                   ...chatTools({
@@ -1248,6 +1366,8 @@ export function createAiService(
         agentId: agent.id,
         group: true,
         trigger: ask.trigger,
+        batch: batch.length,
+        ...promptFilesLog(files),
         action: decision.action,
         handoffReason: decision.handoffReason ?? null,
         toolCalls,
@@ -1318,10 +1438,43 @@ export function createAiService(
         question,
       });
   }
-  /** A live group message: queued for an answer only when every switch is on and it is addressed. */
+  /** A listening group was quiet for the window: its batch becomes one queued turn. */
+  const flushListen = (jid: string) => {
+    listenTimers.delete(jid);
+    const batch = listenBatches.get(jid);
+    listenBatches.delete(jid);
+    if (!batch?.length || !groupAgent(jid)) return;
+    const queue = groupQueues.get(jid) ?? [];
+    if (queue.length >= GROUP_QUEUE_MAX) {
+      log.info({ jid, reason: 'queue_full' }, 'AI group question skipped');
+      return;
+    }
+    queue.push({ id: batch.at(-1)!, trigger: 'listen', batch });
+    groupQueues.set(jid, queue);
+    log.info({ jid, trigger: 'listen', batch: batch.length }, 'AI group messages');
+    scheduleGroup(jid, 0);
+  };
+  /**
+   * A live group message: in a group with "Reads every message" on it joins the group's batch (one
+   * turn once the group is quiet for AI_GROUP_LISTEN_WINDOW_MS); else it is queued for an answer
+   * only when every switch is on and it is addressed.
+   */
   const onGroupInbound = (chat: Chat, message: Message) => {
     const agent = groupAgent(chat.jid);
     if (!agent) return;
+    if (groupChatRow(ctx.db, chat.jid).listen) {
+      if (message.fromMe || isAiUser(message.sentByUserId)) return;
+      const batch = [...(listenBatches.get(chat.jid) ?? []), message.id].slice(
+        -AI_GROUP_LISTEN_BATCH_MAX,
+      );
+      listenBatches.set(chat.jid, batch);
+      const waiting = listenTimers.get(chat.jid);
+      if (waiting) clearTimeout(waiting);
+      const timer = setTimeout(() => flushListen(chat.jid), AI_GROUP_LISTEN_WINDOW_MS);
+      timer.unref?.();
+      listenTimers.set(chat.jid, timer);
+      return;
+    }
     const trigger = addressedToAi(ctx, {
       chatJid: chat.jid,
       messageId: message.id,
@@ -1345,7 +1498,7 @@ export function createAiService(
 
   async function respond(jid: string) {
     if (!eligible(jid)) return;
-    const agent = agentOfChat(jid)!;
+    const agent = agentForChat(ctx, jid)!;
     const user = { id: agent.userId };
     const customerId = state(jid)!.last_customer_message_id!;
     const controller = new AbortController();
@@ -1355,7 +1508,7 @@ export function createAiService(
       chats.get(jid)?.assignedTo === user.id &&
       state(jid)?.last_customer_message_id === customerId &&
       !state(jid)?.paused &&
-      agentOfChat(jid)?.id === agent.id &&
+      agentForChat(ctx, jid)?.id === agent.id &&
       !!agentById(ctx.db, agent.id)?.enabled;
     try {
       if (chats.get(jid)!.assignedTo === null) chats.patch(jid, { assignedTo: user.id }, user.id);
@@ -1449,7 +1602,12 @@ export function createAiService(
       const asked = state(jid)!.awaiting_confirmation;
       const awaiting = asked > 0;
       let decision: AiDecision;
-      let images: AiPromptImage[] = [];
+      let files: Awaited<ReturnType<typeof batchFiles>> = {
+        images: [],
+        pdfs: [],
+        skipped: [],
+        note: null,
+      };
       const toolCalls: string[] = [];
       /** Successful extension look-ups ("AI looked up …" lines) and whether one failed. */
       let lookups: AgentToolInfo[] = [];
@@ -1471,7 +1629,7 @@ export function createAiService(
         turns: AiConversationTurn[],
         facts: string,
         awaitingConfirmation: boolean,
-        batchImages: AiPromptImage[],
+        given: typeof files,
       ): Promise<AiDecision> => {
         // A failed extension look-up ends the turn at once; the catch below hands over.
         const lookupAbort = new AbortController();
@@ -1486,6 +1644,7 @@ export function createAiService(
               lookupAbort.abort();
             },
             onCall: (name) => toolCalls.push(name),
+            record: recordContext(batch, given, false),
           },
         );
         try {
@@ -1501,8 +1660,10 @@ export function createAiService(
                   facts,
                   turns,
                   awaitingConfirmation,
-                  batchImages,
+                  given.images,
                   savedCustomer,
+                  undefined,
+                  given,
                 ),
                 tools: {
                   ...chatTools({
@@ -1524,14 +1685,23 @@ export function createAiService(
         }
       };
       try {
-        // Text, images (with or without a caption) and voice notes can be handled; video,
-        // documents, stickers and the like go to the team.
+        // Text, images (with or without a caption), PDFs the model is given and voice notes can be
+        // handled; video, other documents, stickers and the like go to the team.
         const voice = customer.type === 'audio';
-        const readable = customer.type === 'text' || customer.type === 'image' || voice;
-        if (readable && knowledge.trim()) images = await batchImages(batch, controller.signal);
+        const document = customer.type === 'document';
+        if (
+          (customer.type === 'text' || customer.type === 'image' || voice || document) &&
+          knowledge.trim()
+        )
+          files = await batchFiles(batch, agent.id, controller.signal);
         if (!owned()) return;
+        const pdfGiven = document && files.pdfs.length > 0;
+        const readable = customer.type === 'text' || customer.type === 'image' || voice || pdfGiven;
         const understood =
-          !!customer.body?.trim() || (customer.type === 'image' && images.length > 0) || voice;
+          !!customer.body?.trim() ||
+          (customer.type === 'image' && files.images.length > 0) ||
+          voice ||
+          pdfGiven;
         // An untranscribed voice note gets one "please type it" answer; a second one after
         // that request goes to the team.
         const customerIndex = history.indexOf(customer);
@@ -1563,7 +1733,7 @@ export function createAiService(
                 reply: HANDOFF_REPLY,
                 handoffReason: hasFacts ? 'unsupported_message' : 'missing_facts',
               }
-            : await decide(conversation(history, aiUsers), knowledge, awaiting, images);
+            : await decide(conversation(history, aiUsers), knowledge, awaiting, files);
         // The first voice note the AI could not listen to always gets the "please type it" answer
         // (a repeat was handed off above); only a request for a person or a sensitive topic
         // still hands off.
@@ -1657,7 +1827,7 @@ export function createAiService(
           proposed,
           handoffReason: decision.handoffReason ?? null,
           asked,
-          images: images.length,
+          ...promptFilesLog(files),
           toolCalls,
           voiceNotes: voiceNotes.length,
           model: current.model ?? null,
@@ -1720,8 +1890,8 @@ export function createAiService(
       onGroupInbound(chat, message);
       return;
     }
-    // Only the agent of the chat's inbox answers it.
-    const agent = agentForInbox(ctx.db, chat.inboxId);
+    // Only the inbox's direct agent answers a direct chat.
+    const agent = directAgentOf(ctx, chat.inboxId);
     const user = agent?.enabled && answersDirect(ctx, agent) ? { id: agent.userId } : null;
     if (
       !user ||
@@ -1772,7 +1942,7 @@ export function createAiService(
       ctx.db.prepare('DELETE FROM ai_chat_state WHERE chat_jid = ?').run(chat.jid);
     } else if (
       chat.assignedTo !== null &&
-      chat.assignedTo !== agentForInbox(ctx.db, chat.inboxId)?.userId
+      chat.assignedTo !== directAgentOf(ctx, chat.inboxId)?.userId
     )
       pause(chat.jid);
   };
@@ -1835,12 +2005,20 @@ export function createAiService(
     preset: agent.preset,
     inboxId: agent.inboxId,
     resolutionCheck: agent.resolutionCheck,
+    answerDirect: answersDirect(ctx, agent),
+    groupCount: (
+      ctx.db
+        .prepare('SELECT count(*) AS n FROM ai_group_chats WHERE agent_id = ? AND enabled = 1')
+        .get(agent.id) as { n: number }
+    ).n,
     documentCount: (
       ctx.db.prepare('SELECT count(*) AS n FROM ai_documents WHERE agent_id = ?').get(agent.id) as {
         n: number;
       }
     ).n,
   });
+  /** One agent, or one number: every agent serves inbox 1. */
+  const oneInbox = () => maxAgents() <= 1 || ctx.inboxes.connections.maxInboxes() <= 1;
   const requireInbox = (inboxId: number) => {
     const inbox = ctx.inboxes.repo.get(inboxId);
     if (!inbox || inbox.removed_at !== null) throw errors.notFound('Inbox');
@@ -1865,7 +2043,7 @@ export function createAiService(
     if (!hasContext && !agentLookupsAvailable(ctx, 'sales', agentId))
       throw errors.validation('Add business context before turning on the AI member');
   };
-  /** A new `kind = 'ai'` team member and its agent row (409 `agent_limit` / `inbox_has_agent`). */
+  /** A new `kind = 'ai'` team member and its agent row (409 `agent_limit` / `inbox_has_direct_agent`). */
   const insertAgent = (
     fields: {
       displayName: string;
@@ -1879,9 +2057,11 @@ export function createAiService(
     actor: Actor,
   ): AgentRow => {
     if (listAgents(ctx.db).length >= maxAgents()) throw agentHttpError('agent_limit');
-    // Lite: the only agent always answers the only inbox.
-    const inboxId = maxAgents() <= 1 ? 1 : fields.inboxId;
+    // Lite (and any build with one number): the agents always answer the only inbox.
+    const inboxId = oneInbox() ? 1 : fields.inboxId;
     if (inboxId !== null) requireInbox(inboxId);
+    // An inbox without groups has no group-only agents: its one agent answers direct chats.
+    if (directSlotTaken(ctx, inboxId, null)) throw agentHttpError('inbox_has_direct_agent');
     return ctx.db.transaction(() => {
       const now = Date.now();
       const userId = Number(
@@ -1966,7 +2146,7 @@ export function createAiService(
     },
     createAgent(body, actor) {
       // Lite forces inbox 1 (insertAgent); only an inbox-1 agent adopts items written before it.
-      checkEnable(null, body.enabled, maxAgents() <= 1 || body.inboxId === 1);
+      checkEnable(null, body.enabled, oneInbox() || body.inboxId === 1);
       const preset = body.preset ?? 'sales';
       const agent = insertAgent(
         {
@@ -1987,7 +2167,7 @@ export function createAiService(
       const agent = agentById(ctx.db, agentId);
       if (!agent) throw agentHttpError('agent_not_found');
       checkEnable(agent.id, body.enabled);
-      // A new inbox first: it may be refused (inbox_has_agent) before anything is saved.
+      // A new inbox first: it may be refused (inbox_has_direct_agent) before anything is saved.
       if (body.inboxId !== undefined && body.inboxId !== agent.inboxId)
         service.setAgentInbox(agent.id, body.inboxId, actor);
       cancelAgent(agent.id);
@@ -2090,10 +2270,11 @@ export function createAiService(
     setAgentInbox(agentId, inboxId, actor) {
       const agent = agentById(ctx.db, agentId);
       if (!agent) throw agentHttpError('agent_not_found');
-      if (maxAgents() <= 1 && inboxId !== 1)
+      if (oneInbox() && inboxId !== 1)
         throw errors.validation('The AI agent always answers the only inbox');
       if (inboxId !== null) requireInbox(inboxId);
       if (inboxId === agent.inboxId) return service.agentStatus(agent.id);
+      if (directSlotTaken(ctx, inboxId, agent.id)) throw directAgentTaken();
       cancelAgent(agent.id);
       ctx.db.transaction(() => {
         agentCall(() => setAgentInbox(ctx.db, agent.id, inboxId));
@@ -2894,7 +3075,7 @@ export function createAiService(
         );
       return (
         eligible(jid) &&
-        agentOfChat(jid)?.userId === userId &&
+        agentForChat(ctx, jid)?.userId === userId &&
         chats.get(jid)?.assignedTo === userId &&
         !!quotedId &&
         state(jid)?.last_customer_message_id === quotedId
@@ -2921,6 +3102,8 @@ export function createAiService(
   migrateLegacyContext();
   // Permanent start-up step: the old member texts become agent 1 (once, see ai/agents.ts).
   migrateMemberSetting(ctx.db, ctx.settings);
+  // Permanent start-up step: a switched-on group with no agent gets its inbox's only agent.
+  backfillGroupAgents(ctx.db);
   // Restore only explicitly recorded live inbound work; imported WhatsApp history never creates state.
   const pending = ctx.db
     .prepare(

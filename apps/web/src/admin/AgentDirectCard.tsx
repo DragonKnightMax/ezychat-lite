@@ -2,6 +2,8 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAgentGroups, useSetAnswerDirect } from '../api/ai-groups';
+import { useAiAgents } from '../api/ai';
+import { ApiError } from '../api/client';
 import { Banner } from '@/components/app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -29,16 +31,29 @@ export function AgentDirectCard({
   const switchId = useId();
   const q = useAgentGroups(agentId);
   const set = useSetAnswerDirect(agentId);
+  const agents = useAiAgents();
   const [confirm, setConfirm] = useState(false);
+  /** 409 `inbox_has_direct_agent`: another agent of this inbox answers direct chats. */
+  const [taken, setTaken] = useState(false);
   if (inboxName === null || !q.data?.directAvailable) return null;
 
   const { answerDirect: on, enabled: groupsOn, heldDirect: held } = q.data;
   const inbox = q.data.inboxName ?? inboxName;
-  const save = (enabled: boolean) =>
+  // The other agent is named when it is the only other agent of this inbox.
+  const list = agents.data?.agents ?? [];
+  const inboxId = list.find((a) => a.id === agentId)?.inboxId ?? null;
+  const rivals = list.filter((a) => a.id !== agentId && inboxId !== null && a.inboxId === inboxId);
+  const other = rivals.length === 1 ? rivals[0]!.displayName : null;
+  const save = (enabled: boolean) => {
+    setTaken(false);
     set.mutate(enabled, {
       onSuccess: () => setConfirm(false),
-      onError: () => toast.error(t('aiDirect.saveFailed')),
+      onError: (e) => {
+        if (e instanceof ApiError && e.code === 'inbox_has_direct_agent') setTaken(true);
+        else toast.error(t('aiDirect.saveFailed'));
+      },
     });
+  };
 
   return (
     <Card className="gap-4" data-testid="agent-direct">
@@ -70,6 +85,12 @@ export function AgentDirectCard({
             />
           </Label>
         </div>
+
+        {taken && (
+          <p className="text-sm text-danger" role="alert" data-testid="direct-taken">
+            {other ? t('aiDirect.taken', { other, inbox }) : t('aiDirect.takenUnknown', { inbox })}
+          </p>
+        )}
 
         {!on && (
           <div data-testid={groupsOn ? 'direct-group-only' : 'direct-none'}>

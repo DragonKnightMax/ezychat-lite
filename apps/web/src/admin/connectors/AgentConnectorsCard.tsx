@@ -36,17 +36,22 @@ export function AgentConnectorsCard({
     sheetsState === 'connected' || sheetsState === 'expired' || sheetsState === 'unavailable';
   const sheetSettings = useSheetsSettings(agentId, sheetsLinked).data;
   const gs = findConnector('google-sheets')!;
-  const reads = !!sheetSettings?.spreadsheetId && sheetSettings.lookup && !!sheetSettings.lookupTab;
-  const leads = !!sheetSettings?.spreadsheetId && sheetSettings.addLeads;
+  const sheetTabs = (access: 'read' | 'add') =>
+    sheetSettings?.spreadsheetId
+      ? sheetSettings.tabs.filter((x) => x.access === access).map((x) => x.title)
+      : [];
+  const reads = sheetTabs('read');
+  const adds = sheetTabs('add');
   const sheetsSummary = !sheetSettings
     ? null
-    : reads && leads
-      ? t('connectors.agentCard.sheetsReadAndLeads')
-      : reads
-        ? t('connectors.agentCard.sheetsRead')
-        : leads
-          ? t('connectors.agentCard.sheetsLeads')
-          : t('connectors.agentCard.off');
+    : reads.length + adds.length === 0
+      ? t('connectors.agentCard.off')
+      : [
+          reads.length > 0 && t('connectors.agentCard.sheetsReads', { tabs: reads.join(', ') }),
+          adds.length > 0 && t('connectors.agentCard.sheetsAdds', { tabs: adds.join(', ') }),
+        ]
+          .filter(Boolean)
+          .join(' · ');
   const gallery = useConnectorGallery();
   const partners = (gallery.data?.connectors ?? []).filter(
     (c) => c.entry.kind === 'mcp' && isLinked(c.connection),

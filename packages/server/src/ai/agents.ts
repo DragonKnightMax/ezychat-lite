@@ -33,7 +33,7 @@ export interface AgentRow {
 }
 
 export type AgentErrorCode =
-  'agent_limit' | 'inbox_has_agent' | 'agent_not_found' | 'internal_too_large';
+  'agent_limit' | 'inbox_has_direct_agent' | 'agent_not_found' | 'internal_too_large';
 
 export class AgentError extends Error {
   constructor(readonly code: AgentErrorCode) {
@@ -106,8 +106,23 @@ export const agentById = (db: DB, id: number): AgentRow | null => one(db, 'a.id'
 export const agentByUserId = (db: DB, userId: number): AgentRow | null =>
   one(db, 'a.user_id', userId);
 
-export const agentForInbox = (db: DB, inboxId: number): AgentRow | null =>
-  one(db, 'a.inbox_id', inboxId);
+/** Every agent of an inbox, oldest first (several per inbox: one for direct chats, others for groups). */
+export function agentsForInbox(db: DB, inboxId: number): AgentRow[] {
+  return (db.prepare(`${SELECT} AND a.inbox_id = ? ORDER BY a.id`).all(inboxId) as Row[]).map(
+    toAgent,
+  );
+}
+
+/**
+ * The main agent of an inbox: the one with "Answer direct chats" on, else the oldest. For the
+ * agent that actually answers a chat use `agentForChat` / `directAgentOf` (ai/groups.ts, ai/direct.ts).
+ */
+export const agentForInbox = (db: DB, inboxId: number): AgentRow | null => {
+  const row = db
+    .prepare(`${SELECT} AND a.inbox_id = ? ORDER BY a.answer_direct DESC, a.id LIMIT 1`)
+    .get(inboxId) as Row | undefined;
+  return row ? toAgent(row) : null;
+};
 
 /**
  * The agent old clients mean when they name none: the only agent, else the agent of inbox 1,
@@ -119,11 +134,20 @@ export function defaultAgent(db: DB): AgentRow | null {
   return agents.find((a) => a.inboxId === 1) ?? agents[0]!;
 }
 
-function assertInboxFree(db: DB, inboxId: number | null, agentId: number | null): void {
-  if (inboxId === null) return;
-  const holder = db.prepare('SELECT id FROM ai_agents WHERE inbox_id = ?').get(inboxId) as
-    { id: number } | undefined;
-  if (holder && holder.id !== agentId) throw new AgentError('inbox_has_agent');
+/** Another agent of this inbox has "Answer direct chats" on (at most one per inbox may). */
+export function inboxHasDirectAgent(
+  db: DB,
+  inboxId: number | null,
+  agentId: number | null,
+): boolean {
+  if (inboxId === null) return false;
+  return !!db
+    .prepare('SELECT 1 FROM ai_agents WHERE inbox_id = ? AND answer_direct = 1 AND id IS NOT ?')
+    .get(inboxId, agentId);
+}
+
+function assertDirectFree(db: DB, inboxId: number | null, agentId: number | null): void {
+  if (inboxHasDirectAgent(db, inboxId, agentId)) throw new AgentError('inbox_has_direct_agent');
 }
 
 export interface NewAgent {
@@ -134,16 +158,22 @@ export interface NewAgent {
   handoffRules: string | null;
   /** Default: `defaultResolutionCheck(preset)`. */
   resolutionCheck?: boolean;
+  /**
+   * "Answer direct chats". Default: on, unless another agent of the inbox already answers them
+   * (the new agent is then group-only). true while another one does: `inbox_has_direct_agent`.
+   */
+  answerDirect?: boolean;
 }
 
 /** Adds the `ai_agents` row for an existing `kind = 'ai'` user. */
 export function createAgentRow(db: DB, agent: NewAgent, now = Date.now()): AgentRow {
-  assertInboxFree(db, agent.inboxId, null);
+  if (agent.answerDirect) assertDirectFree(db, agent.inboxId, null);
+  const answerDirect = agent.answerDirect ?? !inboxHasDirectAgent(db, agent.inboxId, null);
   const id = Number(
     db
       .prepare(
-        `INSERT INTO ai_agents (user_id, inbox_id, preset, instructions, handoff_rules, resolution_check, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ai_agents (user_id, inbox_id, preset, instructions, handoff_rules, resolution_check, answer_direct, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         agent.userId,
@@ -152,6 +182,7 @@ export function createAgentRow(db: DB, agent: NewAgent, now = Date.now()): Agent
         agent.instructions,
         agent.handoffRules,
         (agent.resolutionCheck ?? defaultResolutionCheck(agent.preset)) ? 1 : 0,
+        answerDirect ? 1 : 0,
         now,
         now,
       ).lastInsertRowid,
@@ -193,28 +224,58 @@ export function updateAgentTexts(db: DB, id: number, texts: AgentTexts, now = Da
   if (!changed) throw new AgentError('agent_not_found');
 }
 
-/** The agent's "Answer in groups" switch (migration 024). */
+/**
+ * The agent's groups go back to no agent, AI off (rows kept, never moved to another agent): the
+ * agent was removed from its inbox, deleted or its "Answer in groups" went off.
+ */
+export function releaseAgentGroups(db: DB, agentId: number, now = Date.now()): number {
+  return db
+    .prepare(
+      'UPDATE ai_group_chats SET enabled = 0, agent_id = NULL, listen = 0, updated_at = ? WHERE agent_id = ?',
+    )
+    .run(now, agentId).changes;
+}
+
+/** The agent's "Answer in groups" switch (migration 024); off releases its groups. */
 export function setAgentAnswerGroups(db: DB, id: number, on: boolean, now = Date.now()): void {
-  const changed = db
-    .prepare('UPDATE ai_agents SET answer_groups = ?, updated_at = ? WHERE id = ?')
-    .run(on ? 1 : 0, now, id).changes;
-  if (!changed) throw new AgentError('agent_not_found');
+  db.transaction(() => {
+    const changed = db
+      .prepare('UPDATE ai_agents SET answer_groups = ?, updated_at = ? WHERE id = ?')
+      .run(on ? 1 : 0, now, id).changes;
+    if (!changed) throw new AgentError('agent_not_found');
+    if (!on) releaseAgentGroups(db, id, now);
+  })();
 }
 
-/** The agent's "Answer direct chats" switch (migration 027). */
+/**
+ * The agent's "Answer direct chats" switch (migration 027). On while another agent of its inbox
+ * answers direct chats: `inbox_has_direct_agent`.
+ */
 export function setAgentAnswerDirect(db: DB, id: number, on: boolean, now = Date.now()): void {
-  const changed = db
-    .prepare('UPDATE ai_agents SET answer_direct = ?, updated_at = ? WHERE id = ?')
-    .run(on ? 1 : 0, now, id).changes;
-  if (!changed) throw new AgentError('agent_not_found');
+  db.transaction(() => {
+    const row = db.prepare('SELECT inbox_id AS inboxId FROM ai_agents WHERE id = ?').get(id) as
+      { inboxId: number | null } | undefined;
+    if (!row) throw new AgentError('agent_not_found');
+    if (on) assertDirectFree(db, row.inboxId, id);
+    db.prepare('UPDATE ai_agents SET answer_direct = ?, updated_at = ? WHERE id = ?').run(
+      on ? 1 : 0,
+      now,
+      id,
+    );
+  })();
 }
 
-/** Binds the agent to an inbox (null = none). One agent per inbox. */
+/**
+ * Binds the agent to an inbox (null = none). An inbox may have several agents, but only one that
+ * answers direct chats: moving such an agent next to another one is `inbox_has_direct_agent`.
+ */
 export function setAgentInbox(db: DB, id: number, inboxId: number | null, now = Date.now()): void {
   db.transaction(() => {
-    if (!db.prepare('SELECT 1 FROM ai_agents WHERE id = ?').get(id))
-      throw new AgentError('agent_not_found');
-    assertInboxFree(db, inboxId, id);
+    const row = db.prepare('SELECT answer_direct AS direct FROM ai_agents WHERE id = ?').get(id) as
+      { direct: number } | undefined;
+    if (!row) throw new AgentError('agent_not_found');
+    if (row.direct === 1) assertDirectFree(db, inboxId, id);
+    releaseAgentGroups(db, id, now);
     db.prepare('UPDATE ai_agents SET inbox_id = ?, updated_at = ? WHERE id = ?').run(
       inboxId,
       now,
@@ -234,6 +295,7 @@ export function deleteAgentRow(db: DB, id: number, now = Date.now()): void {
     if (!row) throw new AgentError('agent_not_found');
     db.prepare('DELETE FROM ai_documents WHERE agent_id = ?').run(id);
     db.prepare('DELETE FROM reply_phrases WHERE agent_id = ?').run(id);
+    releaseAgentGroups(db, id, now);
     db.prepare('DELETE FROM ai_agents WHERE id = ?').run(id);
     db.prepare(
       'UPDATE users SET disabled_at = coalesce(disabled_at, ?), ai_deleted_at = ? WHERE id = ?',

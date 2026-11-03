@@ -335,7 +335,7 @@ export function seedLite(
     "INSERT INTO sheets_agent_settings (agent_id, settings, updated_at) VALUES (?, '{}', ?)",
   ).run(agent, NOW);
   db.prepare(
-    "INSERT INTO sheets_leads (agent_id, chat_jid, spreadsheet_id, created_at) VALUES (?, ?, 'sheet1', ?)",
+    "INSERT INTO sheets_leads (agent_id, chat_jid, spreadsheet_id, tab, message_id, values_hash, created_at) VALUES (?, ?, 'sheet1', 'Leads', 'M1', 'h1', ?)",
   ).run(agent, LITE_CHAT, NOW);
   db.prepare(
     "INSERT INTO sheets_activity (kind, agent_id, chat_jid, at) VALUES ('lead_added', ?, ?, ?)",

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { AiAgentGroups } from '@ezychat/shared';
+import type { AiAgentGroups, AiAgentSummary } from '@ezychat/shared';
 import { AgentDirectCard } from './AgentDirectCard';
 import {
   agentGroupsData,
@@ -26,6 +26,33 @@ function stubServer(start: AiAgentGroups, fail = false) {
       return json(state);
     }
     if (url === '/api/users/directory') return json({ users: [] });
+    return undefined;
+  });
+}
+
+const agent = (id: number, displayName: string, inboxId: number | null): AiAgentSummary => ({
+  id,
+  userId: 100 + id,
+  displayName,
+  enabled: true,
+  preset: 'custom',
+  inboxId,
+  documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
+});
+
+/** 409 inbox_has_direct_agent on the direct switch; `agents` = `GET /api/ai/agents`. */
+function stubTaken(agents: AiAgentSummary[]) {
+  return stubFetch((url, method) => {
+    if (url === '/api/ai/agents/3/groups' && method === 'GET')
+      return json(data({ answerDirect: false }));
+    if (url === '/api/ai/agents/3/direct' && method === 'PUT')
+      return json(
+        { error: { code: 'inbox_has_direct_agent', message: 'Another agent answers' } },
+        409,
+      );
+    if (url === '/api/ai/agents') return json({ agents, maxAgents: 5 });
     return undefined;
   });
 }
@@ -108,5 +135,25 @@ describe('AgentDirectCard', () => {
     cleanup();
     renderCard(null);
     expect(screen.queryByTestId('agent-direct')).toBeNull();
+  });
+
+  it('names the agent that already answers direct chats on this number (409)', async () => {
+    stubTaken([agent(1, 'Aina', 2), agent(3, 'Claims agent', 2), agent(4, 'Other line', 5)]);
+    renderCard();
+    const toggle = await screen.findByRole('switch', { name: 'Answer direct chats' });
+    await userEvent.click(toggle);
+    expect((await screen.findByTestId('direct-taken')).textContent).toBe(
+      'Aina already answers direct chats on Kopi Apong. Turn it off for Aina first.',
+    );
+    expect(checked(toggle)).toBe(false);
+  });
+
+  it('says another agent answers direct chats when it cannot tell which (409)', async () => {
+    stubTaken([agent(1, 'Aina', 2), agent(2, 'Ben', 2), agent(3, 'Claims agent', 2)]);
+    renderCard();
+    await userEvent.click(await screen.findByRole('switch', { name: 'Answer direct chats' }));
+    expect((await screen.findByTestId('direct-taken')).textContent).toBe(
+      'Another AI agent already answers direct chats on Kopi Apong. Turn it off for that agent first.',
+    );
   });
 });

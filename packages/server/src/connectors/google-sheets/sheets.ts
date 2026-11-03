@@ -37,6 +37,14 @@ export interface SpreadsheetMeta {
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : null);
+const cellText = (cell: unknown) =>
+  typeof cell === 'string'
+    ? cell
+    : typeof cell === 'number' || typeof cell === 'boolean'
+      ? String(cell)
+      : '';
+/** Ranges per batchGet request (keeps the URL short). */
+const BATCH_RANGES = 50;
 
 /** `'Tab name'!A1:Z1000` with quotes doubled, as Google's A1 notation wants. */
 export function tabRange(tab: string, cells: string): string {
@@ -86,17 +94,38 @@ export class SheetsClient extends GoogleClient {
     const rows = Array.isArray(json.values) ? (json.values as unknown[]) : [];
     return rows
       .slice(0, MAX_READ_ROWS)
-      .map((row) =>
-        (Array.isArray(row) ? row : [])
-          .slice(0, MAX_READ_COLUMNS)
-          .map((cell) =>
-            typeof cell === 'string'
-              ? cell
-              : typeof cell === 'number' || typeof cell === 'boolean'
-                ? String(cell)
-                : '',
-          ),
+      .map((row) => (Array.isArray(row) ? row : []).slice(0, MAX_READ_COLUMNS).map(cellText));
+  }
+
+  /** The first row (A1:Z1) of each tab, in one request per 50 tabs; an empty first row is []. */
+  async firstRows(
+    token: string,
+    id: string,
+    tabs: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<Map<string, string[]>> {
+    const out = new Map<string, string[]>();
+    for (let start = 0; start < tabs.length; start += BATCH_RANGES) {
+      const chunk = tabs.slice(start, start + BATCH_RANGES);
+      const ranges = chunk
+        .map((tab) => `ranges=${encodeURIComponent(tabRange(tab, `A1:Z1`))}`)
+        .join('&');
+      const { json } = await this.api(
+        `/spreadsheets/${encodeURIComponent(id)}/values:batchGet?${ranges}&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
+        token,
+        { signal },
       );
+      const found = Array.isArray(json.valueRanges)
+        ? (json.valueRanges as Array<Record<string, unknown>>)
+        : [];
+      chunk.forEach((tab, i) => {
+        const values = found[i]?.values;
+        const row =
+          Array.isArray(values) && Array.isArray(values[0]) ? (values[0] as unknown[]) : [];
+        out.set(tab, row.slice(0, MAX_READ_COLUMNS).map(cellText));
+      });
+    }
+    return out;
   }
 
   /** Adds `rows` below the last row of the tab's table (RAW: never parsed as formulas). */

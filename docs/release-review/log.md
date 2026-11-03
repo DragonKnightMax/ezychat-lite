@@ -347,3 +347,7 @@ Decision: **risk:human**
 ## 2026-11-02 · PR #256 · `4483177` · approved by the owner
 
 > Implement it test and merge if all work. Than archive it
+
+## 2026-11-03 · PR #269 · `3b38840` · approved by the owner
+
+> Approve and merge (owner, 2026-11-03, after the three risk items were listed: migration 032 rebuilds ai_agents, inboxes/service.ts changed, no real model/WhatsApp/Google test)

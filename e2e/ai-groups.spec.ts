@@ -68,14 +68,19 @@ test('Groups card and Group info: switch a group on for the AI', async ({
   });
   expect(on.status(), await on.text()).toBe(200);
 
-  // Agent page: the group is listed, off; switch it on.
+  // Agent page: add the group through Add groups (Reads every message ticked by default).
   await page.goto(`/admin/members/ai/${id}`);
   const card = page.getByTestId('agent-groups');
-  await expect(card.getByText('Answer in groups (when tagged or quoted)')).toBeVisible();
-  const groupSwitch = card.getByRole('switch', { name: `Answer in ${group}` });
-  await expect(groupSwitch).toBeVisible();
-  if ((await groupSwitch.getAttribute('aria-checked')) !== 'true') await groupSwitch.click();
-  await expect(groupSwitch).toHaveAttribute('aria-checked', 'true');
+  await expect(card.getByTestId('answer-in-groups')).toBeVisible();
+  const listenSwitch = card.getByRole('switch', { name: `Reads every message in ${group}` });
+  if (!(await listenSwitch.isVisible())) {
+    await card.getByTestId('add-groups').click();
+    const dialog = page.getByRole('dialog', { name: /Add groups to/ });
+    await dialog.getByLabel(new RegExp(group)).check();
+    await dialog.getByTestId('add-groups-save').click();
+    await expect(dialog).toBeHidden();
+  }
+  await expect(listenSwitch).toHaveAttribute('aria-checked', 'true');
   await expectNoHorizontalScroll(page, 'agent page groups card');
   const chat = (await (
     await page.request.get(`/api/chats/${encodeURIComponent(groupJid)}/ai-group`)
@@ -89,7 +94,7 @@ test('Groups card and Group info: switch a group on for the AI', async ({
     .getByRole('complementary', { name: 'Group info' })
     .or(page.getByRole('dialog', { name: 'Group info' }));
   const row = panel.getByTestId('group-ai-row');
-  await expect(row.getByText('AI agent answers when tagged or quoted')).toBeVisible();
+  await expect(row.getByText('AI agent in this group')).toBeVisible();
   if (!chat.agentEnabled)
     await expect(row.getByText(/is off\. Nothing is answered in groups/)).toBeVisible();
   await expectNoHorizontalScroll(page, 'group info AI row');

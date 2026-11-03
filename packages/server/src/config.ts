@@ -19,6 +19,11 @@ export interface ServerConfig {
   /** --max-inboxes (dev + fake WhatsApp only): overrides the build's inbox limit for testing. */
   maxInboxes?: number;
   /**
+   * Most AI agents: the build's limit (`CliProduct.maxAgents`), or --max-agents (dev + fake
+   * WhatsApp only). Absent = one per inbox (`maxInboxes`; Lite 1).
+   */
+  maxAgents?: number;
+  /**
    * The Google sign-in app of this build (env GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET,
    * desktop client type). null/absent: Google Calendar shows "not configured". Never logged.
    */
@@ -98,12 +103,12 @@ function defaultWebDist(): string | null {
 
 /**
  * Flags: --data <dir> (required unless WATI_DATA env), --port <n>, --host <h>, --mode <m>,
- * --fake-wa, --web-dist <dir>, --reset-admin, --max-inboxes <n>. Also accepts --flag=value.
+ * --fake-wa, --web-dist <dir>, --reset-admin, --max-inboxes <n>, --max-agents <n>. Also accepts --flag=value.
  * Env fallbacks: WATI_DATA, WATI_PORT, WATI_HOST, WATI_MODE, WATI_WEB_DIST. Google sign-in app:
  * GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET (both or neither), else the release bundle's;
  * Google's file picker likewise: GOOGLE_PICKER_API_KEY + GOOGLE_PICKER_APP_ID.
  * Fake WhatsApp is enabled ONLY by the explicit --fake-wa flag (never by env), and never in service mode.
- * --max-inboxes is accepted only together with --mode dev and --fake-wa (never by env).
+ * --max-inboxes and --max-agents are accepted only together with --mode dev and --fake-wa (never by env).
  * Lite → Enterprise (flag-only, never env): --ignore-moved (start although `moved.json` is there),
  * --restore-moved (put a moved Lite folder back, then exit), --lite-summary <liteDir> (print the
  * summary, then exit; --data is optional with it), --import-lite <liteDir> [--import-plan <file>]
@@ -139,6 +144,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
     'web-dist',
     'reset-admin',
     'max-inboxes',
+    'max-agents',
     'ignore-moved',
     'restore-moved',
     'lite-summary',
@@ -198,6 +204,16 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
       throw new Error(`invalid --max-inboxes: ${maxInboxesRaw}`);
   }
 
+  let maxAgents: number | undefined;
+  const maxAgentsRaw = str('max-agents');
+  if (maxAgentsRaw !== undefined) {
+    if (modeRaw !== 'dev' || flags.get('fake-wa') !== true)
+      throw new Error('--max-agents is allowed only with --mode dev and --fake-wa');
+    maxAgents = Number(maxAgentsRaw);
+    if (!Number.isInteger(maxAgents) || maxAgents < 1 || maxAgents > 100)
+      throw new Error(`invalid --max-agents: ${maxAgentsRaw}`);
+  }
+
   const hostRaw = str('host') ?? env.WATI_HOST;
   // The environment (Dev Builds, own builds) wins over the app the release bundle carries.
   const bundled = bundledGoogleOAuth();
@@ -228,6 +244,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv): CliConfig {
     ...(importLite !== undefined ? { importLite: resolve(importLite) } : {}),
     ...(importPlan !== undefined ? { importPlan: resolve(importPlan) } : {}),
     ...(maxInboxes !== undefined ? { maxInboxes } : {}),
+    ...(maxAgents !== undefined ? { maxAgents } : {}),
     googleOAuth:
       googleClientId && googleClientSecret
         ? { clientId: googleClientId, clientSecret: googleClientSecret }

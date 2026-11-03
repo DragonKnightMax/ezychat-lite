@@ -83,6 +83,8 @@ const SALES_AI: AiAgentSummary = {
   preset: 'sales',
   inboxId: 1,
   documentCount: 0,
+  answerDirect: true,
+  groupCount: 0,
 };
 const FAQ_AI: AiAgentSummary = {
   ...SALES_AI,

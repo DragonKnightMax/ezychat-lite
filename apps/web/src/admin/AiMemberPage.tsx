@@ -241,7 +241,8 @@ function AgentEditor({
         : localize(a.settings.handoffRules, 'handoffRules'),
     inboxId: a.agent.inboxId,
   });
-  const freeInbox = inboxes.find((inbox) => inbox.aiAgentId === null)?.id ?? null;
+  // A new agent starts on an inbox without an agent, else on the first one (it then works in groups there).
+  const freeInbox = inboxes.find((inbox) => inbox.aiAgentId === null)?.id ?? inboxes[0]?.id ?? null;
   const blank = (p: AiAgentPreset): AgentDraft => ({
     displayName: '',
     ...presetDefaults(p, t),
@@ -298,13 +299,12 @@ function AgentEditor({
     return () => window.removeEventListener('beforeunload', warn);
   }, [changed]);
 
+  // Several agents may share an inbox; only one answers its direct chats (the server refuses a second).
   const otherOnInbox =
     !lite && draft.inboxId !== null && draft.inboxId !== saved.inboxId
-      ? list.agents.find((a) => a.inboxId === draft.inboxId && a.id !== id)
+      ? list.agents.find((a) => a.inboxId === draft.inboxId && a.id !== id && a.answerDirect)
       : undefined;
-  // Moving onto an inbox that has another agent frees that inbox first (one agent per inbox).
-  const freeOther = useAiAgentAction(otherOnInbox?.id ?? null);
-  const busy = action.isPending || freeOther.isPending || addText.isPending;
+  const busy = action.isPending || addText.isPending;
   const dirty = isNew || changed;
 
   const template = presetDefaults(preset, t);
@@ -455,12 +455,7 @@ function AgentEditor({
       setLocalError(t('ai.checkSettings'));
       return;
     }
-    let freed = false;
     try {
-      if (otherOnInbox) {
-        await freeOther.mutateAsync({ kind: 'setInbox', inboxId: null });
-        freed = true;
-      }
       const result = await action.mutateAsync(
         isNew ? { kind: 'create', body: parsed.data } : { kind: 'save', body: parsed.data },
       );
@@ -480,12 +475,6 @@ function AgentEditor({
       setDraft((current) => (same(current, sent) ? stored : current));
       toast.success(done);
     } catch (error) {
-      // The save failed after the other agent was taken off the inbox: give the inbox back so
-      // it is not left without an agent (best effort; the lists refresh either way).
-      if (freed && otherOnInbox && sent.inboxId !== null)
-        await freeOther
-          .mutateAsync({ kind: 'setInbox', inboxId: sent.inboxId })
-          .catch(() => undefined);
       setLocalError(agentErrorMessage(error, t));
     }
   };
@@ -524,10 +513,6 @@ function AgentEditor({
     </CardAction>
   );
   const boundInbox = agent ? inboxes.find((inbox) => inbox.id === agent.agent.inboxId) : undefined;
-  // Every inbox already answered by another agent: this one can only get an inbox once one is added.
-  const noFreeInbox =
-    showInboxUi &&
-    inboxes.every((inbox) => list.agents.some((a) => a.inboxId === inbox.id && a.id !== id));
   // Jump to a section and move focus there, so keyboard and screen-reader users land on it too.
   const scrollTo = (sectionId: string) => {
     const section = document.getElementById(sectionId);
@@ -771,20 +756,9 @@ function AgentEditor({
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">{t('ai.agents.inboxHint')}</p>
-              {noFreeInbox && (
-                <p className="text-sm text-muted-foreground" data-testid="no-free-inbox">
-                  {t('ai.agents.noFreeInbox')}{' '}
-                  <Link
-                    to="/admin/inboxes"
-                    className="inline-flex items-center font-medium text-primary underline-offset-4 hover:underline pointer-coarse:min-h-11"
-                  >
-                    {t('ai.agents.addInbox')}
-                  </Link>
-                </p>
-              )}
               {otherOnInbox && (
                 <Banner tone="warning">
-                  {t('ai.agents.inboxMove', {
+                  {t('ai.agents.inboxShared', {
                     agent: otherOnInbox.displayName,
                     inbox: inboxName(draft.inboxId),
                   })}

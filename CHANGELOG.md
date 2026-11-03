@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Record claims, invoices and more into Google Sheets.** In Google Sheets settings, each tab of the spreadsheet is
+  now Off, Read or Add rows for each AI agent, with a Refresh button after you edit the sheet. The agent's own
+  instructions say what to record and where (for example "save each claim to the tab Claims"); EzyChat fills in date,
+  name, WhatsApp number, group and source, and saves only values the person wrote or sent. The old "Add leads" keeps
+  working as a tab on Add rows.
+- **The AI reads PDFs.** Invoices, claim forms and receipts sent as PDF (or photos, up to 10 for agents that save
+  rows) are read by the AI agent. Word, Excel and ZIP files are not opened.
+- **Groups can read every message.** A group can be set to "Reads every message": the agent sees each member message
+  and follows its instructions (save a claim, ask for a missing detail or stay quiet) without being tagged. Add
+  several groups to one agent at once from its page.
+- **Several AI agents per WhatsApp number (Enterprise).** One agent answers direct chats; others work in the groups
+  you give them, for example a claims agent for every branch group.
 - **Send feedback from the app.** Anyone signed in can tell the EzyChat team about a problem, an idea or a question
   from the account menu, Admin → Help & feedback, About or the error panel ("Report this problem"), with up to 3
   pictures, PDFs, text files or short videos and, in the desktop app, a screenshot of the window. Email is required so

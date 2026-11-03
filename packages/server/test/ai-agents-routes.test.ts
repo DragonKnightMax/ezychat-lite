@@ -171,7 +171,7 @@ describe('several agents (maxInboxes 3)', { timeout: 30_000 }, () => {
 
     const taken = await inject('PUT', `/api/ai/agents/${one}`, { ...sales, inboxId: 2 });
     expect(taken.statusCode).toBe(409);
-    expect(taken.json().error.code).toBe('inbox_has_agent');
+    expect(taken.json().error.code).toBe('inbox_has_direct_agent');
 
     const third = await inject('POST', '/api/ai/agents', {
       ...helpdesk,

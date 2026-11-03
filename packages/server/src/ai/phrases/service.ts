@@ -10,9 +10,9 @@ import type {
 import type { AppContext } from '../../context.js';
 import { audit } from '../../db/audit.js';
 import { HttpError, errors } from '../../http/errors.js';
-import { inboxOfKey } from '../../inboxes/keys.js';
 import { errorNameOf } from '../agent/models.js';
-import { agentById, agentForInbox, defaultAgent, listAgents, type AgentRow } from '../agents.js';
+import { agentById, defaultAgent, listAgents, type AgentRow } from '../agents.js';
+import { chatAgent } from '../groups.js';
 import { replySuggestionsEnabled } from '../reply-suggestions-setting.js';
 import { acceptPhrases, cleanTeamReply, planPhraseMerge } from './check.js';
 import { PhraseRepo } from './repo.js';
@@ -322,7 +322,7 @@ export function createPhraseService(ctx: AppContext, deps: PhraseDeps = {}): Phr
       )
       .get(msg.sentByUserId, msg.chatJid);
     if (!counted) return;
-    const agent = agentForInbox(ctx.db, inboxOfKey(msg.chatJid));
+    const agent = chatAgent(ctx, msg.chatJid);
     if (!agent) return;
     writeState(agent.id, { newReplies: readState(agent.id).newReplies + 1 });
   };
@@ -342,7 +342,7 @@ export function createPhraseService(ctx: AppContext, deps: PhraseDeps = {}): Phr
     first.unref?.();
   }
 
-  const chatAgent = (jid: string) => agentForInbox(ctx.db, inboxOfKey(jid));
+  const agentOfChat = (jid: string) => chatAgent(ctx, jid);
   const ownPhrase = (id: number) => {
     const agentId = repo.agentOf(id);
     if (agentId === null) throw errors.notFound('Phrase');
@@ -357,13 +357,13 @@ export function createPhraseService(ctx: AppContext, deps: PhraseDeps = {}): Phr
     },
     forChat(jid) {
       if (!replySuggestionsEnabled(ctx.settings)) return [];
-      const agent = chatAgent(jid);
+      const agent = agentOfChat(jid);
       return agent
         ? repo.list(agent.id).map(({ id, text, language }) => ({ id, text, language }))
         : [];
     },
     feedback(jid, id, accepted) {
-      const agent = chatAgent(jid);
+      const agent = agentOfChat(jid);
       if (!agent || !repo.feedback(agent.id, id, accepted)) throw errors.notFound('Phrase');
     },
     add(body, actor) {

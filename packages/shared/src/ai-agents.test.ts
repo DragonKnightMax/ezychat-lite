@@ -36,6 +36,8 @@ const summary = {
   preset: 'sales' as const,
   inboxId: 1,
   documentCount: 2,
+  answerDirect: true,
+  groupCount: 0,
 };
 const doc = {
   id: 3,
@@ -109,6 +111,9 @@ describe('agent bodies', () => {
   it('describes an agent and its status', () => {
     expect(AiAgentSummary.parse(summary)).toEqual(summary);
     expect(AiAgentSummary.safeParse({ ...summary, inboxId: undefined }).success).toBe(false);
+    // older servers: a direct agent without groups
+    const { answerDirect: _direct, groupCount: _groups, ...old } = summary;
+    expect(AiAgentSummary.parse(old)).toMatchObject({ answerDirect: true, groupCount: 0 });
     const status = { agent: summary, settings, documents: [doc] };
     expect(AiAgentStatus.parse(status)).toEqual(status);
   });

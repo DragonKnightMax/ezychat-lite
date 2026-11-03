@@ -538,6 +538,8 @@ export class DirectChatGptProvider implements AiProvider {
         model,
         prompt,
         tools: prompt.tools,
+        // The ChatGPT backend's file input is undocumented: send PDFs as their text layer.
+        pdfInput: 'text',
         signal: turnSignal,
         onTiming: prompt.onTiming,
       });

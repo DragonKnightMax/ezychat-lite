@@ -217,6 +217,8 @@ describe('ConversationHeader AI in groups badge', () => {
     agentEnabled: true,
     agentAnswersGroups: true,
     paused: false,
+    listen: false,
+    agents: [],
     ...patch,
   });
 

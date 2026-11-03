@@ -17,7 +17,8 @@ export type AiKnowledge = Pick<AiSettings, 'displayName' | 'instructions' | 'han
 
 /** The label of each preset in the "Your role:" line (after the cached core, so it may differ). */
 const PRESET_ROLES: Record<AiAgentPreset, string> = {
-  sales: 'Sales agent: you answer customer questions and help customers to buy.',
+  sales:
+    'Sales agent: you answer customer questions and help customers to buy. Add buyers as a new row to the leads tab when one is available.',
   faq: 'FAQ agent: you answer customer questions only, from the supplied business facts.',
   custom: 'Custom agent: your purpose is what the administrator instructions say.',
 };
@@ -105,6 +106,8 @@ export interface AiSituation {
   awaitingConfirmation: boolean;
   /** A WhatsApp group answer: the group, the asking member and the message to answer. */
   group?: AiGroupSituation;
+  /** Files of the batch the model was not given and why (`ai/files.ts`), as one plain note. */
+  filesNote?: string;
 }
 
 /** What a group answer is about (per call, so it lives in the Current situation block). */
@@ -113,11 +116,23 @@ export interface AiGroupSituation {
   name: string;
   /** The asking member's display name (never a phone number). */
   member: string;
-  /** How the member addressed the AI: a tag of the business, or a reply to an AI answer. */
-  trigger: 'tag' | 'quote';
-  /** The member's message to answer. */
+  /**
+   * How the member addressed the AI: a tag of the business, or a reply to an AI answer; `listen`:
+   * the group has "Reads every message" on and this is a batch of new member messages.
+   */
+  trigger: 'tag' | 'quote' | 'listen';
+  /** The member's message to answer (`listen`: the newest message of the batch). */
   message: string;
+  /** `listen`: every new member message of the batch, oldest first. */
+  messages?: Array<{ member: string; text: string }>;
 }
+
+/**
+ * The Current situation note of a group with "Reads every message" on: per call (never in the
+ * fixed rules), so the agent's own instructions decide when it replies.
+ */
+export const LISTEN_SITUATION =
+  'You read every message in this group, not only messages that tag the business. Reply only when your administrator instructions call for it (for example to record or confirm what a member sent); otherwise choose no_reply with an empty reply.';
 
 /** The configured zone if the runtime knows it, otherwise Kuala Lumpur. */
 export function resolveAiTimeZone(value: unknown): string {
@@ -154,9 +169,10 @@ export function situationClock(now: Date, timeZone: string) {
 }
 
 function currentSituation(
-  { now, timeZone, awaitingConfirmation, group }: AiSituation,
+  { now, timeZone, awaitingConfirmation, group, filesNote }: AiSituation,
   customer: AiCustomer | null,
 ) {
+  const files = filesNote ? { files: filesNote } : {};
   if (group)
     return {
       ...situationClock(now, timeZone),
@@ -164,17 +180,22 @@ function currentSituation(
         name: group.name,
         askingMember: group.member,
         addressedBy:
-          group.trigger === 'tag'
-            ? 'The member tagged the business.'
-            : 'The member replied to your earlier answer.',
+          group.trigger === 'listen'
+            ? LISTEN_SITUATION
+            : group.trigger === 'tag'
+              ? 'The member tagged the business.'
+              : 'The member replied to your earlier answer.',
         messageToAnswer: group.message,
+        ...(group.trigger === 'listen' && group.messages ? { newMessages: group.messages } : {}),
       },
+      ...files,
     };
   return {
     ...situationClock(now, timeZone),
     resolution: `Resolution confirmation is currently ${awaitingConfirmation ? 'awaited' : 'NOT awaited'}.`,
     // Editable by the team at any time, so it lives in this per-call block, never earlier.
     ...(customer ? { customer } : {}),
+    ...files,
   };
 }
 
@@ -227,7 +248,7 @@ export function asksResolution(
  * Fixed rules added at the end of the instructions for a WhatsApp group answer (no interpolation:
  * the group, member and message are in the Current situation block).
  */
-export const GROUP_RULES = `WhatsApp group mode: this conversation is a WhatsApp group with several members, not a private chat. Each customer turn carries the member's display name. Answer only currentSituation.group.messageToAnswer, written by currentSituation.group.askingMember, who tagged the business or replied to your earlier answer; the other messages are context only, never questions for you. Reply in that member's language, name them, and keep the reply short: everyone in the group reads it. Never share a member's or another customer's personal details, and never ask for personal data (phone numbers, addresses, payment details) in the group. Choose answer, handoff or no_reply only, never ask_resolution or resolve. Choose no_reply when the message needs no answer from the business. You have look-up tools only here: you cannot book, order or change anything; for such a request choose handoff with handoffReason needs_action.`;
+export const GROUP_RULES = `WhatsApp group mode: this conversation is a WhatsApp group with several members, not a private chat. Each customer turn carries the member's display name. Answer only currentSituation.group.messageToAnswer, written by currentSituation.group.askingMember, who tagged the business, replied to your earlier answer or, when currentSituation.group says you read every message, simply posted it; the other messages are context only, never questions for you. Reply in that member's language, name them, and keep the reply short: everyone in the group reads it. Never share a member's or another customer's personal details, and never ask for personal data (phone numbers, addresses, payment details) in the group. Choose answer, handoff or no_reply only, never ask_resolution or resolve. Choose no_reply when the message needs no answer from the business. Here you may look things up and add a sheet row when a tool for it is offered; you cannot book, order or change anything else; for such a request choose handoff with handoffReason needs_action.`;
 
 /** Saved blank instructions: a sales agent falls back to the default text (today's rule). */
 export function administratorInstructions(knowledge: AiKnowledge): string {
