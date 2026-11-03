@@ -63,3 +63,10 @@ version until step 3. Never rename the copies: shared links depend on them.
 - A bad release is fixed by a **new** version (hotfix), never by deleting a published release: installed
   apps may already run it.
 - Update `docs/backlog.md` for items the release closed.
+- **Website release page** (owner rule): on release day, after Enterprise is out too, open one
+  ossmalaysia/ezychat-website PR that adds the day to `/releases`: rows in `src/lib/release-calendar.json`
+  written in plain words from this CHANGELOG section (and Enterprise's), shipped `upcoming` items moved into
+  them, every new line in BM, 中文 and ID in `release-calendar-i18n.json` (feature names from the app's own `ms` /
+  `zh-CN` locales). Merge the guide PRs held for this release in the same round. The website build also
+  refreshes `/download` to the new version. The release is done only when that PR is merged (the website's
+  release skill).

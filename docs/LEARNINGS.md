@@ -53,6 +53,9 @@ into AGENTS.md.
   branch build) and read the feature's state in its data: that data is an updated install, so a feature
   that starts off after an update is hidden there until an admin turns it on. Its admin is `jazz`; the
   password is only the owner's (reset needs the CLI `--reset-admin` with the server stopped).
+  `start.ps1` builds whatever the primary checkout has checked out, often another session's branch: for a
+  given commit, detach a spare clean worktree at it (`npm ci` when the lockfile moved) and start a copy of
+  the script pointed there.
 - A project skill (`.claude/skills/<name>/`) is a slash command only in checkouts that contain it:
   on a feature branch it is not live in the owner's main checkout until merged — say so.
 - Progress the owner asks about comes from committed records (the feature workbook, the Dev Build
@@ -199,6 +202,8 @@ into AGENTS.md.
   `main`'s file and insert only the lines the PR itself added (`git show <commit> -- <file>`), in date order.
   Never merge by line text (`main` realigned the table, so old rows came back twice), and never run
   `prettier --write` on `docs/release-review/log.md` (`main` keeps it unformatted; it rewrote 117 lines).
+  Two new `dev-build-checks.md` sections joined this way lose the blank line between a table and the next
+  paragraph; add it back before prettier, or the paragraph becomes a table row.
 - Wait for PR checks with `gh pr checks <n> --watch`, not a hand-written `until … grep pending` loop: one
   ended while two jobs still ran. Right after `gh pr update-branch` the new head has no checks yet and `--watch`
   returns at once: first wait until `gh pr checks` lists checks for the new `headRefOid`. A script that merges PRs in turn must check `isDraft` and print `gh pr merge` errors: a draft PR showed
@@ -236,7 +241,9 @@ into AGENTS.md.
 - A PR with a merge conflict (`mergeable_state: dirty`) gets no `pull_request` CI at all, silently: when a
   push shows only SonarCloud, check the merge state and merge `main` first. Commit before recording a stage or
   writing a Dev Build row: `build-summary.mjs record` stores the current HEAD, and checks recorded on an
-  older commit (or "uncommitted") count as ✗ missing in the release review. Rebase onto `main` before the checks
+  older commit (or "uncommitted") count as ✗ missing in the release review; a Dev Build row counts only with the
+  tested commit in backticks in its Build column (a branch name does not), and a later test-only commit (a
+  SonarCloud duplication fix) voids it too: push and settle SonarCloud before the Dev Build check. Rebase onto `main` before the checks
   you record: a rebase gives every commit a new id, so the recorded ones stop counting. Merging `main` keeps them:
   evidence holds while the PR's own change to code, pipeline and test files is the same.
 - `gh pr checks --watch` can return while required checks are still queued (one check, e.g. SonarCloud,
@@ -370,7 +377,8 @@ into AGENTS.md.
   A junction to another branch's install links `@ezychat/*` to that branch's sources: link only to a
   checkout on the same base, else `tsc` reports the other branch's contract changes as your errors.
 - Append-only files (`LEARNINGS.md`, `CHANGELOG.md`, fixtures) conflict on every parallel branch: keep both
-  sides, never `--ours`/`--theirs`, then check CHANGELOG headings for duplicates. Bring a long PR branch
+  sides, never `--ours`/`--theirs`, then check CHANGELOG headings for duplicates. Before writing a rule, also
+  search the open `docs(learnings)` PRs (`gh pr diff <n>`), not only `main`: one may already hold it. Bring a long PR branch
   up to date by merging `main` into it (one resolution, squash-merged later) rather than rebasing every
   commit. After a base PR is squash-merged, replay only your own commits
   (`git rebase --onto origin/main <old base>`); a clean rebase still needs a typecheck (semantic
@@ -385,14 +393,18 @@ into AGENTS.md.
   variable `NPM_TRUSTED_PUBLISHING=true`. An OIDC publish answering `PUT 404` for a package that exists means
   its trusted publisher is missing or mistyped: have the owner compare it field by field with a package that
   publishes (workflow is the bare file name, no environment), meanwhile publish that version by hand, then
-  rerun `publish-packages` for the next tag (published packages are skipped). A manual publish that answers
+  rerun `publish-packages` for the next tag (published packages are skipped). A publish that stops halfway on
+  `TLOG_CREATE_ENTRY_ERROR` (409, Sigstore says the provenance entry exists) needs only `gh run rerun <id>
+--failed`, but first wait until `npm view <pkg>@<version> version` answers for each package already
+  published (the skip check uses exactly that; it lags the registry list by up to a minute). A manual publish that answers
   `PUT 404` without the security-key step means the saved npm token is invalid: check `npm whoami` first and
   give the owner `npm login --auth-type=web` before the publish. An unfixed trusted publisher fails again on
   every release and leaves the core half published (Enterprise needs all pins equal): before tagging, ask
   the owner whether it is fixed and have the manual publish folder ready at the new tag. A manual publish ends
   with `PUT 202` "being processed": the version shows up about a minute later. Check the registry document
   (`https://registry.npmjs.org/@ezychat%2f<pkg>` with `Cache-Control: no-cache`), not `npm view`, which can
-  answer from a cached 404 or an older version (`npm view --prefer-online` skips the cache); the Enterprise
+  answer from a cached 404 or an older version (even `--prefer-online` gave E404 minutes after a publish that
+  the registry URL already served); the Enterprise
   pin bump's `npm install` fails the same way (`notarget`) until it runs with `--prefer-online`. Read the
   publish result from the `+ @ezychat/<pkg>@x` lines: grepping
   `gh run view --log` also matches the step's own script source (lines with `[36;1m`), e.g. its "dry run
@@ -445,7 +457,9 @@ into AGENTS.md.
   reaction: watch PR comments too. Its summary comment is edited in place and says "Running" until
   done: wait for its status, not for the comment to exist.
 - Right after a push, `gh pr checks --watch` can see no checks yet and exit 1 ("no checks reported"):
-  wait on the run instead (`gh run list --branch <b> --limit 1`, then `gh run watch <id>`).
+  wait on the run instead (`gh run list --branch <b> --limit 1`, then `gh run watch <id>`). In a background
+  shell without a terminal `gh run watch` can also return at once: poll `gh run view <id> --json status`, or
+  `gh pr checks <pr> --json bucket` until no `pending` is left (never parse the text table: names have spaces).
 - `gh pr checks --watch` and `gh run watch` can also return while a check is still pending or a job is
   still queued (seen with macOS CI and a queued self-hosted job), and right after `gh run rerun --failed`
   `gh run watch` still sees the old failed attempt and exits at once: read the final status after the wait,
@@ -491,7 +505,12 @@ into AGENTS.md.
   sends every request through one helper with one reasoned `// NOSONAR (jssecurity:S5144)`.
 - SonarCloud counts repeated test bodies as duplicated new code (gate ≤ 3 %): write case lists as
   `it.each` tables. A moved or reformatted file is new code too: old copy-paste between files (e.g. the
-  fetch scripts' `download()`) then fails the gate, so extract the shared helper in the same change.
+  fetch scripts' `download()`) then fails the gate, so extract the shared helper in the same change. A new
+  test file modelled on a sibling (`mcp-send-file` on `mcp-send-image`) copies its setup: put that setup in one
+  helper from the start and move the sibling onto it too, or the helper is the duplicate.
+- `file-type` reports `.docx` only when `[Content_Types].xml` names the main part
+  (`…wordprocessingml.document.main+xml`, as Word writes it); a bare test ZIP with `word/document.xml` reads
+  as `application/zip`. Byte-checked upload tests need that realistic fixture.
   A new test file that copies another file's request helpers fails it too: import them from a shared
   test helper (`packages/server/test/mcp-helpers.ts` for `/mcp` calls). The same for a new dialog
   that repeats another dialog's fields (easy when porting a mock): extract one fields component
@@ -539,7 +558,10 @@ into AGENTS.md.
 - A build-time value for the packaged server (e.g. the Google "Desktop app" OAuth client) goes in as an
   esbuild `define` of a global that the code reads with `typeof X === 'undefined'`, from repository secrets
   passed only to the bundle step; the environment still wins, so Dev Builds and forks need no rebuild.
-  Prove it on a real bundle by printing counts of the values, never the values.
+  Prove it on a real bundle by printing counts of the values, never the values. A new value also needs its
+  secrets in Enterprise's `installers.yml` and repository (same core bundle), and Enterprise's own copy of
+  `scripts/google-oauth-define.mjs` must read it, else Enterprise ships without it; list both repos in the PR's
+  owner to-do, and before the release tag check `gh secret list` in both repos (names only).
 - Playwright on this PC has no downloaded Chromium: launch `{ channel: 'chrome' }` (installed Chrome).
   A `tsx` run outside npm needs `NODE_OPTIONS=--conditions=ezychat-source`: a `--conditions` flag before
   `tsx/dist/cli.mjs` does not reach the child node, which then loads stale `dist/`.
@@ -1014,7 +1036,8 @@ into AGENTS.md.
 - Core AI rules stay connector-neutral: a connector's "skill" is its tool descriptions and result notes, plus
   server guards in its own module; never a tool or connector name in `CORE_RULES` (one general rule covers tools
   that make a change). Details the AI passes to such a tool must be checked against the customer's own messages
-  or the saved contact, so the model cannot invent them.
+  or the saved contact, so the model cannot invent them. A write tool's "when to call" must name the exact
+  trigger: "every customer with a real buying interest" made `add_lead_row` fire on a price question.
 - AI text that may reach a customer and is built from chat data (phrase lists, drafts) gets its name filter
   from every customer of the inbox, not only from the chats it read: a model can still write a name it saw
   elsewhere. Read the first real build's output before calling it done (it showed copied note lines).
@@ -1197,6 +1220,9 @@ into AGENTS.md.
   customer).
 - Data shipped inside the app (a built-in fallback list) uses `minAppVersion: '0.0.0'`: unit tests run as
   `0.0.0-test`, so any higher minimum marks the built-in entries "needs update" in tests and Dev Builds.
+  In the published list (`ezychat-connectors`), `minAppVersion` is compared with each edition's own version
+  (Enterprise 0.1.22 while Lite is 0.1.71): never put a Lite version on an entry for both editions; a
+  `builtin` entry keeps `0.1.0`, because an app without that connector skips it anyway.
 - Server unit tests may import an `e2e/` helper only as `.mjs` with a `.d.mts` type file: a `.ts` file outside
   `packages/server` breaks its typecheck (TS6059 rootDir).
 - Never trust a model to continue "exactly where the text stops": ask for the whole current sentence and cut the
@@ -1291,6 +1317,9 @@ into AGENTS.md.
 - The updater jumps to the newest release (GitHub list, or Enterprise `latest.json`), never through the
   versions between: an upgrade step lives in a numbered migration or in permanent start-up code, never
   only in one release.
+- The installed (old) app runs the update install, so a fix in that path cannot reach users through it:
+  the CHANGELOG line, release notes and the owner's message say "install this version once from the
+  download page", with the permanent `latest` links.
 - A stored result ("Update installed") names what it is about and shows only while it still is: tie
   it to the version that runs and hide it beside a newer offer, or it reads as a claim about that offer.
 - The desktop main log (`desktopLog`, updater events) lives only in memory: to debug an in-app update,
