@@ -55,16 +55,18 @@
     "adminSettings": "Admin settings",
     "changePassword": "Change password",
     "share": "Share this app",
-    "reportIssue": "Report an issue",
     "about": "About {{appName}}",
     "signOut": "Sign out",
+    "sendFeedback": "Send feedback",
     "emailSupport": "Email support"
   },
   "errorBoundary": {
     "title": "Something went wrong",
     "body": "This part of the app hit an unexpected error. The error has been reported.",
     "reload": "Reload page",
-    "goHome": "Go to inbox"
+    "goHome": "Go to inbox",
+    "report": "Report this problem",
+    "reportPrefix": "Error shown:"
   },
   "access": {
     "pausedTitle": "{{product}} is paused",

@@ -4,7 +4,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppLinks } from '@/lib/app-links';
-import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL, reportIssueHref } from '@/lib/links';
+import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL } from '@/lib/links';
+import { openFeedback } from './FeedbackDialog';
 
 function CreditLink({
   href,
@@ -45,9 +46,9 @@ export function AppCredits({
   const { t } = useTranslation('app');
   const [open, setOpen] = React.useState(false);
   const linksId = React.useId();
+  // Editions without a public issue tracker (Enterprise) keep their support email beside Send feedback.
   const links = useAppLinks();
-  const reportHref = reportIssueHref(links);
-  const reportLabel = links.reportIssue ? t('credits.reportIssue') : t('credits.emailSupport');
+  const supportEmail = !links.reportIssue ? links.supportEmail : null;
   if (variant === 'sidebar') {
     // One quiet "Help & feedback" row instead of three always-visible links (version inside).
     return (
@@ -81,23 +82,37 @@ export function AppCredits({
               {t('credits.versionShort', { version })}
             </span>
           )}
-          {[
-            ...(reportHref ? [{ href: reportHref, label: reportLabel }] : []),
-            { href: CUSTOM_FEATURE_URL, label: t('credits.customFeatures') },
-          ].map(({ href, label }) => (
+          {/* Send feedback opens the in-app form (the GitHub link moved into it). */}
+          <Button
+            variant="ghost"
+            size="touch"
+            className="justify-start px-2 text-sm font-normal text-muted-foreground"
+            onClick={() => openFeedback()}
+            data-testid="sidebar-feedback"
+          >
+            {t('feedback.menu')}
+          </Button>
+          {supportEmail && (
             <Button
-              key={label}
               asChild
               variant="ghost"
               size="touch"
-              className="justify-between px-2 text-sm font-normal text-muted-foreground"
+              className="justify-start px-2 text-sm font-normal text-muted-foreground"
             >
-              <a href={href} target="_blank" rel="noopener noreferrer">
-                {label}
-                <ExternalLink className="size-3" aria-hidden="true" />
-              </a>
+              <a href={`mailto:${supportEmail}`}>{t('credits.emailSupport')}</a>
             </Button>
-          ))}
+          )}
+          <Button
+            asChild
+            variant="ghost"
+            size="touch"
+            className="justify-between px-2 text-sm font-normal text-muted-foreground"
+          >
+            <a href={CUSTOM_FEATURE_URL} target="_blank" rel="noopener noreferrer">
+              {t('credits.customFeatures')}
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </Button>
           <span className="inline-flex items-center gap-1 px-2 whitespace-nowrap">
             <Trans
               t={t}
@@ -125,7 +140,17 @@ export function AppCredits({
           components={{ a: <CreditLink href={ANCHOR_SPRINT_URL} /> }}
         />
       </span>
-      {reportHref && <CreditLink href={reportHref}>{reportLabel}</CreditLink>}
+      <Button
+        variant="link"
+        size="touch"
+        className="h-auto min-h-11 px-0 text-xs text-muted-foreground"
+        onClick={() => openFeedback()}
+      >
+        {t('feedback.menu')}
+      </Button>
+      {supportEmail && (
+        <CreditLink href={`mailto:${supportEmail}`}>{t('credits.emailSupport')}</CreditLink>
+      )}
       <span className="inline-flex flex-wrap items-center justify-center gap-1">
         <Trans
           t={t}

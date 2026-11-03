@@ -55,16 +55,18 @@
     "adminSettings": "Tetapan pentadbir",
     "changePassword": "Tukar kata laluan",
     "share": "Kongsi aplikasi ini",
-    "reportIssue": "Laporkan masalah",
     "about": "Perihal {{appName}}",
     "signOut": "Log keluar",
+    "sendFeedback": "Hantar maklum balas",
     "emailSupport": "E-mel sokongan"
   },
   "errorBoundary": {
     "title": "Berlaku ralat",
     "body": "Bahagian aplikasi ini mengalami ralat yang tidak dijangka. Ralat telah dilaporkan.",
     "reload": "Muat semula halaman",
-    "goHome": "Pergi ke peti masuk"
+    "goHome": "Pergi ke peti masuk",
+    "report": "Laporkan masalah ini",
+    "reportPrefix": "Ralat yang dipaparkan:"
   },
   "access": {
     "pausedTitle": "{{product}} dijeda",

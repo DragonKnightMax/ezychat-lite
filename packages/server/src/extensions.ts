@@ -65,6 +65,24 @@ export interface ServerExtension {
    * refuse to turn the agent on) only because the Business context is empty.
    */
   hasAgentLookups?(ctx: AppContext, input: { agent: AgentKind; agentId?: number }): boolean;
+  /**
+   * Who sends feedback (`POST /api/feedback`) to the licence portal: e.g. the licence's install id
+   * and secret (`product: 'EZC-ENT'`). The first extension that returns non-null wins; its
+   * `company` fills the dialog, and `portalOrigin` (https, or http to loopback) replaces the
+   * portal address. Without one, Lite sends as `EZC-LITE` and other editions refuse to send (503
+   * `feedback_unavailable`). Called only when the dialog opens or a report is sent; never logged.
+   */
+  feedbackAuth?(ctx: AppContext): Promise<FeedbackAuth | null>;
+}
+
+/** An edition's identity for the licence portal's feedback (see `ServerExtension.feedbackAuth`). */
+export interface FeedbackAuth {
+  product: string;
+  installId: string;
+  secret: string;
+  company?: string;
+  /** e.g. `https://license.anchorsprint.app`; default: the portal Lite uses. */
+  portalOrigin?: string;
 }
 
 export function validateExtensions(list: readonly ServerExtension[]): void {

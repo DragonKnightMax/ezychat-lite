@@ -177,6 +177,34 @@ synchronous check (no network) that returns true when it would offer at least on
 does not hand over (or refuse to turn the agent on) only because the Business context is empty, and the
 prompt treats look-up results as facts. A throwing check counts as false.
 
+### Send feedback identity (`feedbackAuth`)
+
+`POST /api/feedback` forwards a report to the licence portal (`https://license.anchorsprint.app/v1/feedback`).
+Lite sends as product `EZC-LITE` with a random `installRef` (setting `feedback_install_ref`). Another edition says who
+it is with `feedbackAuth(ctx)`:
+
+```ts
+const ext: ServerExtension = {
+  name: 'licence',
+  async feedbackAuth(ctx) {
+    const licence = readLicence(ctx); // your own code
+    if (!licence) return null;
+    return {
+      product: 'EZC-ENT',
+      installId: licence.installId,
+      secret: licence.secret,
+      company: licence.company, // fills Company in the dialog (GET /api/feedback/defaults)
+      portalOrigin: licence.portalOrigin, // optional: https, or http to 127.0.0.1/localhost in dev
+    };
+  },
+};
+```
+
+The first extension that returns non-null wins; one that throws counts as null (logged by name only). An edition other
+than `lite` with no answer refuses to send (503 `feedback_unavailable`), so its reports are never labelled Lite. An
+unsafe `portalOrigin` also answers 503. It runs only when the dialog opens or a report is sent; its values are never
+logged.
+
 ### Host-only routes (`/api/ext/<name>/host/…`)
 
 By core convention any extension route under `/api/ext/<name>/host/` is **host-only**: it answers

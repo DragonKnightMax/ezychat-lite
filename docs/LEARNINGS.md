@@ -189,6 +189,12 @@ into AGENTS.md.
 
 ## Git, GitHub and CI
 
+- A Cloudflare Workers Builds check that fails at "Initializing build environment… Build failed to initialize and was
+  timed out" never ran your code: read the build log (Cloudflare connector, Builds API `/builds/builds/<id>/logs`) before
+  blaming a binding or token, and retry the build; prove the config with `npx wrangler deploy --dry-run` locally.
+- A PR head with no `Test (…)` runs (only SonarCloud) usually means the PR conflicts with `main` (`mergeable_state:
+dirty`): GitHub creates no `pull_request` run until the base is merged in. Check the head's runs before scoring or
+  merging; fix the conflict, never push an empty commit.
 - CI's `Test (windows-latest)` job runs `npm run e2e:electron-links` on every non-docs PR: the release review counts
   that step on the head as the desktop link check, so never ask the owner to run it by hand.
 - Two branches that each add a feature mock folder while pruning the same old one conflict as hundreds of
@@ -822,6 +828,8 @@ into AGENTS.md.
 
 ## Security
 
+- A script that writes files to a folder named on the command line resolves it against the repository and refuses
+  anything outside it (SonarCloud `jssecurity:S8707` fails the security rating otherwise).
 - A third-party browser widget that needs outside scripts (Google's file picker) never goes into the app window: its
   CSP stays `script-src 'self'`. Serve it on its own host-only page with a CSP limited to that vendor, guarded by a
   one-time token, and hand it an access token once (`connectors/google-sheets/picker-page.ts`).
@@ -1239,6 +1247,10 @@ into AGENTS.md.
 
 ## Desktop and web UI
 
+- A dialog whose body holds buttons (show details, add files, remove) uses a plain container, not a `<form>`: shadcn
+  `Button` defaults to `type="submit"`, so every toggle sent the report. Send stays an explicit button in the footer.
+- A route that takes several files reads `req.parts({ limits: { files: N, fileSize } })`: the app-wide multipart limit
+  is 1 file and a second file resets the connection, which the browser reports as "cannot reach the server".
 - Show customer PDFs with pdf.js on canvases from bytes we `fetch` (`lib/pdf.ts`), never by serving `application/pdf`
   inline or in an iframe: the media route keeps PDFs as `attachment` + sandbox CSP, Chromium's own viewer is blocked in
   sandboxed frames and missing on phones. Load pdf.js and its worker (`?url`, `worker-src 'self'`) lazily, check
@@ -1512,6 +1524,12 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
   invisible to `document.elementsFromPoint`: hit-test them with each span's `getClientRects()` from the
   textarea's own mouse/click events, and draw them with `text-transparent` (not `invisible`, which also hides
   the underline). Give one-letter marks a tint as well; a wavy underline under "i" or "a" is unreadable.
+
+- Testing a refused file pick: `userEvent.upload` drops files that do not match the input's `accept` before the
+  component sees them; use `userEvent.setup({ applyAccept: false })` when the test is about the app's own check.
+- A feature that sends anything out of the app builds what it sends on the server (app details, log) and shows the
+  user exactly that text before Send (`GET …/defaults`); never trust the browser for diagnostics, and strip ids and
+  numbers from a screen path before it leaves.
 
 ## Internationalization
 

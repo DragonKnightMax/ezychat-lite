@@ -28,3 +28,4 @@ export type {
   DesktopUpdatesBridge,
 } from './desktop-updates.js';
 export * from './i18n/index.js';
+export * from './feedback.js';

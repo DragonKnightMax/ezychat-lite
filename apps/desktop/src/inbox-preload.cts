@@ -32,6 +32,11 @@ contextBridge.exposeInMainWorld('watiNotifications', {
   clear: (): Promise<void> => ipcRenderer.invoke('wati:notifications-clear'),
 });
 
+// Send feedback: a PNG of this window (null when it cannot be taken). No arguments.
+contextBridge.exposeInMainWorld('watiCapture', {
+  captureWindow: (): Promise<Uint8Array | null> => ipcRenderer.invoke('wati:capture-window'),
+});
+
 // Lite import and the Enterprise installer exist only in the desktop window on the host PC, and only
 // for a product that has them: main.ts passes these flags as webPreferences.additionalArguments
 // (lite-import/ipc.ts, upgrade/ipc.ts). A browser never has these bridges.

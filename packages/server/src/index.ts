@@ -8,6 +8,7 @@ export { getInboxService, type InboxActor, type InboxService } from './inboxes/s
 export { ACCESS_CODE_PATTERN, type AccessGate, type AccessState } from './access/gate.js';
 export {
   EXTENSION_NAME,
+  type FeedbackAuth,
   type InboxTypeDefinition,
   type PublicRoutes,
   type ServerExtension,

@@ -96,3 +96,39 @@ it('reaches the theme and language items with the keyboard and selects with Ente
   expect(changeLocale).toHaveBeenCalledWith('ms');
   expect(screen.getByRole('menu')).toBeTruthy();
 });
+
+it('has one Send feedback item instead of Request a feature and Report an issue', async () => {
+  const { OPEN_FEEDBACK_EVENT } = await import('@/components/app/FeedbackDialog');
+  const opened = vi.fn();
+  window.addEventListener(OPEN_FEEDBACK_EVENT, opened);
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <UserMenu />
+    </MemoryRouter>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Account menu' }));
+  expect(screen.queryByRole('menuitem', { name: /Request a feature|Report an issue/ })).toBeNull();
+  await user.click(screen.getByRole('menuitem', { name: 'Send feedback' }));
+  expect(opened).toHaveBeenCalledOnce();
+  window.removeEventListener(OPEN_FEEDBACK_EVENT, opened);
+});
+
+it('keeps Email support in the menu for an edition without a public issue tracker', async () => {
+  const { AppLinksProvider } = await import('@/lib/app-links');
+  const { LITE_APP_LINKS } = await import('@/lib/links');
+  const user = userEvent.setup();
+  render(
+    <AppLinksProvider
+      links={{ ...LITE_APP_LINKS, reportIssue: null, supportEmail: 'help@example.com' }}
+    >
+      <MemoryRouter>
+        <UserMenu />
+      </MemoryRouter>
+    </AppLinksProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Account menu' }));
+  expect(screen.getByRole('menuitem', { name: 'Email support' }).getAttribute('href')).toBe(
+    'mailto:help@example.com',
+  );
+});

@@ -17,10 +17,6 @@
     "helpFeedback": "帮助与反馈",
     "emailSupport": "发送邮件给支持团队"
   },
-  "featureRequest": {
-    "label": "建议新功能",
-    "opensWebsite": "（在新窗口中打开 ezychat.ai）"
-  },
   "search": {
     "clear": "清除{{label}}"
   },
@@ -93,6 +89,137 @@
       "shareUnavailable": "此处无法分享。请选中上方的消息或链接后手动复制。",
       "imageStarted": "图片已开始下载。请上传到 Instagram 并粘贴您的说明文字。",
       "imageFailed": "无法生成图片。请重新下载，或分享消息和公开链接。"
+    }
+  },
+  "feedback": {
+    "menu": "发送反馈",
+    "title": "发送反馈",
+    "description": "告诉我们遇到的问题、想法或疑问。EzyChat 团队会阅读每一条消息。",
+    "type": {
+      "label": "关于什么？",
+      "problem": "问题",
+      "idea": "建议",
+      "question": "咨询",
+      "other": "其他"
+    },
+    "titleLabel": "简短标题",
+    "titlePlaceholder": {
+      "problem": "例如：客户发来的图片打不开",
+      "idea": "例如：希望可以定时发送消息",
+      "question": "例如：两个人可以回复同一个聊天吗？",
+      "other": "例如：感谢这个应用"
+    },
+    "detailsLabel": "详细说明",
+    "detailsPlaceholder": {
+      "problem": "您做了什么、发生了什么，以及您原本期望发生什么？",
+      "idea": "您希望 EzyChat 做什么？这对您的生意有什么帮助？",
+      "question": "关于使用 EzyChat 的任何问题都可以问。",
+      "other": "在这里写下您的消息。"
+    },
+    "area": {
+      "label": "应用的哪个部分",
+      "inbox": "收件箱和聊天",
+      "ai_agent": "AI 助手",
+      "whatsapp_link": "WhatsApp 连接",
+      "connectors": "连接器",
+      "reports": "报表",
+      "settings": "设置",
+      "install_update": "安装和更新",
+      "other": "其他"
+    },
+    "frequency": {
+      "label": "多常发生？",
+      "always": "每次",
+      "sometimes": "有时",
+      "once": "一次"
+    },
+    "impact": {
+      "label": "影响有多大？",
+      "blocking": "无法工作",
+      "slow": "拖慢工作",
+      "minor": "轻微"
+    },
+    "files": {
+      "label": "附件",
+      "hint": "最多 3 个文件，每个 10 MB：图片、PDF、文本或短视频。",
+      "add": "添加文件",
+      "screenshot": "截取此窗口",
+      "remove": "移除 {{name}}",
+      "tooMany": "最多可附加 {{max}} 个文件。",
+      "badType": "无法附加 {{name}}。请使用图片、PDF、文本文件或 MP4 视频。",
+      "tooBig": "{{name}} 超过 10 MB。",
+      "screenshotFailed": "无法截取屏幕。请改为附加图片。"
+    },
+    "contact": {
+      "legend": "我们如何联系您",
+      "name": "您的姓名",
+      "email": "电子邮件",
+      "company": "公司",
+      "optional": "（可选）",
+      "ok": "EzyChat 团队可以就此事给我发邮件"
+    },
+    "include": {
+      "details": "包含应用信息",
+      "detailsHint": "版本、电脑类型、您所在的页面和连接状态。不包含消息或客户资料。",
+      "seeDetails": "查看发送内容",
+      "log": "附加最近的活动日志",
+      "logHint": "应用日志的最后 {{lines}} 行能帮助我们找到问题。电话号码、电子邮件、密码和消息内容会先被移除。",
+      "seeLog": "查看日志"
+    },
+    "diag": {
+      "edition": "版本类型",
+      "version": "版本",
+      "os": "电脑",
+      "osVersion": "系统版本",
+      "client": "打开方式",
+      "mode": "运行方式",
+      "language": "语言",
+      "timeZone": "时区",
+      "screen": "页面",
+      "waConnected": "WhatsApp 已连接",
+      "aiMode": "AI 连接",
+      "yes": "是",
+      "no": "否"
+    },
+    "privacy": "您的反馈将发送给 {{product}} 的开发商 Anchor Sprint。我们也会记录您的网络地址（IP）和国家，以帮助解决问题。在您按下“发送”之前不会发送任何内容。",
+    "github": "更喜欢用 GitHub？在那里报告问题",
+    "send": "发送",
+    "sending": "正在发送…",
+    "sent": {
+      "title": "反馈已发送",
+      "thanks": "谢谢！您的反馈已送达 EzyChat 团队。",
+      "reference": "编号：{{reference}}",
+      "reply": "如需更多信息，我们会回复到 {{email}}。",
+      "noReply": "您选择了不接收邮件，因此我们不会回复。",
+      "another": "再发送一条"
+    },
+    "errors": {
+      "title": "请写一个简短标题（至少 3 个字符）。",
+      "details": "请多写一点（至少 10 个字符）。",
+      "name": "请输入您的姓名。",
+      "emailRequired": "请输入电子邮件，以便我们回复。",
+      "emailInvalid": "请输入有效的电子邮件，例如 name@company.com。",
+      "fix": "请修正标出的字段，然后再按“发送”。",
+      "notSent": "未发送",
+      "unreachable": "无法联系 EzyChat 团队。请检查网络连接后重试；您写的内容已保留。",
+      "rateLimited": "您在短时间内发送了很多反馈。请稍后再试；您写的内容已保留。",
+      "generic": "出了点问题。请重试；您写的内容已保留。",
+      "closed": "暂时无法从应用发送反馈。请稍后再试；您写的内容已保留。",
+      "unavailable": "此应用无法发送反馈。请联系您的 EzyChat 供应商。",
+      "tooLarge": "文件太大，无法发送。请移除一个文件或附加较小的文件。",
+      "fileType": "其中一个文件无法附加。请使用图片、PDF、文本文件或 MP4 视频。"
+    },
+    "diagValue": {
+      "edition": "{{product}}",
+      "desktop": "桌面应用",
+      "browser": "浏览器",
+      "standalone": "在这台电脑上",
+      "service": "后台服务",
+      "dev": "开发版本",
+      "off": "关闭",
+      "api": "OpenAI API 密钥",
+      "chatgpt": "ChatGPT 登录",
+      "claude": "Claude API 密钥"
     }
   }
 }

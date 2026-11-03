@@ -35,11 +35,13 @@ test('admin footer stays readable and reachable on phones and short screens', as
     const help = footer.getByRole('button', { name: 'Help & feedback', exact: true });
     await help.scrollIntoViewIfNeeded();
     await help.click();
-    for (const name of ['Report an issue', 'Custom features']) {
-      const link = footer.getByRole('link', { name, exact: true });
-      await link.scrollIntoViewIfNeeded();
-      await expect(link).toBeInViewport();
-      expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const item of [
+      footer.getByRole('button', { name: 'Send feedback', exact: true }),
+      footer.getByRole('link', { name: 'Custom features', exact: true }),
+    ]) {
+      await item.scrollIntoViewIfNeeded();
+      await expect(item).toBeInViewport();
+      expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     }
     const footerSize = await footer.evaluate((element) => ({
       width: element.clientWidth,

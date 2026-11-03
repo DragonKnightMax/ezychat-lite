@@ -1,9 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { RotateCw } from 'lucide-react';
+import { MessageSquarePlus, RotateCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { reportClientError } from '@/lib/error-reporter';
 import { Button } from '@/components/ui/button';
 import { Banner } from './index';
+import { openFeedback } from './FeedbackDialog';
 
 interface Props {
   children: ReactNode;
@@ -60,6 +61,20 @@ function ErrorFallback({ error }: { error: Error }) {
         <Button variant="outline" size="touch" onClick={() => window.location.reload()}>
           <RotateCw aria-hidden="true" />
           {t('errorBoundary.reload')}
+        </Button>{' '}
+        {/* Send feedback: report the crash with its message filled in. */}
+        <Button
+          variant="ghost"
+          size="touch"
+          onClick={() =>
+            openFeedback({
+              type: 'problem',
+              details: `\n\n${t('errorBoundary.reportPrefix')} ${error.message}`,
+            })
+          }
+        >
+          <MessageSquarePlus aria-hidden="true" />
+          {t('errorBoundary.report')}
         </Button>
       </div>
     </div>

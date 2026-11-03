@@ -6,15 +6,30 @@
     "olderReferences": "git-history"
   },
   "latestConfirmed": {
-    "feature": "group-mentions",
-    "gitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
-    "mock": "docs/features/group-mentions/mock/index.html",
-    "design": "docs/features/group-mentions/design.md",
-    "confirmedAt": "2026-10-31",
-    "confirmation": "Owner wrote 2026-10-31 \"build it until merge to main\" after reviewing the mock screenshots: the @ member picker as proposed.",
-    "note": "The next clone also adds the screens of the parallel features whatsapp-safety (docs/features/whatsapp-safety/mock) and message-edit-delete (docs/features/message-edit-delete/mock)."
+    "feature": "in-app-feedback",
+    "gitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
+    "mock": "docs/features/in-app-feedback/mock/index.html",
+    "design": "docs/features/in-app-feedback/design.md",
+    "confirmedAt": "2026-11-03",
+    "confirmation": "Owner wrote 2026-11-03 \"ok build until it work then pr and merge verify\" after reviewing the Send feedback screenshots; open questions as proposed.",
+    "note": "Clone of group-mentions; the next clone also adds the screens of message-edit-delete and whatsapp-safety (parallel features, see the previous latestConfirmed note)."
   },
   "proposals": [
+    {
+      "feature": "in-app-feedback",
+      "creationOrder": 28,
+      "createdAt": "2026-11-03",
+      "design": "docs/features/in-app-feedback/design.md",
+      "mock": "docs/features/in-app-feedback/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "group-mentions",
+      "baselineGitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
+      "coverage": "Full app clone of the confirmed group-mentions reference; Send feedback dialog (account menu, Admin Help & feedback, About, error panel): type, title, details, part of the app, how often/impact for problems, up to 3 files + window screenshot, name/email (required)/company, contact consent, app details and opt-in redacted log with previews, privacy line, GitHub link (Lite only), sent/unreachable/429/validation states, Enterprise variant; mock-only POST /api/feedback, /api/mock/feedback*; desktop 1280 / mobile 360 touch, light/dark (feedback-shots.mjs)",
+      "note": "Portal side (Feedback management) is mocked in anchorsprint/anchor-licence-portal docs/features/feedback.",
+      "confirmedAt": "2026-11-03",
+      "gitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
+      "confirmation": "Owner viewed the screenshots (app dialog states and portal Feedback pages) and wrote 2026-11-03 \"ok build until it work then pr and merge verify\"; open questions as proposed."
+    },
     {
       "feature": "google-sheets",
       "creationOrder": 27,
@@ -97,7 +112,8 @@
       "confirmation": "Owner reviewed the screenshots (Direct chats card above Groups, confirm dialog, answers-no-chats warning, assignee list without the AI; desktop and phone) and confirmed 2026-10-30 (\"confirm, implement it\").",
       "gitRevision": "4cfbe96d13e81ac6f64e3185430066b2f7bb249d",
       "parallelFeatures": ["concept-tips", "ai-handoff-rules"],
-      "note": "Confirmed in parallel with concept-tips and ai-handoff-rules (all cloned from grammar-fix): none of these mocks has the others' change. The next enhancement clones latestConfirmed and copies the Direct chats card from this folder (src/admin/AgentDirectCard.tsx, its groups.ts runner route and the mockDirect.* catalog keys)."
+      "note": "Confirmed in parallel with concept-tips and ai-handoff-rules (all cloned from grammar-fix): none of these mocks has the others' change. The next enhancement clones latestConfirmed and copies the Direct chats card from this folder (src/admin/AgentDirectCard.tsx, its groups.ts runner route and the mockDirect.* catalog keys).",
+      "folderRemoved": "2026-11-03 (in-app-feedback: sixth feature folder); last on main at 1564247"
     },
     {
       "feature": "ai-handoff-rules",

@@ -1,8 +1,10 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppCredits } from './AppCredits';
-import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL, GITHUB_ISSUES_URL } from '@/lib/links';
+import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL, LITE_APP_LINKS } from '@/lib/links';
+import { AppLinksProvider } from '@/lib/app-links';
+import { OPEN_FEEDBACK_EVENT } from './FeedbackDialog';
 
 afterEach(cleanup);
 
@@ -27,7 +29,6 @@ it('folds sidebar support links into one Help & feedback item without changing d
   expect(screen.queryByText(/Need a custom feature/)).toBeNull();
   for (const [name, href] of [
     ['Anchor Sprint', ANCHOR_SPRINT_URL],
-    ['Report an issue', GITHUB_ISSUES_URL],
     ['Custom features', CUSTOM_FEATURE_URL],
   ]) {
     const link = screen.getByRole('link', { name });
@@ -35,4 +36,36 @@ it('folds sidebar support links into one Help & feedback item without changing d
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
   }
+});
+
+it('opens Send feedback from the sidebar panel and from About', async () => {
+  const opened = vi.fn();
+  window.addEventListener(OPEN_FEEDBACK_EVENT, opened);
+  const user = userEvent.setup();
+  render(<AppCredits variant="sidebar" version="0.1.7" />);
+  await user.click(screen.getByRole('button', { name: 'Help & feedback' }));
+  expect(screen.queryByRole('link', { name: 'Report an issue' })).toBeNull();
+  await user.click(screen.getByTestId('sidebar-feedback'));
+  cleanup();
+  render(<AppCredits version="0.1.7" />);
+  await user.click(screen.getByRole('button', { name: 'Send feedback' }));
+  expect(opened).toHaveBeenCalledTimes(2);
+  window.removeEventListener(OPEN_FEEDBACK_EVENT, opened);
+});
+
+it('keeps the support email for an edition without a public issue tracker', async () => {
+  const links = { ...LITE_APP_LINKS, reportIssue: null, supportEmail: 'help@example.com' };
+  render(
+    <AppLinksProvider links={links}>
+      <AppCredits variant="sidebar" version="0.1.7" />
+    </AppLinksProvider>,
+  );
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Help & feedback' }));
+  expect(screen.getByRole('link', { name: 'Email support' }).getAttribute('href')).toBe(
+    'mailto:help@example.com',
+  );
+  cleanup();
+  render(<AppCredits variant="sidebar" version="0.1.7" />);
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Help & feedback' }));
+  expect(screen.queryByRole('link', { name: 'Email support' })).toBeNull();
 });

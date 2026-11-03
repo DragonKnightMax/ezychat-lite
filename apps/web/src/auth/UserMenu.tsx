@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Bug,
   ExternalLink,
   Info,
   KeyRound,
   LogOut,
+  Mail,
+  MessageSquarePlus,
   Monitor,
   Moon,
   Settings,
@@ -30,10 +31,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AboutDialog } from '@/components/app';
-import { FeatureRequestAction } from '@/components/app/FeatureRequestAction';
+import { openFeedback } from '@/components/app/FeedbackDialog';
 import { ShareAppAction } from '@/components/app/ShareAppAction';
 import { useAppLinks } from '@/lib/app-links';
-import { reportIssueHref } from '@/lib/links';
 import { initials } from '@/lib/format';
 import { useAppVersion } from '@/lib/version';
 import { THEME_OPTIONS, useTheme } from '@/lib/theme';
@@ -124,7 +124,6 @@ export function UserMenu({
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const links = useAppLinks();
-  const reportHref = reportIssueHref(links);
   if (!user) return null;
 
   return (
@@ -221,12 +220,22 @@ export function UserMenu({
             <Share2 aria-hidden="true" />
             {t('account.share')}
           </DropdownMenuItem>
-          <FeatureRequestAction placement="menu" />
-          {reportHref && (
+          {/* One Send feedback item replaces Request a feature and Report an issue; the GitHub
+              link lives in the dialog (Lite only). */}
+          <DropdownMenuItem
+            className="min-h-11"
+            onSelect={() => openFeedback()}
+            data-testid="menu-feedback"
+          >
+            <MessageSquarePlus aria-hidden="true" />
+            {t('account.sendFeedback')}
+          </DropdownMenuItem>
+          {/* Editions without a public issue tracker keep their support email here. */}
+          {!links.reportIssue && links.supportEmail && (
             <DropdownMenuItem asChild className="min-h-11">
-              <a href={reportHref} target="_blank" rel="noopener noreferrer">
-                <Bug aria-hidden="true" />
-                {links.reportIssue ? t('account.reportIssue') : t('account.emailSupport')}
+              <a href={`mailto:${links.supportEmail}`} data-testid="menu-support-email">
+                <Mail aria-hidden="true" />
+                {t('account.emailSupport')}
               </a>
             </DropdownMenuItem>
           )}

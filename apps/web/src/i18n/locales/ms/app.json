@@ -17,10 +17,6 @@
     "helpFeedback": "Bantuan & maklum balas",
     "emailSupport": "E-mel sokongan"
   },
-  "featureRequest": {
-    "label": "Cadangkan ciri",
-    "opensWebsite": "(membuka ezychat.ai dalam tetingkap baharu)"
-  },
   "search": {
     "clear": "Kosongkan {{label}}"
   },
@@ -93,6 +89,137 @@
       "shareUnavailable": "Perkongsian tidak tersedia di sini. Pilih mesej atau pautan di atas dan salin secara manual.",
       "imageStarted": "Muat turun imej dimulakan. Muat naik ke Instagram dan tampal kapsyen anda.",
       "imageFailed": "Tidak dapat menyediakan imej. Cuba muat turun semula, atau kongsi mesej dan pautan awam."
+    }
+  },
+  "feedback": {
+    "menu": "Hantar maklum balas",
+    "title": "Hantar maklum balas",
+    "description": "Beritahu kami tentang masalah, idea atau soalan. Pasukan EzyChat membaca setiap mesej.",
+    "type": {
+      "label": "Tentang apa?",
+      "problem": "Masalah",
+      "idea": "Idea",
+      "question": "Soalan",
+      "other": "Lain-lain"
+    },
+    "titleLabel": "Tajuk ringkas",
+    "titlePlaceholder": {
+      "problem": "cth. Gambar daripada pelanggan tidak dapat dibuka",
+      "idea": "cth. Benarkan kami menjadualkan mesej",
+      "question": "cth. Bolehkah dua orang membalas chat yang sama?",
+      "other": "cth. Terima kasih atas aplikasi ini"
+    },
+    "detailsLabel": "Butiran",
+    "detailsPlaceholder": {
+      "problem": "Apa yang anda lakukan, apa yang berlaku, dan apa yang anda jangkakan?",
+      "idea": "Apa yang anda mahu EzyChat lakukan, dan bagaimana ia membantu perniagaan anda?",
+      "question": "Tanya apa sahaja tentang penggunaan EzyChat.",
+      "other": "Tulis mesej anda di sini."
+    },
+    "area": {
+      "label": "Bahagian aplikasi",
+      "inbox": "Peti masuk dan chat",
+      "ai_agent": "Ejen AI",
+      "whatsapp_link": "Pautan WhatsApp",
+      "connectors": "Penyambung",
+      "reports": "Laporan",
+      "settings": "Tetapan",
+      "install_update": "Pemasangan dan kemas kini",
+      "other": "Lain-lain"
+    },
+    "frequency": {
+      "label": "Berapa kerap?",
+      "always": "Setiap kali",
+      "sometimes": "Kadang-kadang",
+      "once": "Sekali"
+    },
+    "impact": {
+      "label": "Seteruk mana?",
+      "blocking": "Menghentikan kerja saya",
+      "slow": "Melambatkan saya",
+      "minor": "Kecil"
+    },
+    "files": {
+      "label": "Lampiran",
+      "hint": "Sehingga 3 fail, 10 MB setiap satu: gambar, PDF, teks atau video pendek.",
+      "add": "Tambah fail",
+      "screenshot": "Tangkapan skrin tetingkap ini",
+      "remove": "Buang {{name}}",
+      "tooMany": "Anda boleh melampirkan sehingga {{max}} fail.",
+      "badType": "{{name}} tidak boleh dilampirkan. Gunakan gambar, PDF, fail teks atau video MP4.",
+      "tooBig": "{{name}} melebihi 10 MB.",
+      "screenshotFailed": "Tangkapan skrin tidak dapat diambil. Lampirkan gambar sebagai ganti."
+    },
+    "contact": {
+      "legend": "Cara kami menghubungi anda",
+      "name": "Nama anda",
+      "email": "E-mel",
+      "company": "Syarikat",
+      "optional": "(pilihan)",
+      "ok": "Pasukan EzyChat boleh menghantar e-mel kepada saya tentang perkara ini"
+    },
+    "include": {
+      "details": "Sertakan butiran aplikasi",
+      "detailsHint": "Versi, jenis komputer, skrin yang anda buka dan status sambungan. Tiada mesej atau butiran pelanggan.",
+      "seeDetails": "Lihat apa yang dihantar",
+      "log": "Lampirkan log aktiviti terkini",
+      "logHint": "{{lines}} baris terakhir log aplikasi membantu kami mencari masalah. Nombor telefon, e-mel, kata laluan dan teks mesej dibuang terlebih dahulu.",
+      "seeLog": "Lihat log"
+    },
+    "diag": {
+      "edition": "Edisi",
+      "version": "Versi",
+      "os": "Komputer",
+      "osVersion": "Versi sistem",
+      "client": "Dibuka dalam",
+      "mode": "Berjalan sebagai",
+      "language": "Bahasa",
+      "timeZone": "Zon waktu",
+      "screen": "Skrin",
+      "waConnected": "WhatsApp disambungkan",
+      "aiMode": "Sambungan AI",
+      "yes": "Ya",
+      "no": "Tidak"
+    },
+    "privacy": "Maklum balas anda dihantar kepada Anchor Sprint, pembuat {{product}}. Kami juga merekod alamat internet (IP) dan negara anda untuk membantu menyelesaikan masalah. Tiada apa-apa dihantar sehingga anda menekan Hantar.",
+    "github": "Lebih suka GitHub? Laporkan isu di sana",
+    "send": "Hantar",
+    "sending": "Menghantar…",
+    "sent": {
+      "title": "Maklum balas dihantar",
+      "thanks": "Terima kasih! Maklum balas anda telah sampai kepada pasukan EzyChat.",
+      "reference": "Rujukan: {{reference}}",
+      "reply": "Kami akan membalas ke {{email}} jika kami memerlukan butiran lanjut.",
+      "noReply": "Anda meminta kami tidak menghantar e-mel, jadi kami tidak akan membalas.",
+      "another": "Hantar lagi"
+    },
+    "errors": {
+      "title": "Tulis tajuk ringkas (sekurang-kurangnya 3 aksara).",
+      "details": "Beritahu kami sedikit lagi (sekurang-kurangnya 10 aksara).",
+      "name": "Masukkan nama anda.",
+      "emailRequired": "Masukkan e-mel anda supaya kami boleh membalas.",
+      "emailInvalid": "Masukkan e-mel yang sah, seperti nama@syarikat.com.",
+      "fix": "Betulkan medan yang ditanda, kemudian tekan Hantar semula.",
+      "notSent": "Tidak dihantar",
+      "unreachable": "Kami tidak dapat menghubungi pasukan EzyChat. Semak sambungan internet dan cuba lagi; teks anda disimpan.",
+      "rateLimited": "Anda telah menghantar banyak maklum balas dalam masa singkat. Sila cuba lagi kemudian; teks anda disimpan.",
+      "generic": "Sesuatu tidak kena. Cuba lagi; teks anda disimpan.",
+      "closed": "Penghantaran maklum balas daripada aplikasi ditutup buat masa ini. Sila cuba lagi kemudian; teks anda disimpan.",
+      "unavailable": "Aplikasi ini tidak boleh menghantar maklum balas. Sila hubungi pembekal EzyChat anda.",
+      "tooLarge": "Fail terlalu besar untuk dihantar. Buang satu fail atau lampirkan fail yang lebih kecil.",
+      "fileType": "Salah satu fail tidak boleh dilampirkan. Gunakan gambar, PDF, fail teks atau video MP4."
+    },
+    "diagValue": {
+      "edition": "{{product}}",
+      "desktop": "Aplikasi desktop",
+      "browser": "Pelayar",
+      "standalone": "Pada komputer ini",
+      "service": "Perkhidmatan latar belakang",
+      "dev": "Binaan pembangun",
+      "off": "Mati",
+      "api": "Kunci API OpenAI",
+      "chatgpt": "Log masuk ChatGPT",
+      "claude": "Kunci API Claude"
     }
   }
 }

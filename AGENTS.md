@@ -268,6 +268,24 @@ chat and customer blocks filtered by inbox access. A proposed change is held in 
 since Ezy read it; Undo restores it or removes an added item; versions via `{via:'app', reason:'Ask Ezy: …'}`).
 Logs carry tool names, counts, ms and model, never question or answer text. Web: `apps/web/src/askezy/`.
 
+**Send feedback** (design `docs/features/in-app-feedback/design.md`, mock `docs/features/in-app-feedback/mock`). Any
+signed-in user: `POST /api/feedback` (multipart: `report` = shared `FeedbackReportBody`, 0–3 `file` parts, 10 MB each,
+25 MB together, type read from the bytes in `feedback/files.ts`: PNG/JPEG/WebP/PDF/MP4, text only as `.txt`/`.log`; 5 an
+hour and 20 a day per user, a retry with the same `clientReportId` is answered from memory and not counted again) and
+`GET /api/feedback/defaults` (company, app details, the exact redacted log). `feedback/service.ts` builds the app
+details on the server (`diagnostics.ts`: edition, version, Windows/macOS, mode, WhatsApp connected, AI mode, never
+keys; the screen path without ids) and, only when ticked, the last 200 lines / 64 KB of the newest log (`log.ts`:
+`redactLogLine` plus message text, names, numbers, chat ids, emails, IPs and the user folder removed; non-JSON lines
+dropped). `feedback/portal.ts` posts to `https://license.anchorsprint.app/v1/feedback` (30 s, `redirect: 'error'`,
+16 KB answer cap; `EZYCHAT_FEEDBACK_URL` only with `--mode dev --fake-wa`) and maps answers: 400/413/415/429 pass
+through, 403 `product_closed` → 503 `feedback_closed`, anything else → 502 `feedback_unreachable`. Lite sends
+`EZC-LITE` + a random `installRef` (setting `feedback_install_ref`); an edition answers `ServerExtension.feedbackAuth`
+(`product`, `installId`, `secret`, `company?`, `portalOrigin?` https or loopback http), else a non-Lite edition answers
+503 `feedback_unavailable`. Logs: type, area, file count and sizes, ms, reference only. No tracking: nothing leaves the
+computer until Send. Web: `components/app/FeedbackDialog.tsx` (`openFeedback`, `FeedbackHost` in `create-app.tsx`;
+account menu, Admin Help & feedback, About, error panel); the desktop window's "Screenshot of this window" is
+`window.watiCapture` (`apps/desktop/src/capture-ipc.ts`, inbox IPC guards, PNG of the asking window only).
+
 **Events.** `wa-bridge` maps adapter events into services (ingest, status acks, chat/contact upserts).
 Services emit on the typed in-process `Bus` (`bus.ts`); `realtime/socket.ts` fans out to Socket.IO
 rooms (`all`, `admins`, `user:<id>`; QR codes and tunnel status go to `admins` only) and

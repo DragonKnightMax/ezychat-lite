@@ -5,23 +5,11 @@ export const ANCHOR_SPRINT_URL = 'https://www.anchorsprint.com';
 export const EZYCHAT_WEBSITE_URL = 'https://ezychat.ai/';
 export const GITHUB_REPO_URL = 'https://github.com/ossmalaysia/ezychat-lite';
 export const GITHUB_ISSUES_URL = 'https://github.com/ossmalaysia/ezychat-lite/issues/new/choose';
-/** Feedback and feature requests on the EzyChat website, one page per app language. */
-const FEEDBACK_PAGE_EN = 'https://ezychat.ai/feedback';
-const FEEDBACK_PAGE: Partial<Record<string, string>> = {
-  ms: 'https://ezychat.ai/ms/feedback',
-  'zh-CN': 'https://ezychat.ai/zh/feedback',
-};
-
-/** The website feedback form in the app's language, with the running version filled in. */
-export function feedbackUrl(locale: string, version: string | null): string {
-  const page = FEEDBACK_PAGE[locale] ?? FEEDBACK_PAGE_EN;
-  return version ? `${page}?v=${encodeURIComponent(version)}` : page;
-}
 /** Contact Anchor Sprint for custom features. */
 export const CUSTOM_FEATURE_URL = 'https://www.anchorsprint.com';
 
 /**
- * The outside links the UI shows (About, Report an issue, release notes, feedback, support).
+ * The outside links the UI shows (About, Report an issue, release notes, support).
  * Another product build overrides them through `createInboxApp({ links })`; `null` hides a link.
  */
 export interface AppLinks {
@@ -36,8 +24,6 @@ export interface AppLinks {
    * release through the desktop bridge; another value is opened as a plain link.
    */
   releaseNotes: ((version: string) => string | null) | null;
-  /** The feedback / feature request form in the app's language. */
-  feedback: (locale: string, version: string | null) => string;
   /** Support email address (mailto link where there is no report-issue page). */
   supportEmail: string | null;
   /** "Upgrade to Enterprise" page (Lite's limits, account menu, About); null hides every upgrade link. */
@@ -72,13 +58,12 @@ export function connectorRequestUrl(message: string): string {
 const liteReleaseNotes = (version: string): string =>
   `${GITHUB_REPO_URL}/releases/tag/v${encodeURIComponent(version)}`;
 
-/** Lite's links: GitHub repository and issues, feedback on ezychat.ai. */
+/** Lite's links: GitHub repository and issues, the website. */
 export const LITE_APP_LINKS: Readonly<AppLinks> = Object.freeze({
   website: EZYCHAT_WEBSITE_URL,
   reportIssue: GITHUB_ISSUES_URL,
   sourceCode: GITHUB_REPO_URL,
   releaseNotes: liteReleaseNotes,
-  feedback: feedbackUrl,
   supportEmail: null,
   upgrade: ENTERPRISE_UPGRADE_URL,
   connectorRequest: connectorRequestUrl,

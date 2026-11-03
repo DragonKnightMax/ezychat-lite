@@ -39,6 +39,7 @@ import connectorMcp from './connector-mcp.js';
 import reports from './reports.js';
 import safety from './safety.js';
 import liteImport from './lite-import.js';
+import feedback from './feedback.js';
 
 export type RouteModule = (app: FastifyInstance, ctx: AppContext) => Promise<void>;
 
@@ -79,6 +80,7 @@ export const routeModules: RouteModule[] = [
   reports,
   safety,
   liteImport,
+  feedback,
 ];
 
 /**

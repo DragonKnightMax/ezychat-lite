@@ -17,10 +17,6 @@
     "helpFeedback": "Help & feedback",
     "emailSupport": "Email support"
   },
-  "featureRequest": {
-    "label": "Request a feature",
-    "opensWebsite": "(opens ezychat.ai in a new window)"
-  },
   "search": {
     "clear": "Clear {{label}}"
   },
@@ -93,6 +89,137 @@
       "shareUnavailable": "Sharing is unavailable here. Select the message or link above and copy it manually.",
       "imageStarted": "Image download started. Upload it to Instagram and paste your caption.",
       "imageFailed": "Could not prepare the image. Try downloading again, or share the message and public link."
+    }
+  },
+  "feedback": {
+    "menu": "Send feedback",
+    "title": "Send feedback",
+    "description": "Tell us about a problem, an idea or a question. The EzyChat team reads every message.",
+    "type": {
+      "label": "What is it about?",
+      "problem": "Problem",
+      "idea": "Idea",
+      "question": "Question",
+      "other": "Other"
+    },
+    "titleLabel": "Short title",
+    "titlePlaceholder": {
+      "problem": "e.g. Photos from customers do not open",
+      "idea": "e.g. Let us schedule a message",
+      "question": "e.g. Can two people reply to the same chat?",
+      "other": "e.g. Thank you for the app"
+    },
+    "detailsLabel": "Details",
+    "detailsPlaceholder": {
+      "problem": "What did you do, what happened, and what did you expect to happen?",
+      "idea": "What would you like EzyChat to do, and how would it help your business?",
+      "question": "Ask anything about using EzyChat.",
+      "other": "Write your message here."
+    },
+    "area": {
+      "label": "Part of the app",
+      "inbox": "Inbox and chats",
+      "ai_agent": "AI agent",
+      "whatsapp_link": "WhatsApp link",
+      "connectors": "Connectors",
+      "reports": "Reports",
+      "settings": "Settings",
+      "install_update": "Install and updates",
+      "other": "Something else"
+    },
+    "frequency": {
+      "label": "How often?",
+      "always": "Every time",
+      "sometimes": "Sometimes",
+      "once": "Once"
+    },
+    "impact": {
+      "label": "How bad is it?",
+      "blocking": "Stops my work",
+      "slow": "Slows me down",
+      "minor": "Minor"
+    },
+    "files": {
+      "label": "Attachments",
+      "hint": "Up to 3 files, 10 MB each: pictures, PDF, text or a short video.",
+      "add": "Add files",
+      "screenshot": "Screenshot of this window",
+      "remove": "Remove {{name}}",
+      "tooMany": "You can attach up to {{max}} files.",
+      "badType": "{{name}} cannot be attached. Use a picture, PDF, text file or MP4 video.",
+      "tooBig": "{{name}} is larger than 10 MB.",
+      "screenshotFailed": "The screenshot could not be taken. Attach a picture instead."
+    },
+    "contact": {
+      "legend": "How we reach you",
+      "name": "Your name",
+      "email": "Email",
+      "company": "Company",
+      "optional": "(optional)",
+      "ok": "The EzyChat team may email me about this"
+    },
+    "include": {
+      "details": "Include app details",
+      "detailsHint": "Version, computer type, the screen you are on and connection status. No messages or customer details.",
+      "seeDetails": "See what is sent",
+      "log": "Attach recent activity log",
+      "logHint": "The last {{lines}} lines of the app log help us find problems. Phone numbers, emails, passwords and message text are removed first.",
+      "seeLog": "See the log"
+    },
+    "diag": {
+      "edition": "Edition",
+      "version": "Version",
+      "os": "Computer",
+      "osVersion": "System version",
+      "client": "Opened in",
+      "mode": "Runs as",
+      "language": "Language",
+      "timeZone": "Time zone",
+      "screen": "Screen",
+      "waConnected": "WhatsApp connected",
+      "aiMode": "AI connection",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "privacy": "Your feedback goes to Anchor Sprint, the maker of {{product}}. We also record your internet address (IP) and country to help solve problems. Nothing is sent until you press Send.",
+    "github": "Prefer GitHub? Report an issue there",
+    "send": "Send",
+    "sending": "Sending…",
+    "sent": {
+      "title": "Feedback sent",
+      "thanks": "Thank you! Your feedback has reached the EzyChat team.",
+      "reference": "Reference: {{reference}}",
+      "reply": "We will reply to {{email}} if we need more details.",
+      "noReply": "You asked us not to email you, so we will not reply.",
+      "another": "Send another"
+    },
+    "errors": {
+      "title": "Write a short title (at least 3 characters).",
+      "details": "Tell us a bit more (at least 10 characters).",
+      "name": "Enter your name.",
+      "emailRequired": "Enter your email so we can reply.",
+      "emailInvalid": "Enter a valid email, like name@company.com.",
+      "fix": "Fix the marked fields, then press Send again.",
+      "notSent": "Not sent",
+      "unreachable": "We could not reach the EzyChat team. Check the internet connection and try again; your text is kept.",
+      "rateLimited": "You have sent a lot of feedback in a short time. Please try again later; your text is kept.",
+      "generic": "Something went wrong. Try again; your text is kept.",
+      "closed": "Sending feedback from the app is closed for now. Please try again later; your text is kept.",
+      "unavailable": "This app cannot send feedback. Please contact your EzyChat supplier.",
+      "tooLarge": "The files are too large to send. Remove a file or attach a smaller one.",
+      "fileType": "One of the files cannot be attached. Use a picture, PDF, text file or MP4 video."
+    },
+    "diagValue": {
+      "edition": "{{product}}",
+      "desktop": "Desktop app",
+      "browser": "Browser",
+      "standalone": "On this computer",
+      "service": "Background service",
+      "dev": "Developer build",
+      "off": "Off",
+      "api": "OpenAI API key",
+      "chatgpt": "ChatGPT sign-in",
+      "claude": "Claude API key"
     }
   }
 }

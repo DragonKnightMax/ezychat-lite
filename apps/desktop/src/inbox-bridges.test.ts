@@ -31,7 +31,9 @@ async function loadPreload(flags: string[]) {
 describe('inbox preload bridges', () => {
   it('exposes neither the Lite import nor the upgrade bridge without their flags', async () => {
     const exposed = await loadPreload([]);
-    expect([...exposed.keys()].sort()).toEqual(['watiNotifications', 'watiUpdates']);
+    expect([...exposed.keys()].sort()).toEqual(['watiCapture', 'watiNotifications', 'watiUpdates']);
+    await exposed.get('watiCapture')!.captureWindow!();
+    expect(mock.invoke.mock.calls).toEqual([['wati:capture-window']]);
   });
 
   it('exposes watiLiteImport with --wati-lite-import, on fixed channels', async () => {

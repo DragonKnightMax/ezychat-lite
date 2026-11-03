@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AdminLayout, visibleAdminNav } from './AdminLayout';
 import { i18n } from '@/i18n';
 import { reportClientError } from '@/lib/error-reporter';
-import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL, GITHUB_ISSUES_URL } from '@/lib/links';
+import { ANCHOR_SPRINT_URL, CUSTOM_FEATURE_URL } from '@/lib/links';
 import { toast } from 'sonner';
 
 const logout = vi.hoisted(() => vi.fn());
@@ -247,7 +247,6 @@ describe('AdminLayout routing', () => {
       await user.click(tools.getByRole('button', { name: 'Help & feedback' }));
       for (const [name, href] of [
         ['Anchor Sprint', ANCHOR_SPRINT_URL],
-        ['Report an issue', GITHUB_ISSUES_URL],
         ['Custom features', CUSTOM_FEATURE_URL],
       ]) {
         const link = tools.getByRole('link', { name });
@@ -255,6 +254,7 @@ describe('AdminLayout routing', () => {
         expect(link.getAttribute('target')).toBe('_blank');
         expect(link.getAttribute('rel')).toBe('noopener noreferrer');
       }
+      expect(tools.getByRole('button', { name: 'Send feedback' })).toBeTruthy();
     };
     await checkMenu(screen.getByRole('complementary'));
     await user.click(screen.getByRole('button', { name: 'Admin menu' }));

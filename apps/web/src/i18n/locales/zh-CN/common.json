@@ -55,16 +55,18 @@
     "adminSettings": "管理设置",
     "changePassword": "修改密码",
     "share": "分享此应用",
-    "reportIssue": "报告问题",
     "about": "关于 {{appName}}",
     "signOut": "退出登录",
+    "sendFeedback": "发送反馈",
     "emailSupport": "发送邮件给支持团队"
   },
   "errorBoundary": {
     "title": "出了点问题",
     "body": "应用的这一部分发生了意外错误，错误已上报。",
     "reload": "重新加载页面",
-    "goHome": "前往收件箱"
+    "goHome": "前往收件箱",
+    "report": "报告此问题",
+    "reportPrefix": "显示的错误："
   },
   "access": {
     "pausedTitle": "{{product}} 已暂停",

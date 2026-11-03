@@ -315,7 +315,6 @@ describe('app links', () => {
       supportEmail: 'general@anchorsprint.com',
     });
     expect(links.reportIssue).toBeNull();
-    expect(links.feedback).toBe(LITE_APP_LINKS.feedback);
     expect(reportIssueHref(links)).toBe('mailto:general@anchorsprint.com');
     expect(reportIssueHref({ ...links, supportEmail: null })).toBeNull();
     expect(shareAppUrl(links)).toBe('https://ezychat.ai/');
@@ -325,19 +324,16 @@ describe('app links', () => {
     return render(<AppLinksProvider links={resolveAppLinks(overrides)}>{node}</AppLinksProvider>);
   }
 
-  it('AppCredits links Lite issues by default', () => {
+  it('AppCredits: Send feedback replaces the GitHub link; an edition without one keeps its support email', () => {
     render(<AppCredits />);
-    expect(screen.getByRole('link', { name: /report an issue/i }).getAttribute('href')).toBe(
-      LITE_APP_LINKS.reportIssue!,
-    );
-  });
-
-  it('AppCredits shows the support email instead of GitHub, or nothing when both are null', () => {
+    expect(screen.getByRole('button', { name: /send feedback/i })).toBeTruthy();
+    expect(document.querySelector('a[href*="github.com"]')).toBeNull();
+    expect(screen.queryByRole('link', { name: /email support/i })).toBeNull();
+    cleanup();
     withLinks({ reportIssue: null, supportEmail: 'general@anchorsprint.com' }, <AppCredits />);
     expect(screen.getByRole('link', { name: /email support/i }).getAttribute('href')).toBe(
       'mailto:general@anchorsprint.com',
     );
-    expect(document.querySelector('a[href*="github.com"]')).toBeNull();
     cleanup();
     withLinks({ reportIssue: null, supportEmail: null }, <AppCredits />);
     expect(screen.queryByRole('link', { name: /report an issue|email support/i })).toBeNull();

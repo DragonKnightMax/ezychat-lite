@@ -55,6 +55,7 @@ import { mtimeOrDenied } from './lite-import/detect.js';
 import { liteImportDeps, liteServiceFolders, saveSupportFile } from './lite-import/host.js';
 import { LITE_IMPORT_PRELOAD_ARG, registerLiteImportIpc } from './lite-import/ipc.js';
 import { createMovedFlow } from './lite-import/moved-flow.js';
+import { registerCaptureIpc } from './capture-ipc.js';
 import { sameInboxOrigin } from './inbox-ipc.js';
 import { UpgradeInstaller } from './upgrade/controller.js';
 import { UPGRADE_PRELOAD_ARG, registerUpgradeIpc } from './upgrade/ipc.js';
@@ -822,6 +823,8 @@ async function main(): Promise<void> {
     statusFile,
   });
   const inboxWindow = { main: () => mainWindow, baseUrl: () => url };
+  // Send feedback: "Screenshot of this window" (the inbox window only).
+  const captureIpc = registerCaptureIpc(inboxWindow);
 
   // Lite import (design §5.1–5.4): only a product with adoptFrom. v1 runs it with our server in
   // standalone mode. Lite as an OS service: its folder is locked; "Allow" runs Lite's own "Remove
@@ -1004,6 +1007,7 @@ async function main(): Promise<void> {
     sections.stop();
     updateIpc.dispose();
     statusIpc.dispose();
+    captureIpc.dispose();
     liteImportIpc?.dispose();
     upgrade.cancel();
     upgradeIpc?.dispose();

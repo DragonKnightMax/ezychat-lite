@@ -56,3 +56,7 @@ initializers.push(initConnectorList);
 
 import { initConnectorMcp } from './connectors/mcp/service.js';
 initializers.push(initConnectorMcp);
+
+// Send feedback: forwards reports to the licence portal only when a user presses Send.
+import { initFeedback } from './feedback/service.js';
+initializers.push(initFeedback);

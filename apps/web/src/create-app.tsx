@@ -14,6 +14,7 @@ import {
   type WebExtension,
 } from './extensions';
 import { Toaster } from '@/components/ui/sonner';
+import { FeedbackHost } from '@/components/app/FeedbackDialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { installGlobalErrorReporting } from '@/lib/error-reporter';
 import { installFileDropGuard } from '@/lib/file-transfer';
@@ -32,7 +33,7 @@ export interface CreateInboxAppOptions {
   /** Product name shown wherever the UI names the app; defaults to "EzyChat Lite". */
   productName?: string;
   /**
-   * Outside links (About, Report an issue, release notes, feedback, support email). Missing
+   * Outside links (About, Report an issue, release notes, support email). Missing
    * entries keep Lite's links; an explicit `null` hides that link.
    */
   links?: Partial<AppLinks>;
@@ -87,6 +88,7 @@ export async function createInboxApp({
                       <LocaleSync />
                       <RealtimeProvider>
                         <App />
+                        <FeedbackHost />
                       </RealtimeProvider>
                     </AuthProvider>
                   </AccessGate>
