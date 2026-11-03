@@ -96,7 +96,7 @@ export interface ComposerProps {
   replyTo?: { id: string; author: string; preview: string } | null;
   onCancelReply?(): void;
   /**
-   * AI reply suggestions in this chat (direct chats only; null = off). `unavailable` shows the
+   * AI reply suggestions in this chat (direct chats and groups; null = off). `unavailable` shows the
    * button disabled. The chips clear when `lastCustomerMessageId` changes (a new customer message).
    */
   ref?: React.Ref<ComposerHandle>;
@@ -108,7 +108,7 @@ export interface ComposerProps {
     /** The team's phrase list, matched on every key (docs/features/ai-phrase-dictionary). */
     phrases?: readonly ReplyPhraseListItem[];
   } | null;
-  /** Ask Ezy (docs/features/ask-ezy/design.md): direct chats only; opens Ezy scoped to this chat. */
+  /** Ask Ezy (docs/features/ask-ezy/design.md): direct chats and groups; opens Ezy scoped to this chat. */
   askEzy?: { chatJid: string; name: string } | null;
   /**
    * Tag group members with `@` (docs/features/group-mentions/design.md): a group whose connection

@@ -1,10 +1,12 @@
 import {
+  chatHref,
   chatItem,
   customerJid,
   expect,
   expectNoHorizontalScroll,
   fakeIncoming,
   inboxHeading,
+  projectTag,
   test,
 } from './helpers';
 
@@ -75,4 +77,43 @@ test('Settings → AI shows the team-wide reply suggestions switch with its cost
   await expect(card.getByText('Reply suggestions', { exact: true })).toBeVisible();
   await expect(card.getByText(/one request to your AI provider/)).toBeVisible();
   await expectNoHorizontalScroll(page, 'settings/ai reply suggestions');
+});
+
+test('a group chat offers Suggest reply and Summarise with Ezy too', async ({
+  page,
+  baseURL,
+}, info) => {
+  const tag = projectTag(info).replace(/\D/g, '').padStart(2, '0').slice(-2);
+  const groupJid = `1203630777000${tag}@g.us`;
+  const origin = { Origin: new URL(baseURL!).origin };
+  await page.route('**/api/reply-suggestions', (route) =>
+    route.fulfill({ json: { enabled: true, connected: true, state: 'on', upgraded: false } }),
+  );
+  await page.route('**/ai/suggestions', (route) => route.fulfill({ json: DRAFTS }));
+  await page.goto('/');
+  await expect(inboxHeading(page)).toBeVisible();
+  const made = await page.request.post('/api/dev/fake-group', {
+    headers: origin,
+    data: {
+      groupJid,
+      name: `Nasi Lemak Club ${tag}`,
+      members: [{ phone: `601266779${tag}`, name: 'Nurul Huda', role: 'admin' }],
+    },
+  });
+  expect(made.status(), await made.text()).toBe(200);
+  await page.request.post('/api/dev/fake-incoming', {
+    headers: origin,
+    data: { chatJid: groupJid, text: 'Two Nasi Lemak for 1pm?', senderName: 'Nurul Huda' },
+  });
+  await page.goto(chatHref(groupJid));
+
+  await expect(page.getByTestId('ask-ezy-about-chat')).toBeVisible();
+  await page.getByRole('button', { name: 'Suggest reply' }).click();
+  const chips = page.getByTestId('suggestion-chip');
+  await expect(chips).toHaveCount(2);
+  await chips.first().click();
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+    DRAFTS.suggestions[0]!.text,
+  );
+  await expectNoHorizontalScroll(page, `group suggestions ${info.project.name}`);
 });

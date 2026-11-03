@@ -25,7 +25,7 @@ import { chatJidParam } from './chats.js';
 /**
  * AI reply suggestions (design: docs/features/ai-reply-suggestions/design.md): the team-wide switch
  * (any user reads it at /api/reply-suggestions, admins change it at /api/ai/reply-suggestions) and the two per-chat calls. Per-chat routes answer 404
- * outside the caller's inboxes (`chatJidParam`) and work in direct chats only.
+ * outside the caller's inboxes (`chatJidParam`) and work in direct chats and groups.
  */
 export default async function replySuggestionRoutes(app: FastifyInstance, ctx: AppContext) {
   app.addHook('preHandler', requireUser(ctx));
@@ -48,11 +48,9 @@ export default async function replySuggestionRoutes(app: FastifyInstance, ctx: A
       upgraded: replySuggestionsUpgraded(ctx.settings),
     };
   };
-  /** A direct chat the caller may open; the model call stops when the client goes away. */
+  /** A chat the caller may open; the model call stops when the client goes away. */
   const draftChat = (req: FastifyRequest, reply: FastifyReply) => {
     const jid = chatJidParam(ctx, req);
-    if (chats.get(jid)?.type !== 'dm')
-      throw errors.validation('Reply suggestions work in direct chats only');
     const cancel = new AbortController();
     reply.raw.on('close', () => {
       if (!reply.raw.writableFinished) cancel.abort();

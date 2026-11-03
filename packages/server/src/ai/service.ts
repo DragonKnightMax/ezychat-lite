@@ -1089,16 +1089,18 @@ export function createAiService(
       if (!groupQueues.get(jid)?.length) groupQueues.delete(jid);
     }
   }
-  /** The group as the model sees it: who spoke (AI, a teammate, a named member) and what was said. */
+  /**
+   * The group as the model sees it: who spoke (AI, a teammate, a named member) and what was said.
+   * A message deleted for everyone is left out, as in `conversation`.
+   */
   const groupConversation = (history: Message[], aiUsers: ReadonlySet<number>) =>
-    history.map((message): AiConversationTurn => {
-      const turn = conversation([message], aiUsers)[0]!;
-      return {
+    history.flatMap((message): AiConversationTurn[] =>
+      conversation([message], aiUsers).map((turn) => ({
         speaker: turn.speaker,
         ...(turn.speaker === 'customer' ? { name: memberName(ctx, message) ?? 'Member' } : {}),
         text: groupText(turn.text),
-      };
-    });
+      })),
+    );
   /**
    * One answer to an addressed group message: never a claim or an assignment change, look-up tools
    * only. answer → the reply quoting the member; handoff → "A team member will reply soon." quoting
@@ -2657,10 +2659,14 @@ export function createAiService(
       const items = splitKnowledge(saved);
       const internalTexts = saved.filter((item) => item.internal).map((item) => item.text);
       const history = messages.list(jid, { limit: 20 }).messages;
+      // A group shows each member's name (never a number) and has no customer profile.
+      const group = chats.get(jid)?.type === 'group';
       // A completion predicts the next words like a keyboard: only the last messages and the typed
       // text, never the knowledge (smaller and faster; its facts may only come from the chat).
       const completing = request.kind === 'complete';
-      const allTurns = conversation(history, aiUserIds());
+      const allTurns = group
+        ? groupConversation(history, aiUserIds())
+        : conversation(history, aiUserIds());
       const turns = completing ? allTurns.slice(-AI_COMPLETION_TURNS) : allTurns;
       const business = completing
         ? ''
@@ -2672,7 +2678,9 @@ export function createAiService(
               .map(customerText)
               .join('\n'),
           );
-      const customer = aiCustomer(ctx.services.customers?.profile(jid).profile ?? null);
+      const customer = group
+        ? null
+        : aiCustomer(ctx.services.customers?.profile(jid).profile ?? null);
       // No agent: no preset texts that nobody configured (only the conversation and the customer).
       const instructions = agent
         ? administratorInstructions({ ...current, preset: agent.preset })
@@ -2681,7 +2689,8 @@ export function createAiService(
       const sources = [
         business,
         agent ? instructions : '',
-        ...turns.map((turn) => turn.text),
+        // A group draft may name the member it answers.
+        ...turns.map((turn) => (turn.name ? `${turn.name}: ${turn.text}` : turn.text)),
         JSON.stringify(customer ?? {}),
       ].join('\n');
       const prompt = {
@@ -2693,6 +2702,7 @@ export function createAiService(
           businessKnowledge: business,
           conversation: turns,
           customer,
+          group,
           now: new Date(),
           timeZone: resolveAiTimeZone(ctx.settings.get<unknown>(AI_TIMEZONE_SETTING, null)),
           ...(request.kind === 'complete' ? { typed: request.typed } : {}),

@@ -258,6 +258,24 @@ describe('answers in a group', { timeout: 30_000 }, () => {
     expect(prompt.input).not.toMatch(/60111111111|60122222222|60000000000/);
   });
 
+  it('leaves a message deleted for everyone out of the group conversation', async () => {
+    await setUp();
+    const gone = await inGroup('Wrong group, sorry', { from: ARJUN, name: 'Arjun' });
+    t.wa.simulateRevoke({ chatJid: G, targetId: gone, senderJid: ARJUN });
+    await vi.waitFor(() =>
+      expect(
+        t.ctx.db.prepare('SELECT deleted_at FROM messages WHERE id = ?').get(gone),
+      ).toMatchObject({ deleted_at: expect.any(Number) }),
+    );
+    await tag();
+    await settle();
+    expect(sentToGroup().map((s) => s.text)).toEqual(['We open at 8am, Farah.']);
+    const input = JSON.parse(prompts[0]!.input) as { conversation: Array<{ text: string }> };
+    expect(input.conversation.map((turn) => turn.text)).toEqual([
+      expect.stringContaining('what time'),
+    ]);
+  });
+
   it('answers any member who quotes an AI answer, without a tag', async () => {
     await setUp();
     await tag();

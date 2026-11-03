@@ -126,11 +126,19 @@ describe('reply suggestion routes', () => {
     ).toBe(400);
   });
 
-  it('answers 400 for a group chat', async () => {
+  it('drafts for a group chat too', async () => {
     const { t, provider, agentCookie } = await setup();
     const res = await inject(t, agentCookie, 'POST', `/api/chats/${enc(GROUP)}/ai/suggestions`);
-    expect(res.statusCode).toBe(400);
-    expect(provider.draft).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(provider.draft).toHaveBeenCalledTimes(1);
+    vi.mocked(provider.draft!).mockResolvedValueOnce({
+      output: { completion: 'Two Nasi Lemak, please.', grounded: true },
+      model: 'gpt-mini',
+    });
+    const done = await inject(t, agentCookie, 'POST', `/api/chats/${enc(GROUP)}/ai/complete`, {
+      text: 'Two Nasi ',
+    });
+    expect(done.json()).toEqual({ completion: 'Lemak, please.' });
   });
 
   it("answers 404 outside the caller's inboxes", async () => {

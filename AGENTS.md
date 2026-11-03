@@ -163,8 +163,8 @@ and `POST /api/ai/try` (admin-only, no chat side effects); `POST /api/ai/edit` (
 draft and its Save persists it; its log line holds field, ok, ms and model only — never the request,
 the current text or the suggestion; closing the popup aborts the request and the model call. Reply suggestions
 (design `docs/features/ai-reply-suggestions/design.md`): `POST /api/chats/:jid/ai/suggestions` and `…/ai/complete`
-(any user with inbox access, direct chats only, 20 and 60 a minute) draft from the chat's agent knowledge even when
-the agent is off (`AiService.draftReply`, `ai/draft-prompt.ts`: `GUARDRAILS` + fixed `DRAFT_RULES`, never
+(any user with inbox access, direct chats and groups, 20 and 60 a minute) draft from the chat's agent knowledge even when
+the agent is off (a group gets member names via `groupConversation`, `currentSituation.group`, no customer details; `AiService.draftReply`, `ai/draft-prompt.ts`: `GUARDRAILS` + fixed `DRAFT_RULES`, never
 `CORE_RULES`); both use the "Model for suggestions" (`ai_reply_suggestions_model`: `fast` default = the connection's
 fast model, `agent/draft.ts` ChatGPT `CHATGPT_FAST_DRAFT_MODELS` with reasoning `low`, `DRAFT_FAST_MODELS` for the
 API-key modes; `agent`; or a model of the connection, `GET /api/ai/reply-suggestions/model`); a completion sees only

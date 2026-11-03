@@ -484,9 +484,9 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
                     : null
                 }
                 onCancelReply={() => setReplyTo(null)}
-                askEzy={chat.type === 'dm' ? { chatJid: chat.jid, name: chatTitle(chat, t) } : null}
+                askEzy={{ chatJid: chat.jid, name: chatTitle(chat, t) }}
                 aiSuggest={
-                  chat.type === 'dm' && suggestState !== 'off'
+                  suggestState !== 'off'
                     ? {
                         chatJid: chat.jid,
                         lastCustomerMessageId: lastInboundId,
