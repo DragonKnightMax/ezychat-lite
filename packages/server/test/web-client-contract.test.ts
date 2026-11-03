@@ -156,6 +156,8 @@ describe('web client ↔ server routes', () => {
         'the api() helper itself: fetch(`/api${path}`) for every call above',
       [join('lib', 'clipboard.ts')]:
         'copyImageFromUrl: GETs a Message.mediaUrl the server built (GET /api/media/:id, covered by messages.test.ts)',
+      [join('lib', 'pdf.ts')]:
+        'loadPdf: GETs a Message.mediaUrl the server built (GET /api/media/:id, covered by messages.test.ts and e2e/pdf-viewer.spec.ts)',
     };
     const { unresolved } = scan;
     expect(unresolved.filter((at) => !(at.replace(/:\d+$/, '') in REVIEWED))).toEqual([]);

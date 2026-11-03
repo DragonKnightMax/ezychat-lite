@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Copy, Download, FileText, Loader2, RotateCw, X } from 'lucide-react';
+import { Copy, Download, FileText, ImageIcon, Loader2, RotateCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Message } from '@ezychat/shared';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { canCopyImage, copyImageFromUrl } from '@/lib/clipboard';
 import { setDownloadDrag } from '@/lib/file-transfer';
+import { isPdfMime } from '@/lib/pdf';
+import { PdfViewer } from './PdfViewer';
 import {
   Dialog,
   DialogClose,
@@ -35,6 +37,9 @@ const MIME_EXT: Record<string, string> = {
   'audio/mp4': 'm4a',
   'application/pdf': 'pdf',
 };
+
+/** Image files sent as documents that the server serves inline, so the image preview can show them. */
+const VIEWABLE_IMAGE = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 /** The file name a media file gets when dragged or saved out of the app. */
 export function mediaFileName(m: Pick<Message, 'id' | 'type' | 'mediaName' | 'mediaMime'>): string {
@@ -258,24 +263,84 @@ export function MediaView({ message: m, onLoad }: MediaViewProps) {
       );
     case 'audio':
       return <audio src={url} controls preload="metadata" className="w-64 max-w-full" />;
-    default:
+    default: {
+      const mime = (m.mediaMime ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+      const viewer = isPdfMime(mime) ? 'pdf' : VIEWABLE_IMAGE.has(mime) ? 'image' : null;
+      if (!viewer) {
+        return (
+          <a
+            href={url}
+            download={m.mediaName ?? true}
+            onDragStart={dragOut(m, url)}
+            className="flex min-h-14 max-w-full items-center gap-3 rounded-lg border bg-muted/60 px-3 py-2 hover:bg-muted"
+          >
+            <FileText className="size-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">
+                {m.mediaName ?? t('media.document')}
+              </span>
+              <span className="block truncate text-xs opacity-70">
+                {t('media.fileDownload', { type: m.mediaMime ?? t('media.file') })}
+              </span>
+            </span>
+          </a>
+        );
+      }
+      const name = m.mediaName ?? t('media.document');
+      const downloadName = mediaFileName(m);
       return (
-        <a
-          href={url}
-          download={m.mediaName ?? true}
-          onDragStart={dragOut(m, url)}
-          className="flex min-h-14 max-w-full items-center gap-3 rounded-lg border bg-muted/60 px-3 py-2 hover:bg-muted"
-        >
-          <FileText className="size-8 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">
-              {m.mediaName ?? t('media.document')}
-            </span>
-            <span className="block truncate text-xs opacity-70">
-              {t('media.fileDownload', { type: m.mediaMime ?? t('media.file') })}
-            </span>
-          </span>
-        </a>
+        <>
+          <div className="flex min-h-14 max-w-full items-center gap-1 rounded-lg border bg-muted/60 pr-1 hover:bg-muted">
+            <Button
+              variant="ghost"
+              onClick={() => setOpen(true)}
+              onDragStart={dragOut(m, url)}
+              draggable
+              aria-label={t('media.openFile', { name })}
+              className="h-auto min-h-14 min-w-0 flex-1 justify-start gap-3 rounded-lg px-3 py-2 text-left font-normal hover:bg-transparent"
+            >
+              {viewer === 'pdf' ? (
+                <FileText className="size-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <ImageIcon className="size-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{name}</span>
+                <span className="block truncate text-xs opacity-70">
+                  {t('media.fileOpen', { type: viewer === 'pdf' ? 'PDF' : mime })}
+                </span>
+              </span>
+            </Button>
+            <Button asChild variant="ghost" size="icon-touch">
+              <a
+                href={url}
+                download={downloadName}
+                onDragStart={dragOut(m, url)}
+                aria-label={t('media.downloadFile', { name })}
+              >
+                <Download aria-hidden="true" />
+              </a>
+            </Button>
+          </div>
+          {viewer === 'pdf' ? (
+            <PdfViewer
+              url={url}
+              name={name}
+              downloadName={downloadName}
+              open={open}
+              onOpenChange={setOpen}
+            />
+          ) : (
+            <Lightbox
+              src={url}
+              alt={name}
+              downloadName={downloadName}
+              open={open}
+              onOpenChange={setOpen}
+            />
+          )}
+        </>
       );
+    }
   }
 }

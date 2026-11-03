@@ -1239,6 +1239,12 @@ into AGENTS.md.
 
 ## Desktop and web UI
 
+- Show customer PDFs with pdf.js on canvases from bytes we `fetch` (`lib/pdf.ts`), never by serving `application/pdf`
+  inline or in an iframe: the media route keeps PDFs as `attachment` + sandbox CSP, Chromium's own viewer is blocked in
+  sandboxed frames and missing on phones. Load pdf.js and its worker (`?url`, `worker-src 'self'`) lazily, check
+  `%PDF-` before parsing, keep `enableXfa: false`, draw only pages near the screen, and close via the loading task
+  (pdf.js 6 has no `PDFDocumentProxy.destroy`). A new computed `fetch` in `apps/web` needs a line in the contract
+  test's `REVIEWED` list.
 - A page that counts across inboxes (Reports, its Safety section) takes one optional `inbox` query param and the page's
   picker passes the same choice to every section; a section left on "all" next to a one-inbox total misleads.
 - A UAC prompt started by the hidden runner (`runElevatedWindows`: `Start-Process -Verb RunAs` from a

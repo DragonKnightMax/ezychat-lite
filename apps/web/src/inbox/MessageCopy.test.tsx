@@ -135,6 +135,10 @@ describe('media out of the app', () => {
     );
     fireEvent.dragStart(doc.container.querySelector('a')!, { dataTransfer });
     expect(data.get('DownloadURL')).toMatch(/^application\/pdf:Q4\.pdf:/);
+    data.clear();
+    // The row that opens the PDF in the app drags out the same file.
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Open Q4.pdf' }), { dataTransfer });
+    expect(data.get('DownloadURL')).toMatch(/^application\/pdf:Q4\.pdf:/);
   });
 
   it('copies an opened image to the clipboard', async () => {

@@ -416,7 +416,17 @@
     "imageAlt": "Imej",
     "document": "Dokumen",
     "file": "Fail",
-    "fileDownload": "{{type}} · Muat turun"
+    "fileDownload": "{{type}} · Muat turun",
+    "pdfPreview": "Pratonton PDF",
+    "pdfLoading": "Membuka PDF…",
+    "pdfFailed": "PDF ini tidak dapat dipaparkan di sini. Muat turun untuk membukanya.",
+    "pdfTooLarge": "PDF ini terlalu besar untuk dipaparkan di sini. Muat turun untuk membukanya.",
+    "pdfPage": "Halaman {{page}} daripada {{total}}",
+    "zoomIn": "Zum masuk",
+    "zoomOut": "Zum keluar",
+    "openFile": "Buka {{name}}",
+    "fileOpen": "{{type}} · Ketik untuk buka",
+    "downloadFile": "Muat turun {{name}}"
   },
   "notes": {
     "title": "Nota dalaman",

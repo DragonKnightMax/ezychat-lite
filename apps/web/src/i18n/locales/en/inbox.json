@@ -419,7 +419,17 @@
     "imageAlt": "Image",
     "document": "Document",
     "file": "File",
-    "fileDownload": "{{type}} · Download"
+    "fileDownload": "{{type}} · Download",
+    "pdfPreview": "PDF preview",
+    "pdfLoading": "Opening PDF…",
+    "pdfFailed": "This PDF can’t be shown here. Download it to open it.",
+    "pdfTooLarge": "This PDF is too large to show here. Download it to open it.",
+    "pdfPage": "Page {{page}} of {{total}}",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "openFile": "Open {{name}}",
+    "fileOpen": "{{type}} · Tap to open",
+    "downloadFile": "Download {{name}}"
   },
   "notes": {
     "title": "Internal notes",

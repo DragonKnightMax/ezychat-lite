@@ -87,6 +87,8 @@ rejected in service mode.
 Linking: QR or phone-number pairing code (`requestPairingCode`). `FakeWaAdapter` is used by tests and
 `--fake-wa`; with it, `POST /api/dev/fake-incoming` simulates inbound messages. History import defaults to
 3 days; history media is stored `pending` and downloaded on demand (`GET /api/media/:id`, `POST …/redownload`).
+PDFs (and photos sent as files) open in the app: `inbox/PdfViewer.tsx` draws them with pdf.js from fetched bytes
+(`lib/pdf.ts`, lazy chunk + worker, 50 MB cap, `%PDF-` check); the media route still serves them as attachments.
 Voice notes: the composer records Ogg/Opus in the browser (`lib/voice-recorder.ts`, opus-recorder's
 WebAssembly encoder); `POST /chats/:jid/media` with `voiceNote=1` checks it is Ogg/Opus of at most 5 min
 (`messages/voice-note.ts`, length counted from Opus packets) and sends it with `ptt: true`, length and a

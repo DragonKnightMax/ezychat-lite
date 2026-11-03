@@ -416,7 +416,17 @@
     "imageAlt": "图片",
     "document": "文件",
     "file": "文件",
-    "fileDownload": "{{type}} · 下载"
+    "fileDownload": "{{type}} · 下载",
+    "pdfPreview": "PDF 预览",
+    "pdfLoading": "正在打开 PDF…",
+    "pdfFailed": "此 PDF 无法在这里显示，请下载后打开。",
+    "pdfTooLarge": "此 PDF 太大，无法在这里显示，请下载后打开。",
+    "pdfPage": "第 {{page}} 页，共 {{total}} 页",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "openFile": "打开 {{name}}",
+    "fileOpen": "{{type}} · 点按打开",
+    "downloadFile": "下载 {{name}}"
   },
   "notes": {
     "title": "内部备注",
