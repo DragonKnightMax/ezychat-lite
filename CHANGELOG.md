@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The AI agent answers in a group after someone deletes a message there.** After a member deleted a message for
   everyone, the AI could fail to answer when tagged in that group, until the deleted message was far enough back.
+- **No more random "can't reach" errors on networks without working IPv6.** On some home and office networks
+  the computer gets IPv6 addresses but cannot use them. EzyChat then sometimes waited 10 seconds and showed that
+  it could not reach a service (for example the licence server), while the browser worked. EzyChat now tries
+  IPv4 first and uses IPv6 only when IPv4 fails.
 
 ## [0.1.72] - 2026-11-03
 

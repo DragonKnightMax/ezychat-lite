@@ -372,7 +372,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   changelog heading), never rebased; copy a single new `dev-build-checks.md` row by hand: `git apply --3way`
   of a table row garbled the whole file. Before a release, check `main`'s own CI and run e2e + links on it.
 - A red check on a release (version-only) PR: read `gh run view --log-failed`, compare with `main`'s run
-  on the same code, then `gh run rerun <id> --failed`; fix the flaky test in its own PR. A mac DMG job
+  on the same code, then `gh run rerun <id> --failed`; fix the flaky test in its own PR. After that fix
+  merges, rebase and push each red PR: a rerun tests the PR's old merge commit, without the fix. A mac DMG job
   failing with `hdiutil: couldn't eject … Resource busy` is a runner glitch: re-run that job, it adds
   the missing installer to the draft release before you publish.
 - `/code-review` with no target reviews the session's checkout, not a feature worktree: pass the
@@ -532,6 +533,11 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Build, tooling and Windows
 
+- A random "can't reach" from the server while the browser and curl work: test the app's own runtime
+  (`ELECTRON_RUN_AS_NODE=1 <app> script.js` with `fetch`), and `curl -4` / `curl -6` on that computer. A network
+  with IPv6 addresses but no IPv6 route made fetch time out (`UND_ERR_CONNECT_TIMEOUT`) at random; `runCli`
+  sets `ipv4first` (`dns-order.ts`). Cloudflare turns IPv6 off only on the Enterprise plan, so fix it in the app.
+
 - Desktop-only screens (Lite import, status window) in a Dev Build on a PC with the installed apps: run the
   window from source with `npx electron <apps/desktop> --user-data-dir=<test profile>` plus a `desktop.json`
   port of its own. An unpackaged run does not pin the installed profile, but without its own port it finds
@@ -655,9 +661,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   `reportOnFailure` so a timeout never hides the coverage numbers. A gate must fail closed: a filtered run
   (`--project`) wrote an empty report and the changed-lines check passed; it now refuses an empty report
   and a changed source file missing from it. Prove every gate with a run that must fail.
-- A web test near 2 s locally can pass 5 s on the busy `windows-latest` runner (`npm test` keeps Vitest's 5 s
-  limit). Dialog tests that `user.type` long texts: `userEvent.setup({ delay: null })` (same events, no timer
-  between keys); keep each web test well under 1 s locally.
+- `windows-latest` runs web tests about 5 times slower than this PC, and `npm test` keeps Vitest's 5 s limit:
+  a test of 1 s or more locally can time out there. A test that renders a whole dialog and types several
+  fields gets `describe(name, { timeout: 20_000 }, …)` when it is written; `userEvent.setup({ delay: null })`
+  halves the time but alone did not keep a 1 s test under 5 s.
 
 - `codex exec -i <image>` takes several values, so a prompt after it is read as a second image ("No prompt
   provided"): send the prompt on stdin (`codex exec -i icon.png < PROMPT.md`).

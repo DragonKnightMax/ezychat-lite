@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { parseArgs, type CliConfig } from './config.js';
 import { openDb } from './db/index.js';
+import { preferIpv4 } from './dns-order.js';
 import type { ServerExtension } from './extensions.js';
 import { LockedError } from './lock.js';
 import { mkdirSync } from 'node:fs';
@@ -71,6 +72,7 @@ export async function runCli(
   env: NodeJS.ProcessEnv,
   product?: CliProduct,
 ): Promise<void> {
+  preferIpv4();
   const exit: (code: number) => never = product?.exit ?? ((code) => process.exit(code));
   let cfg: CliConfig;
   try {

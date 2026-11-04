@@ -136,7 +136,8 @@ describe('areaForPath', () => {
   });
 });
 
-describe('Send feedback dialog', () => {
+// 20 s: each test renders the whole dialog and types several fields; windows-latest took over 5 s.
+describe('Send feedback dialog', { timeout: 20_000 }, () => {
   it('shows nothing to a signed-out visitor', async () => {
     auth.user = null;
     setup();
