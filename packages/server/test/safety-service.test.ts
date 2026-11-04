@@ -344,6 +344,28 @@ describe('WhatsApp Safety: AI check', () => {
     expect(message(lure).safety?.level).toBe('high');
   });
 
+  it('lets the phone keep a file only once the AI check is done', async () => {
+    let release!: (answer: SafetyAiAnswer) => void;
+    Object.assign(t.ctx.services.ai!, {
+      checkSafety: () => new Promise<SafetyAiAnswer>((resolve) => (release = resolve)),
+    });
+    const { id } = await incoming(LURE, {
+      file: { name: 'Order.xlsm', mime: 'application/octet-stream', bytes: Buffer.from('x') },
+    });
+    await tick();
+    // The AI may still raise it to High and lock it: no phone may keep a copy meanwhile.
+    expect(t.ctx.services.safety!.cacheable(id)).toBe(false);
+    expect((await download(id, admin.cookie)).headers['cache-control']).toBe('no-store');
+    release({ level: 'none', category: 'none', reason: '' });
+    await tick();
+    expect(t.ctx.services.safety!.cacheable(id)).toBe(true);
+    expect((await download(id, agent.cookie)).headers['cache-control']).toBe(
+      'private, max-age=2592000, immutable',
+    );
+    const plain = await incoming(KNOWN, { text: 'Hello' });
+    expect(t.ctx.services.safety!.cacheable(plain.id)).toBe(true);
+  });
+
   it('raises a text the rules missed to High and the AI agent leaves it alone', async () => {
     withAi({ level: 'high', category: 'phishing', reason: 'Pretends to be a bank.' });
     const { id } = await incoming(LURE, {

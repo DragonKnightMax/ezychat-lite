@@ -56,6 +56,7 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   push_subscriptions: { skip: 'not imported: phones subscribe again' },
   api_tokens: { skip: 'not imported: AI assistants are reconnected (after-import checklist)' },
   oauth_clients: { skip: 'not imported: AI assistants are reconnected (after-import checklist)' },
+  avatars: { skip: 'a photo cache: the target fetches the photos from WhatsApp again' },
   sqlite_sequence: { skip: 'SQLite internal' },
 };
 

@@ -13,7 +13,7 @@ import { runIdentityMigration } from '../src/chats/identity-migration.js';
 import { mergeChat } from '../src/chats/merge.js';
 import { ChatRepo } from '../src/chats/repo.js';
 import { createGroupService } from '../src/groups/service.js';
-import { createProfileImages } from '../src/http/profile-images.js';
+import { profilePhotoLookup } from '../src/http/profile-images.js';
 import { getChats } from '../src/wa-bridge/index.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
 import { makeTestApp, type TestApp } from './helpers.js';
@@ -255,7 +255,7 @@ describe('chats of several inboxes', () => {
       .spyOn(t.inboxWa(2), 'getProfilePicture')
       .mockResolvedValue('https://pps.whatsapp.net/two.jpg');
     const one = vi.spyOn(t.inboxWa(1), 'getProfilePicture').mockResolvedValue(null);
-    const photo = createProfileImages(t.ctx, t.ctx.log);
+    const photo = (key: string) => profilePhotoLookup(t.ctx, key)();
     expect(await photo(`${PN}#2`)).toBe('https://pps.whatsapp.net/two.jpg');
     expect(two).toHaveBeenCalledWith(PN);
     expect(await photo(PN)).toBeNull();
@@ -375,7 +375,7 @@ describe('a removed or unknown inbox', () => {
     getChats(t.ctx).upsertFromWa({ jid: GROUP, type: 'group', name: 'Partners' }, 2);
     getChats(t.ctx).upsertFromWa({ jid: PN, type: 'dm', name: 'Alice' }, 2);
     const groups = createGroupService(t.ctx);
-    const photo = createProfileImages(t.ctx, t.ctx.log);
+    const photo = (key: string) => profilePhotoLookup(t.ctx, key)();
     await expect(groups.info(`${GROUP}#0`)).rejects.toThrow(/Group not found/);
     await expect(photo(`${PN}#0`)).rejects.toThrow(/invalid/);
     await t.ctx.inboxes.connections.remove(2);

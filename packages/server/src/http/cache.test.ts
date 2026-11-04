@@ -228,7 +228,8 @@ describe('static HTTP representations and cache policy', () => {
       headers: { cookie, 'accept-encoding': 'gzip' },
     });
     expect(response.statusCode).toBe(204);
-    expect(response.headers['cache-control']).toBe('private, max-age=300');
+    // a known "no photo" (the fake phone has none) is kept privately for a day
+    expect(response.headers['cache-control']).toBe('private, max-age=86400');
     expect(response.headers['content-encoding']).toBeUndefined();
   });
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import type { Chat } from '@ezychat/shared';
 import { useChats, type ChatFilters } from '../api/queries';
+import { useRealtime } from '../api/socket';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Banner, EmptyState } from '@/components/app';
@@ -49,7 +50,8 @@ function ChatRowSkeleton() {
 
 export function ChatList({ filters, activeJid, directory, onResetFilters }: ChatListProps) {
   const { t } = useTranslation(['inbox', 'common']);
-  const q = useChats(filters);
+  const { refreshReady } = useRealtime();
+  const q = useChats(filters, { holdCached: !refreshReady });
   // One unified list: the server sends only chats of inboxes the user may open.
   const inboxOf = useInboxOfChat();
   // Business API chats whose reply window closed get an icon; the list re-checks each minute.

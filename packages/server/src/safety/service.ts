@@ -75,6 +75,11 @@ export interface SafetyService {
   levelOf(messageId: string): SafetyLevel;
   /** The media route: 'locked' for an agent while the file is locked; records each download. */
   checkDownload(messageId: string, user: { id: number; role: string }): 'ok' | 'locked' | 'flagged';
+  /**
+   * Whether a phone may keep the message's file (PWA cache): nothing was found, or the AI check that may
+   * still raise it to High has answered. Until then the media route answers `no-store`.
+   */
+  cacheable(messageId: string): boolean;
   state(): SafetyState;
   chatState(chatJid: string): SafetyChatState;
   act(
@@ -492,6 +497,12 @@ export function createSafetyService(
     levelOf(messageId) {
       const r = q.byMessage.get(messageId) as ItemRow | undefined;
       return r && r.status !== 'safe' ? r.level : 'none';
+    },
+
+    cacheable(messageId) {
+      const r = q.byMessage.get(messageId) as ItemRow | undefined;
+      // A finding without an AI answer may still become High and locked (or never get one): no copies.
+      return !r || r.ai_level !== null;
     },
 
     checkDownload(messageId, user) {

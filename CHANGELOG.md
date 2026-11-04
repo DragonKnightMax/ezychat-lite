@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Faster when you open EzyChat from outside your office.** Over a slow connection (for example the shared link
+  through Cloudflare), the inbox now shows your last chat list at once and updates it a moment later. Contact photos
+  are kept on your phone and only load again when a contact changes their photo, and files you opened stay on your
+  phone for 30 days. In a test with a slow link, the chat list showed in about 1 second instead of 2.7, with half
+  the requests. Everything kept on the phone is removed when you sign out, and files that WhatsApp Safety flags or
+  is still checking are never kept.
+
 ## [0.1.75] - 2026-11-04
 
 ### Added

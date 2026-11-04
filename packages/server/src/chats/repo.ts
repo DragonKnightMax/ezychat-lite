@@ -8,6 +8,7 @@ import {
   tagsByChat,
 } from '../customers/sql.js';
 import { seedFromLinked } from '../customers/linked.js';
+import { avatarHashes } from '../avatars/sql.js';
 import type { DB } from '../db/index.js';
 import { chatKey, parseChatKey } from '../inboxes/keys.js';
 
@@ -42,6 +43,8 @@ export interface ChatRow extends ChatColumns {
   profile_name: string | null;
   /** Customer tags in saved order. */
   profile_tags: string[];
+  /** Short hash of the stored profile photo (`avatars`), when the server keeps one. */
+  avatar_hash?: string | null;
 }
 
 /** Chat columns plus the customer profile name; FROM `chats c`. Tags are attached by withTags(). */
@@ -94,7 +97,8 @@ export function rowToChat(r: ChatRow): Chat {
     waJid,
     type: r.type,
     name: profileName ?? waName,
-    avatarUrl: `/api/chats/${encodeURIComponent(r.jid)}/avatar`,
+    // `?v=` changes only when the photo changes, so the browser may keep it (immutable)
+    avatarUrl: `/api/chats/${encodeURIComponent(r.jid)}/avatar${r.avatar_hash ? `?v=${r.avatar_hash}` : ''}`,
     unreadCount: r.unread_count,
     lastMessageAt: r.last_message_at,
     lastMessagePreview: r.last_message_preview,
@@ -169,13 +173,21 @@ export function existingChatKeys(db: DB, waJid: string): string[] {
 export class ChatRepo {
   constructor(private readonly db: DB) {}
 
-  /** Attaches each chat's customer tags with one batched query. */
+  /** Attaches each chat's customer tags and stored photo hash, one batched query each. */
   private withTags(rows: JoinedRow[]): ChatRow[] {
     const tags = tagsByChat(
       this.db,
       rows.filter((r) => r.type === 'dm').map((r) => r.jid),
     );
-    return rows.map((r) => ({ ...r, profile_tags: tags.get(r.jid) ?? [] }));
+    const photos = avatarHashes(
+      this.db,
+      rows.map((r) => r.jid),
+    );
+    return rows.map((r) => ({
+      ...r,
+      profile_tags: tags.get(r.jid) ?? [],
+      avatar_hash: photos.get(r.jid) ?? null,
+    }));
   }
 
   get(jid: string): ChatRow | null {
@@ -397,8 +409,7 @@ export class ChatRepo {
   getContact(jid: string): ContactRow | null {
     return (
       (this.db.prepare('SELECT * FROM contacts WHERE jid = ?').get(jid) as
-        | ContactRow
-        | undefined) ?? null
+        ContactRow | undefined) ?? null
     );
   }
 

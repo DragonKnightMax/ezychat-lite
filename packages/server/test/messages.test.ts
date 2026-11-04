@@ -553,6 +553,8 @@ describe('messages routes', () => {
     expect(res.headers['content-type']).toBe('image/png');
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(String(res.headers['content-disposition'])).toMatch(/^inline/);
+    // a message's file never changes: the phone may keep it for 30 days
+    expect(res.headers['cache-control']).toBe('private, max-age=2592000, immutable');
     expect(res.rawPayload.equals(PNG)).toBe(true);
 
     res = await t.app.inject({

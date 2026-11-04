@@ -35,6 +35,7 @@ import { groupAdminKey } from './group-admin';
 import { dispatchAccessRecheck } from '../access/events';
 import { ProfileImageContext } from '../inbox/ProfileImageContext';
 import { registerResumeReconnect } from './resume-reconnect';
+import { clearUserCaches } from '../auth/user-caches';
 import { clearDesktopNotifications, showDesktopNotification } from '../pwa/desktop-notifications';
 
 export interface TypingEntry {
@@ -45,10 +46,18 @@ export interface TypingEntry {
 
 export interface RealtimeValue {
   connected: boolean;
+  /**
+   * Lists may refresh now: the live connection is up (or there is none to wait for, or it did not
+   * come within SOCKET_WAIT_MS). While it is down, a list already on screen waits for it: the
+   * connection reloads every list when it joins, so loading before would load twice.
+   */
+  refreshReady: boolean;
   typing: Record<string, TypingEntry[]>;
   emitTyping(jid: string): void;
 }
 
+/** How long a kept chat list waits for the live connection before it loads anyway. */
+export const SOCKET_WAIT_MS = 4_000;
 const TYPING_TTL_MS = 5_000;
 const TYPING_EMIT_THROTTLE_MS = 2_000;
 
@@ -69,6 +78,7 @@ export function reloadAfterRunningLoad(qc: QueryClient, queryKey: QueryKey): voi
 
 const RealtimeContext = createContext<RealtimeValue>({
   connected: false,
+  refreshReady: true,
   typing: {},
   emitTyping: () => {},
 });
@@ -89,7 +99,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const userId = me.data && !me.data.mustChangePassword && !me.data.disabled ? me.data.id : null;
   const wa = useWaStatus({ enabled: userId != null });
   const [connected, setConnected] = useState(false);
-  const [avatarRevision, setAvatarRevision] = useState(0);
+  const [socketLate, setSocketLate] = useState(false);
   const [typing, setTyping] = useState<Record<string, TypingEntry[]>>({});
   const socketRef = useRef<AppSocket | null>(null);
   const lastTypingEmit = useRef<Map<string, number>>(new Map());
@@ -115,7 +125,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     socket.on('connect', () => {
       setConnected(true);
-      setAvatarRevision(Date.now());
+      setSocketLate(false);
       // Events can arrive between the initial API load and joining socket rooms, too.
       void qc.invalidateQueries();
     });
@@ -187,10 +197,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         old ? (old.some((x) => x.id === n.id) ? old : [...old, n]) : old,
       );
     });
-    socket.on('wa:status', (s) => {
-      qc.setQueryData(qk.wa, s);
-      if (s.state === 'open') setAvatarRevision(Date.now());
-    });
+    socket.on('wa:status', (s) => qc.setQueryData(qk.wa, s));
     socket.on('inbox:status', (p) => patchInboxStatusInCache(qc, p));
     socket.on('inboxes:changed', () => {
       // An inbox was added, renamed or removed, or who may open it changed: the inbox list, the
@@ -223,6 +230,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearDesktopNotifications();
       // Stop push previews reaching this device for a user who is no longer signed in.
       void dropPushSubscription();
+      void clearUserCaches();
       qc.clear();
       qc.setQueryData(qk.me, null); // RequireAuth redirects to /login
     });
@@ -236,8 +244,17 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearDesktopNotifications();
       socketRef.current = null;
       setConnected(false);
+      setSocketLate(false);
     };
   }, [userId, qc]);
+
+  // A connection that does not come (blocked, server down) must not hold lists back for long.
+  useEffect(() => {
+    if (userId == null || connected) return;
+    const timer = setTimeout(() => setSocketLate(true), SOCKET_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [userId, connected]);
+  const refreshReady = userId == null || connected || socketLate;
 
   // Expire stale typing entries.
   useEffect(() => {
@@ -266,12 +283,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const value = useMemo<RealtimeValue>(
-    () => ({ connected, typing, emitTyping }),
-    [connected, typing, emitTyping],
+    () => ({ connected, refreshReady, typing, emitTyping }),
+    [connected, refreshReady, typing, emitTyping],
   );
   const imageState = useMemo(
-    () => ({ ready: userId != null && wa.data?.state === 'open', revision: avatarRevision }),
-    [userId, wa.data?.state, avatarRevision],
+    () => ({ ready: userId != null && wa.data?.state === 'open' }),
+    [userId, wa.data?.state],
   );
   return createElement(
     ProfileImageContext.Provider,

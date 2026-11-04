@@ -6,7 +6,8 @@ import { clientIp } from '../http/client-ip.js';
 import type { AppContext } from '../context.js';
 import { errors, parse } from '../http/errors.js';
 import { getChats } from '../wa-bridge/index.js';
-import { createProfileImages } from '../http/profile-images.js';
+import { profilePhotoLookup } from '../http/profile-images.js';
+import { avatarStore, sendAvatar } from '../avatars/http.js';
 import { scopeFor } from '../inboxes/access.js';
 import { chatWaState, requireChatAccess } from '../inboxes/service.js';
 
@@ -25,7 +26,6 @@ export function chatJidParam(ctx: AppContext, req: FastifyRequest): string {
 export default async function chatsRoutes(app: FastifyInstance, ctx: AppContext) {
   const chats = getChats(ctx);
   app.addHook('preHandler', requireUser(ctx));
-  const log = ctx.log.child({ mod: 'avatars' });
   app.get('/chats/open-count', { preHandler: requireAdmin(ctx) }, async () => ({
     openCount: chats.openCount(),
   }));
@@ -34,18 +34,19 @@ export default async function chatsRoutes(app: FastifyInstance, ctx: AppContext)
     const resolvedCount = chats.resolveAll(req.user!.id, clientIp(req));
     return { resolvedCount };
   });
-  // Only visible image requests query WhatsApp (bounded, coalesced cache).
-  const profileImage = createProfileImages(ctx, log);
+  // Only visible image requests query WhatsApp; the store keeps the bytes for a day (bounded, coalesced).
+  const photos = avatarStore(ctx);
   app.get('/chats/:jid/avatar', async (req, reply) => {
     const jid = chatJidParam(ctx, req);
-    reply.header('cache-control', 'private, max-age=300');
     // the chat's own number looks the picture up; a removed inbox has none
-    if (chatWaState(ctx, jid) !== 'open')
-      return reply.header('cache-control', 'no-store').code(204).send();
-    const url = await profileImage(jid).catch(() => undefined);
-    // A failed lookup must not be cached by the browser either.
-    if (url === undefined) return reply.header('cache-control', 'no-store').code(204).send();
-    return url ? reply.redirect(url) : reply.code(204).send();
+    const state = chatWaState(ctx, jid);
+    if (state === null) return reply.header('cache-control', 'no-store').code(204).send();
+    // while disconnected, only what is already kept (a failed lookup is never cached by the browser)
+    const photo =
+      state === 'open'
+        ? await photos.get(jid, profilePhotoLookup(ctx, jid))
+        : await photos.stored(jid);
+    return sendAvatar(req, reply, photo);
   });
 
   app.get('/chats', async (req) => {

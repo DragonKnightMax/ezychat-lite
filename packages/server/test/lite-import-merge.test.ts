@@ -727,6 +727,7 @@ describe('mergeLiteInbox refusals and rollback', () => {
     db.exec(
       'ALTER TABLE ai_group_chats DROP COLUMN listen; ALTER TABLE ai_group_chats DROP COLUMN agent_id;',
     );
+    db.exec('DROP TABLE avatars;'); // and 033 (profile photos)
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

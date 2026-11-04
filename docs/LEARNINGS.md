@@ -57,7 +57,8 @@ into AGENTS.md.
   password is only the owner's (reset needs the CLI `--reset-admin` with the server stopped).
   `start.ps1` builds whatever the primary checkout has checked out, often another session's branch: for a
   given commit, detach a spare clean worktree at it (`npm ci` when the lockfile moved) and start a copy of
-  the script pointed there.
+  the script pointed there. When the branch adds a migration, copy `data/` to a backup folder first: the
+  permanent data then has a schema that `main` does not know.
 - A project skill (`.claude/skills/<name>/`) is a slash command only in checkouts that contain it:
   on a feature branch it is not live in the owner's main checkout until merged — say so.
 - Progress the owner asks about comes from committed records (the feature workbook, the Dev Build
@@ -525,6 +526,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   still queued (seen with macOS CI and a queued self-hosted job), and right after `gh run rerun --failed`
   `gh run watch` still sees the old failed attempt and exits at once: read the final status after the wait,
   or loop until `gh run view <id> --json status` is `completed`, before merging or reporting.
+  A required job `cancelled` after about 15 min with no runner and no steps never started (macOS runners
+  busy): `gh run rerun <id> --failed`, not a code fault. Push every log-only commit (workbook, Dev Build row,
+  review approval) in one push before that wait: each push starts all of CI again.
 - Before you start a new run or a rerun, stop every old watcher or retry task: a leftover one can start an old
   run again, and that attempt can still publish. Report a release from the live files (feed, sizes,
   SHA-256), never from a run's conclusion alone.
@@ -589,6 +593,12 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Build, tooling and Windows
 
+- Measuring a slow tunnel locally: put a proxy that delays every request (and the WebSocket upgrade) in front
+  of the server; Chrome throttling does not slow the service worker's own fetches. The fake WhatsApp has no
+  photos, so give contacts a photo address in a measurement-only preload. Do not use Playwright `context.route`
+  for the new code (it turns off the HTTP cache and changes service worker handling), and measure only after the
+  service worker controls the page: installing it through a 650 ms proxy took 16–19 s, and opens before that
+  showed photo requests that an installed PWA never makes.
 - A contract the publishing repo validates through `z.toJSONSchema(…, { io: 'input' })` must stay plain: a
   `.transform()` (and every check piped after it, e.g. lengths) vanishes from the schema. Clean values before
   `safeParse` instead (`cleanAgentTemplateValue`). The root `ajv` is ESLint's v6; ajv 8 is only nested, so repo
@@ -900,7 +910,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   worker before reporting, because the order differs from the parallel run, and give each "already exists" branch its
   own assertion that runs on desktop too.
 - Lite → Enterprise merge (`lite-import/merge-tables.ts` `TABLE_PLAN`): every new core table must be listed as merged
-  or skipped with a reason; the coverage test fails otherwise. A failed hand-over after a committed merge restores the
+  or skipped with a reason; the coverage test fails otherwise. A branch with a migration runs
+  `lite-import-merge*.test.ts` and `upgrade-from-oldest.test.ts` after every rebase, not only its own files. A failed hand-over after a committed merge restores the
   pre-import backup (`onCommitted` undo) so Lite and Enterprise never both keep one number.
 - A read-only better-sqlite3 open of a stopped WAL database still creates `-wal`/`-shm` files: remove them afterwards
   when a folder must stay byte-identical (Lite's data during an import).
@@ -910,6 +921,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Security
 
+- Data a device keeps for one user (saved queries, service worker photo/file caches) is cleared on every way a session
+  ends, not only the sign-out button: the `session:revoked` socket event and a 401 from `/api/me` too
+  (`startQueryPersistence` `clearCaches`). Test each path.
 - A script that writes files to a folder named on the command line resolves it against the repository and refuses
   anything outside it (SonarCloud `jssecurity:S8707` fails the security rating otherwise).
 - A third-party browser widget that needs outside scripts (Google's file picker) never goes into the app window: its
@@ -1008,6 +1022,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## WhatsApp / Baileys
 
+- `WaAdapterEvents` has no "profile photo changed" event: a cache of WhatsApp photos (`avatars/store.ts`) refreshes
+  by age (24 h) and keeps the last good photo when a refresh fails. Serve the bytes yourself with a version in the
+  URL (`?v=<hash>`, immutable) instead of a 302 to WhatsApp's CDN: over a slow tunnel each redirect was a ~0.7 s
+  round trip on every open, and the CDN URL expires anyway.
 - Baileys group changes report refusals two ways: `groupParticipantsUpdate` / `groupRequestParticipantsUpdate` return
   per-person `{status: <code>}` (403 + `add_request` = privacy, send the invite), while subject, description, settings
   and invite-code calls throw a Boom whose `data` is the code (401/403 = not a group admin). Map both; fail closed.
@@ -1345,6 +1363,11 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Desktop and web UI
 
+- Every round trip counts over a slow tunnel (~0.7 s each): the live connection reloads every query when it joins,
+  so a list already on screen waits for that reload (with a short fallback) instead of loading itself; an infinite
+  list reloads every loaded page, so persist and restore page 1 only. One open loaded `/api/chats` up to 6 times.
+  The PWA caches (`sw-routes.ts`) never store a `no-store` answer, are cleared at sign-out and on a user switch,
+  and a media file is cacheable only once WhatsApp Safety's AI check has answered (`safety.cacheable`).
 - A list row with a label and action buttons (join requests, approvals): keep a phone number `whitespace-nowrap` and the
   buttons in one `ml-auto shrink-0` group, so a narrow panel moves the whole group below instead of truncating the
   number or putting one button per line (a `min-w-*` on the label did the latter at 360 px).
@@ -1681,6 +1704,15 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
 
 ## Cloudflare and sharing
 
+- Slow remote access through the tunnel: measure before changing code. In the browser on the tunnel host, read
+  `performance.getEntriesByType('resource')` (count, `transferSize`, duration per kind) and `/cdn-cgi/trace`
+  (`colo` = where the visitor enters); on the PC read cloudflared's `/metrics` on `127.0.0.1:20241…`
+  (`edge_location`, `quic_client_smoothed_rtt`) by port, never its command line (the token). The dashboard's
+  "Edge Locations" are the tunnel side only. From Malaysia, TM/Unifi entered at `SJC` and mobile data at `FRA`
+  (Cloudflare status: KUL re-routed) while the tunnel was Singapore at 25–50 ms: ~660 ms per request for a 43 KB
+  page, so cut round trips, not bytes. No Cloudflare plan chooses the entry point (Enterprise Regional Services
+  only moves decryption); ngrok's region pinning (`ap` = Singapore) does, as do Tailscale (needs its `*.ts.net`
+  name in the Host allowlist) or an own Malaysian relay.
 - Anchor Sprint Workers deploy with Workers Builds, not Actions: `main` runs `wrangler d1 migrations apply
 DB --remote && wrangler deploy`, other branches `wrangler versions upload`. A trigger needs an existing
   Worker tag and a build token: upload a placeholder Worker first and reuse the account's build token.

@@ -41,6 +41,7 @@ const TABLES = [
   'safety_downloads',
   'message_edits',
   'message_changes_pending',
+  'avatars',
 ];
 const LATEST = latestMigration();
 

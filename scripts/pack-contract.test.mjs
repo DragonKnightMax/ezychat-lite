@@ -55,6 +55,7 @@ const PACKAGES = [
       'dist-lib/types/index.d.ts',
       'dist-lib/ezychat-web.css',
       'dist-lib/sw.ts',
+      'dist-lib/sw-routes.ts',
       'dist-lib/public/icon-192.png',
       'dist-lib/public/icon-512.png',
       'dist-lib/public/favicon.ico',

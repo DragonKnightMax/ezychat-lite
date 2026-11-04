@@ -18,7 +18,8 @@ import { createGroupAdminService, type GroupAdminService } from '../groups/admin
 import { createGroupService, type GroupService } from '../groups/service.js';
 import { clientIp } from '../http/client-ip.js';
 import { parse } from '../http/errors.js';
-import { createProfileImages } from '../http/profile-images.js';
+import { profilePhotoLookup } from '../http/profile-images.js';
+import { avatarStore, memberAvatarKey, sendAvatar } from '../avatars/http.js';
 import { chatWaState } from '../inboxes/service.js';
 import { chatJidParam } from './chats.js';
 
@@ -44,7 +45,7 @@ export default async function groupRoutes(app: FastifyInstance, ctx: AppContext)
   app.addHook('preHandler', requireUser(ctx));
   const groups = (ctx.services.groups ??= createGroupService(ctx));
   const admin = (ctx.services.groupAdmin ??= createGroupAdminService(ctx, groups));
-  const photo = createProfileImages(ctx, ctx.log.child({ mod: 'groups' }), { max: 2000 });
+  const photos = avatarStore(ctx);
 
   app.get('/chats/:jid/members', async (req) => groups.info(chatJidParam(ctx, req)));
 
@@ -59,10 +60,11 @@ export default async function groupRoutes(app: FastifyInstance, ctx: AppContext)
     if (chatWaState(ctx, groupJid) !== 'open')
       return reply.header('cache-control', 'no-store').code(204).send();
     const target = await groups.photoTarget(groupJid, member);
-    const url = await photo(target.jid, target.key).catch(() => undefined);
-    if (url === undefined) return reply.header('cache-control', 'no-store').code(204).send();
-    reply.header('cache-control', 'private, max-age=300');
-    return url ? reply.redirect(url) : reply.code(204).send();
+    const result = await photos.get(
+      memberAvatarKey(target.key),
+      profilePhotoLookup(ctx, target.jid),
+    );
+    return sendAvatar(req, reply, result);
   });
 
   app.post('/chats/:jid/members/:member/chat', async (req) => {

@@ -116,7 +116,13 @@ it('lets an admin download after the warning', async () => {
     'High-risk file',
   );
   await userEvent.click(screen.getByTestId('safety-download-confirm'));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/media/M1', expect.anything()));
+  // Past the phone's file cache: the server checks the lock and records every download.
+  await waitFor(() =>
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/media/M1',
+      expect.objectContaining({ cache: 'no-store' }),
+    ),
+  );
   await waitFor(() => expect(screen.queryByTestId('safety-download-dialog')).toBeNull());
 });
 

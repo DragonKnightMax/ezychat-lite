@@ -1,9 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-import { ApiError } from './api/client';
+import { createQueryClient } from './api/query-client';
+import {
+  browserStorage,
+  restorePersistedQueries,
+  startQueryPersistence,
+} from './api/query-persist';
 import { RealtimeProvider } from './api/socket';
+import { clearUserCaches } from './auth/user-caches';
+import { BUILD_VERSION } from './lib/version';
 import { App } from './App';
 import { AccessGate } from './access/AccessGate';
 import { AuthProvider } from './auth/AuthProvider';
@@ -39,20 +46,6 @@ export interface CreateInboxAppOptions {
   links?: Partial<AppLinks>;
 }
 
-function createQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 15_000,
-        refetchOnWindowFocus: true,
-        retry: (count, e) =>
-          !(e instanceof ApiError && e.status >= 400 && e.status < 500) && count < 2,
-      },
-      mutations: { retry: false },
-    },
-  });
-}
-
 /**
  * Renders the inbox app. Extensions are validated first (a bad extension throws before anything
  * renders) and their catalogs are merged on top of the core catalogs.
@@ -74,6 +67,16 @@ export async function createInboxApp({
   installFileDropGuard();
 
   const queryClient = createQueryClient();
+  // The last user's first screen (chat list, inboxes, user) shows at once and reloads right away;
+  // a different user signing in clears what the earlier one left (photos, files, saved lists).
+  const storage = browserStorage();
+  const buster = BUILD_VERSION ?? '';
+  restorePersistedQueries(queryClient, { storage, buster });
+  startQueryPersistence(queryClient, {
+    storage,
+    buster,
+    clearCaches: () => void clearUserCaches(),
+  });
   const render = () =>
     createRoot(root).render(
       <StrictMode>

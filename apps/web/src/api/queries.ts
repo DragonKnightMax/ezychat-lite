@@ -66,6 +66,7 @@ import {
 } from '@ezychat/shared';
 import { ApiError, api } from './client';
 import { unsubscribePush } from '../pwa/push';
+import { clearUserCaches } from '../auth/user-caches';
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -430,9 +431,11 @@ export function useLogout() {
         if (!(e instanceof ApiError && e.status === 401)) throw e;
       }
     },
-    onSettled: () => {
+    onSettled: async () => {
       qc.clear();
       qc.setQueryData(qk.me, null);
+      // Photos, files and the saved chat list stay on a shared phone otherwise.
+      await clearUserCaches();
     },
   });
 }
@@ -464,9 +467,18 @@ export function useChangePassword() {
 // Chats & messages
 // ---------------------------------------------------------------------------
 
-export function useChats(filters: ChatFilters) {
+/**
+ * `holdCached`: while true, a list that is already on screen (kept from the last visit or loaded
+ * earlier) does not refresh; a list with nothing to show still loads at once. The realtime
+ * connection sets it until it joins, because joining reloads every list (one load, not two).
+ */
+export function useChats(filters: ChatFilters, opts: { holdCached?: boolean } = {}) {
+  const { holdCached = false } = opts;
+  const qc = useQueryClient();
+  const onScreen = holdCached && qc.getQueryData(qk.chats(filters)) !== undefined;
   return useInfiniteQuery({
     queryKey: qk.chats(filters),
+    enabled: !onScreen,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => {
       const p = new URLSearchParams();

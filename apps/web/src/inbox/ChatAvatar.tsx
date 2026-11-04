@@ -40,19 +40,13 @@ export function ChatAvatar({
   size?: keyof typeof SIZES;
   className?: string;
 }) {
-  const { ready, revision } = useContext(ProfileImageContext);
-  const imageSrc =
-    src && revision && src.startsWith('/api/chats/')
-      ? `${src}${src.includes('?') ? '&' : '?'}connection=${revision}`
-      : src;
+  // The URL is used as given: it changes only when the photo changes (`?v=<hash>`), so the phone's
+  // photo cache answers an unchanged photo. A failed photo is tried again when WhatsApp reconnects
+  // (`ready` turns off and on, which remounts the image).
+  const { ready } = useContext(ProfileImageContext);
   return (
     <Avatar className={cn(SIZES[size], className)} aria-hidden="true" title={name}>
-      <ProfileImage
-        key={`${src}:${revision}:${ready}`}
-        name={name}
-        src={ready ? imageSrc : null}
-        seed={seed}
-      />
+      <ProfileImage key={`${src}:${ready}`} name={name} src={ready ? src : null} seed={seed} />
     </Avatar>
   );
 }

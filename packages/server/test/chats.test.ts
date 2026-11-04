@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import { ChatDetailResponse, ChatListResponse, ChatSchema, NoteSchema } from '@ezychat/shared';
 import { makeTestApp, type TestApp } from './helpers.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
@@ -53,18 +54,90 @@ describe('chat profile images', () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
-  it('redirects an authenticated agent to an HTTPS WhatsApp photo and caches privately', async () => {
+  const PHOTO = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const NEW_PHOTO = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 9, 9, 9, 9]);
+  const hashOf = (b: Buffer) => createHash('sha256').update(b).digest('hex').slice(0, 16);
+  const cdn = (body: Buffer = PHOTO) =>
+    vi.fn(async () => new Response(new Uint8Array(body), { status: 200 }));
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('serves the photo bytes itself with an ETag, never a redirect to WhatsApp', async () => {
     const { cookie } = await createUserAndLogin(t, { role: 'agent' });
     await seedChat(jid, 'Profile test', Date.now());
     const lookup = vi.spyOn(t.wa, 'getProfilePicture').mockResolvedValue(photo);
+    const download = cdn();
+    vi.stubGlobal('fetch', download);
     const r = await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
-    expect(r.statusCode).toBe(302);
-    expect(r.headers.location).toBe(photo);
-    expect(r.headers['cache-control']).toBe('private, max-age=300');
+    expect(r.statusCode).toBe(200);
+    expect(r.headers.location).toBeUndefined();
+    expect(r.rawPayload).toEqual(PHOTO);
+    expect(r.headers['content-type']).toBe('image/jpeg');
+    expect(r.headers['x-content-type-options']).toBe('nosniff');
+    expect(r.headers.etag).toBe(`"${hashOf(PHOTO)}"`);
+    expect(r.headers['cache-control']).toBe('private, max-age=86400');
     expect(lookup).toHaveBeenCalledExactlyOnceWith(jid);
+    expect(download).toHaveBeenCalledExactlyOnceWith(
+      photo,
+      expect.objectContaining({ redirect: 'error' }),
+    );
   });
 
-  it('returns no image for missing or private photos and caches that result', async () => {
+  it('caches for a year by content hash, answers 304 to a matching ETag, and lists ?v=', async () => {
+    const { cookie } = await createUserAndLogin(t);
+    await seedChat(jid, 'Profile test', Date.now());
+    await seedChat('60188888888@s.whatsapp.net', 'No photo yet', Date.now() - 1000);
+    vi.spyOn(t.wa, 'getProfilePicture').mockResolvedValue(photo);
+    vi.stubGlobal('fetch', cdn());
+    const hash = hashOf(PHOTO);
+    await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
+
+    const list = await t.app.inject({ method: 'GET', url: '/api/chats', headers: { cookie } });
+    const chats = ChatListResponse.parse(list.json()).chats;
+    expect(chats.map((c) => c.avatarUrl)).toEqual([
+      `${avatar()}?v=${hash}`,
+      avatar('60188888888@s.whatsapp.net'),
+    ]);
+    const detail = await t.app.inject({
+      method: 'GET',
+      url: `/api/chats/${enc(jid)}`,
+      headers: { cookie },
+    });
+    expect(ChatDetailResponse.parse(detail.json()).chat.avatarUrl).toBe(`${avatar()}?v=${hash}`);
+
+    const versioned = await t.app.inject({
+      method: 'GET',
+      url: `${avatar()}?v=${hash}`,
+      headers: { cookie },
+    });
+    expect(versioned.statusCode).toBe(200);
+    // Re-asked after a week, so a changed photo reaches the chat list (the server refreshes after 24 h).
+    expect(versioned.headers['cache-control']).toBe('private, max-age=604800');
+    const old = await t.app.inject({
+      method: 'GET',
+      url: `${avatar()}?v=0123456789abcdef`,
+      headers: { cookie },
+    });
+    expect(old.headers['cache-control']).toBe('private, max-age=86400');
+
+    const again = await t.app.inject({
+      method: 'GET',
+      url: avatar(),
+      headers: { cookie, 'if-none-match': `"${hash}"` },
+    });
+    expect(again.statusCode).toBe(304);
+    expect(again.body).toBe('');
+    expect(again.headers.etag).toBe(`"${hash}"`);
+    const changed = await t.app.inject({
+      method: 'GET',
+      url: avatar(),
+      headers: { cookie, 'if-none-match': '"0123456789abcdef"' },
+    });
+    expect(changed.statusCode).toBe(200);
+  });
+
+  it('returns no image for missing or private photos and lets the browser keep that a day', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seedChat(jid, 'Profile test', Date.now());
     const lookup = vi.spyOn(t.wa, 'getProfilePicture').mockResolvedValue(null);
@@ -72,39 +145,51 @@ describe('chat profile images', () => {
       const r = await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
       expect(r.statusCode).toBe(204);
       expect(r.body).toBe('');
-      expect(r.headers.location).toBeUndefined();
+      expect(r.headers['cache-control']).toBe('private, max-age=86400');
     }
     expect(lookup).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to no image when WhatsApp lookup fails', async () => {
+  it('answers no image and no-store when the WhatsApp lookup or the download fails', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seedChat(jid, 'Profile test', Date.now());
     const lookup = vi
       .spyOn(t.wa, 'getProfilePicture')
-      .mockRejectedValue(new Error('Photo is private'));
-    const r = await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
-    expect(r.statusCode).toBe(204);
-    expect(r.headers.location).toBeUndefined();
-    expect(lookup).toHaveBeenCalledTimes(1);
+      .mockRejectedValueOnce(new Error('Photo is private'))
+      .mockResolvedValue(photo);
+    const failedLookup = await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
+    expect(failedLookup.statusCode).toBe(204);
+    expect(failedLookup.headers['cache-control']).toBe('no-store');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('busy', { status: 503 })),
+    );
+    const failedDownload = await t.app.inject({
+      method: 'GET',
+      url: avatar(),
+      headers: { cookie },
+    });
+    expect(failedDownload.statusCode).toBe(204);
+    expect(failedDownload.headers['cache-control']).toBe('no-store');
+    expect(lookup).toHaveBeenCalledTimes(2);
   });
 
-  it('rejects unsafe, malformed, credential-bearing and non-WhatsApp destinations', async () => {
+  it('never downloads from unsafe, credential-bearing or non-WhatsApp destinations', async () => {
     const { cookie } = await createUserAndLogin(t);
     const unsafe = [
       'http://pps.whatsapp.net/profile.jpg',
       'https://example.com/profile.jpg',
       'https://whatsapp.net.evil.example/profile.jpg',
-      'https://evilwhatsapp.net/profile.jpg',
       'https://pps.whatsapp.net@evil.example/profile.jpg',
       'https://user:secret@pps.whatsapp.net/profile.jpg',
       'https://pps.whatsapp.net:8443/profile.jpg',
       'https://127.0.0.1/profile.jpg',
       'data:image/png;base64,AAAA',
-      '/relative-photo.jpg',
       'not a URL',
     ];
     const lookup = vi.spyOn(t.wa, 'getProfilePicture');
+    const download = cdn();
+    vi.stubGlobal('fetch', download);
     for (const [i, url] of unsafe.entries()) {
       const chatJid = `601888880${i}@s.whatsapp.net`;
       await seedChat(chatJid, 'Unsafe image test', Date.now());
@@ -114,9 +199,10 @@ describe('chat profile images', () => {
       expect(r.headers.location, url).toBeUndefined();
     }
     expect(lookup).toHaveBeenCalledTimes(unsafe.length);
+    expect(download).not.toHaveBeenCalled();
   });
 
-  it('coalesces concurrent lookups and reuses the cached result', async () => {
+  it('coalesces concurrent lookups and reuses the stored photo', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seedChat(jid, 'Profile test', Date.now());
     let finishLookup!: (url: string | null) => void;
@@ -124,6 +210,8 @@ describe('chat profile images', () => {
       finishLookup = resolve;
     });
     const lookup = vi.spyOn(t.wa, 'getProfilePicture').mockReturnValue(pending);
+    const download = cdn();
+    vi.stubGlobal('fetch', download);
     const first = t.app
       .inject({ method: 'GET', url: avatar(), headers: { cookie } })
       .then((r) => r);
@@ -132,33 +220,38 @@ describe('chat profile images', () => {
       .then((r) => r);
     await vi.waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
     finishLookup(photo);
-    const responses = await Promise.all([first, second]);
-    for (const r of responses) {
-      expect(r.statusCode).toBe(302);
-      expect(r.headers.location).toBe(photo);
+    for (const r of await Promise.all([first, second])) {
+      expect(r.statusCode).toBe(200);
+      expect(r.rawPayload).toEqual(PHOTO);
     }
     const cached = await t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
-    expect(cached.statusCode).toBe(302);
+    expect(cached.statusCode).toBe(200);
     expect(lookup).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes the cached image after five minutes', async () => {
+  it('asks WhatsApp again after 24 hours and serves a changed photo under a new hash', async () => {
     const { cookie } = await createUserAndLogin(t);
     await seedChat(jid, 'Profile test', Date.now());
     const now = Date.now();
     const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
-    const updatedPhoto = 'https://pps.whatsapp.net/profile-new.jpg';
-    const lookup = vi
-      .spyOn(t.wa, 'getProfilePicture')
-      .mockResolvedValueOnce(photo)
-      .mockResolvedValueOnce(updatedPhoto);
+    const lookup = vi.spyOn(t.wa, 'getProfilePicture').mockResolvedValue(photo);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(new Uint8Array(PHOTO)))
+        .mockResolvedValueOnce(new Response(new Uint8Array(NEW_PHOTO))),
+    );
     const request = () => t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
-    expect((await request()).headers.location).toBe(photo);
-    clock.mockReturnValue(now + 5 * 60_000 - 1);
-    expect((await request()).headers.location).toBe(photo);
+    expect((await request()).headers.etag).toBe(`"${hashOf(PHOTO)}"`);
+    clock.mockReturnValue(now + 24 * 3_600_000 - 1);
+    expect((await request()).headers.etag).toBe(`"${hashOf(PHOTO)}"`);
     expect(lookup).toHaveBeenCalledTimes(1);
-    clock.mockReturnValue(now + 5 * 60_000);
-    expect((await request()).headers.location).toBe(updatedPhoto);
+    clock.mockReturnValue(now + 24 * 3_600_000);
+    const refreshed = await request();
+    expect(refreshed.headers.etag).toBe(`"${hashOf(NEW_PHOTO)}"`);
+    expect(refreshed.rawPayload).toEqual(NEW_PHOTO);
     expect(lookup).toHaveBeenCalledTimes(2);
   });
 
@@ -174,15 +267,22 @@ describe('chat profile images', () => {
     const { cookie } = await createUserAndLogin(t);
     await seedChat(jid, 'Profile test', Date.now());
     const lookup = vi.spyOn(t.wa, 'getProfilePicture').mockResolvedValue(photo);
+    vi.stubGlobal('fetch', cdn());
     await t.wa.disconnect();
     const request = () => t.app.inject({ method: 'GET', url: avatar(), headers: { cookie } });
     const disconnected = await request();
     expect(disconnected.statusCode).toBe(204);
-    expect(disconnected.headers.location).toBeUndefined();
+    expect(disconnected.headers['cache-control']).toBe('no-store');
     expect(lookup).not.toHaveBeenCalled();
     await t.wa.connect();
     const connected = await request();
-    expect(connected.statusCode).toBe(302);
+    expect(connected.statusCode).toBe(200);
+    expect(lookup).toHaveBeenCalledTimes(1);
+    // offline again: the kept photo is still served, without asking WhatsApp
+    await t.wa.disconnect();
+    const kept = await request();
+    expect(kept.statusCode).toBe(200);
+    expect(kept.rawPayload).toEqual(PHOTO);
     expect(lookup).toHaveBeenCalledTimes(1);
   });
 

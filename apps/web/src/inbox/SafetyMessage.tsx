@@ -82,8 +82,11 @@ export function SafetyNotice({ safety, hasFile }: { safety: MessageSafety; hasFi
 
 /** Fetches the file first so a refusal (locked) is a message, not a saved error page. */
 async function saveFile(messageId: string, name: string): Promise<'ok' | 'locked'> {
+  // `no-store` skips the service worker's file cache: the server must check the lock and record
+  // every download of a flagged file.
   const res = await fetch(`/api/media/${encodeURIComponent(messageId)}`, {
     credentials: 'same-origin',
+    cache: 'no-store',
   });
   if (res.status === 403) return 'locked';
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

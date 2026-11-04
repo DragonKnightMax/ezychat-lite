@@ -170,18 +170,16 @@ it('highlights chats you own and keeps teammates and unassigned rows calm', () =
   ).toBeNull();
 });
 
-it('still retries profile images when WhatsApp reconnects', () => {
-  chats([{ ...chat(0), avatarUrl: '/api/chats/0/avatar' }]);
-  const tree = (ready: boolean, revision: number) => (
-    <ProfileImageContext.Provider value={{ ready, revision }}>
-      {list()}
-    </ProfileImageContext.Provider>
+it('shows profile images once WhatsApp is ready, at the URL the server gave', () => {
+  chats([{ ...chat(0), avatarUrl: '/api/chats/0/avatar?v=ab12cd' }]);
+  const tree = (ready: boolean) => (
+    <ProfileImageContext.Provider value={{ ready }}>{list()}</ProfileImageContext.Provider>
   );
-  const view = render(tree(false, 0));
+  const view = render(tree(false));
   expect(view.container.querySelector('img')).toBeNull();
-  view.rerender(tree(true, 1));
+  view.rerender(tree(true));
   expect(view.container.querySelector('img')?.getAttribute('src')).toBe(
-    '/api/chats/0/avatar?connection=1',
+    '/api/chats/0/avatar?v=ab12cd',
   );
 });
 

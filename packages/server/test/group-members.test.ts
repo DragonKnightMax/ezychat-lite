@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatListResponse, GroupInfoResponse } from '@ezychat/shared';
 import type { WaGroupInfo } from '@ezychat/wa';
 import { makeTestApp, type TestApp } from './helpers.js';
@@ -246,6 +246,41 @@ describe('group members', () => {
       (await get(`/api/chats/${enc(GROUP)}/members/${enc('60199999999@s.whatsapp.net')}/avatar`))
         .statusCode,
     ).toBe(404);
+  });
+
+  it('serves a member photo from the store: bytes, ETag, 304, day cache, failure no-store', async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 4, 2]);
+    const url = `/api/chats/${enc(GROUP)}/members/${enc(DAVID)}/avatar`;
+    const lookup = vi
+      .spyOn(t.wa, 'getProfilePicture')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue('https://pps.whatsapp.net/v/david.jpg');
+    const download = vi.fn(async () => new Response(new Uint8Array(bytes)));
+    vi.stubGlobal('fetch', download);
+    try {
+      const failed = await get(url);
+      expect(failed.statusCode).toBe(204);
+      expect(failed.headers['cache-control']).toBe('no-store');
+      const r = await get(url);
+      expect(r.statusCode).toBe(200);
+      expect(r.headers.location).toBeUndefined();
+      expect(r.rawPayload).toEqual(bytes);
+      expect(r.headers['content-type']).toBe('image/jpeg');
+      expect(r.headers['cache-control']).toBe('private, max-age=86400');
+      const etag = r.headers.etag as string;
+      expect(etag).toMatch(/^"[0-9a-f]{16}"$/);
+      const again = await t.app.inject({
+        method: 'GET',
+        url,
+        headers: { cookie, 'if-none-match': etag },
+      });
+      expect(again.statusCode).toBe(304);
+      expect(lookup).toHaveBeenCalledTimes(2);
+      expect(download).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    }
   });
 });
 

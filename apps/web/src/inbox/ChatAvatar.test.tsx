@@ -19,23 +19,27 @@ it('shows initials while loading, displays a photo, and recovers when a differen
   expect(view.container.querySelector('img')).toBeNull();
 });
 
-it('waits for WhatsApp readiness and retries a failed image after a new connection', () => {
-  const src = '/api/chats/customer%40s.whatsapp.net/avatar';
-  const photo = (ready: boolean, revision: number) => (
-    <ProfileImageContext.Provider value={{ ready, revision }}>
+it('waits for WhatsApp readiness, keeps the photo URL as given and retries after a reconnect', () => {
+  // The URL is the cache key on the phone: it changes only when the photo changes (`v`), never
+  // per connection, so an unchanged photo is not asked for again.
+  const src = '/api/chats/customer%40s.whatsapp.net/avatar?v=ab12cd';
+  // Earlier builds added the socket's connection revision to the URL: it must have no effect.
+  const state = (ready: boolean) => ({ ready, revision: Date.now() });
+  const photo = (ready: boolean) => (
+    <ProfileImageContext.Provider value={state(ready)}>
       <ChatAvatar name="Alex Chen" src={src} />
     </ProfileImageContext.Provider>
   );
-  const view = render(photo(false, 1));
+  const view = render(photo(false));
   expect(view.container.querySelector('img')).toBeNull();
-  view.rerender(photo(true, 2));
-  expect(view.container.querySelector('img')!.getAttribute('src')).toBe(`${src}?connection=2`);
+  view.rerender(photo(true));
+  expect(view.container.querySelector('img')!.getAttribute('src')).toBe(src);
   fireEvent.error(view.container.querySelector('img')!);
   expect(view.container.querySelector('img')).toBeNull();
-  view.rerender(photo(false, 2));
-  view.rerender(photo(true, 3));
+  view.rerender(photo(false));
+  view.rerender(photo(true));
   const retry = view.container.querySelector('img')!;
-  expect(retry.getAttribute('src')).toBe(`${src}?connection=3`);
+  expect(retry.getAttribute('src')).toBe(src);
   fireEvent.load(retry);
   expect(screen.queryByText('AC')).toBeNull();
 });

@@ -29,7 +29,10 @@ describe('useLogout', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         calls.push(`${init?.method ?? 'GET'} ${url}`);
-        return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response('{"ok":true}', {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
       }),
     );
     const qc = new QueryClient();
@@ -46,6 +49,31 @@ describe('useLogout', () => {
     expect(qc.getQueryData(qk.me)).toBeNull();
   });
 
+  it('removes the photos, files and saved chat lists of the user who signs out', async () => {
+    stubPush();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ ok: true })),
+    );
+    const kept = new Set(['ezy-avatars-v1', 'ezy-media-v1', 'workbox-precache-v2-x']);
+    vi.stubGlobal('caches', {
+      keys: () => Promise.resolve([...kept]),
+      delete: (name: string) => Promise.resolve(kept.delete(name)),
+    });
+    localStorage.setItem('ezy.queries.1', '{}');
+    const qc = new QueryClient();
+    qc.setQueryData(qk.me, { id: 1 });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+    expect([...kept]).toEqual(['workbox-precache-v2-x']);
+    expect(localStorage.getItem('ezy.queries.1')).toBeNull();
+  });
+
   it('still logs out when removing the push subscription fails', async () => {
     const { unsubscribe } = stubPush();
     const calls: string[] = [];
@@ -54,7 +82,10 @@ describe('useLogout', () => {
       vi.fn(async (url: string, init?: RequestInit) => {
         calls.push(`${init?.method ?? 'GET'} ${url}`);
         const status = url.endsWith('/push/subscribe') ? 500 : 200;
-        return new Response('{"ok":true}', { status, headers: { 'content-type': 'application/json' } });
+        return new Response('{"ok":true}', {
+          status,
+          headers: { 'content-type': 'application/json' },
+        });
       }),
     );
     const qc = new QueryClient();
