@@ -1,0 +1,142 @@
+name: Release (approved)
+
+# One-click release (docs/release.md §4): started on main with the version of a merged release PR (agents start it
+# only when the owner says "release" in chat). The gate is: workflow_dispatch on main by a user with write access,
+# `confirm` equal to `version` (typo guard) and the checks below. It then tags main and starts release.yml (build,
+# draft, publish when the draft is complete) and publish-packages.yml on that tag. A tag created with GITHUB_TOKEN
+# does not start `on: push: tags` workflows, so both are started here with workflow_dispatch, which GITHUB_TOKEN may
+# trigger.
+#
+# The tagging job runs in the environment `release-approval`. It needs no reviewer; adding Required reviewers to that
+# environment later (Settings → Environments) turns this into a tap-to-approve flow with no code change.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version of the merged release PR, x.y.z (e.g. 0.1.75)
+        required: true
+        type: string
+      confirm:
+        description: Type the version again to confirm
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-approve
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check v${{ inputs.version }}
+    # Only main is released; a dispatch on any other branch or tag stops here.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # The input reaches shells only through env and only after this check (never ${{ }} inside run).
+      - name: Version is x.y.z and confirmed
+        env:
+          VERSION: ${{ inputs.version }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must be x.y.z, got: $VERSION"
+            exit 1
+          fi
+          if [ "$CONFIRM" != "$VERSION" ]; then
+            echo "::error::confirm must repeat the version exactly"
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Release checks
+        env:
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/release-publish.mjs version "$VERSION"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "$VERSION" ]; then
+            echo "::error::package.json on main is $pkg, not $VERSION: merge the release PR first"
+            exit 1
+          fi
+          node scripts/sync-version.mjs --check
+          node scripts/release-notes.mjs "v$VERSION" > /dev/null
+          main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$main" != "$SHA" ]; then
+            echo "::error::main moved to $main after this run started on $SHA: start the release again"
+            exit 1
+          fi
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$VERSION")" ]; then
+            echo "::error::tag v$VERSION already exists"
+            exit 1
+          fi
+          echo "v$VERSION on $SHA: checks passed" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Tag v${{ inputs.version }} and start the release
+    needs: check
+    runs-on: ubuntu-latest
+    # No reviewer is required today; with Required reviewers on this environment the job waits for a tap.
+    environment: release-approval
+    permissions:
+      contents: write # create the tag
+      actions: write # start release.yml and publish-packages.yml
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      VERSION: ${{ inputs.version }}
+      CONFIRM: ${{ inputs.confirm }}
+      SHA: ${{ github.sha }}
+    steps:
+      # An approval (when reviewers are added) may come much later: check everything again right before the writes.
+      - name: Check again before the writes
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::bad version"; exit 1; }
+          [ "$CONFIRM" = "$VERSION" ] || { echo "::error::confirm must repeat the version"; exit 1; }
+          main="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
+          if [ "$main" != "$SHA" ]; then
+            echo "::error::main moved to $main since $SHA was checked: start the release again"
+            exit 1
+          fi
+          if gh api "repos/$REPO/git/ref/tags/v$VERSION" > /dev/null 2>&1; then
+            echo "::error::tag v$VERSION already exists"
+            exit 1
+          fi
+          if gh release view "v$VERSION" --repo "$REPO" > /dev/null 2>&1; then
+            echo "::error::a release v$VERSION already exists"
+            exit 1
+          fi
+      - name: Create the annotated tag
+        run: |
+          set -euo pipefail
+          tag_sha="$(gh api "repos/$REPO/git/tags" -f tag="v$VERSION" -f message="EzyChat Lite $VERSION" \
+            -f object="$SHA" -f type=commit --jq .sha)"
+          gh api "repos/$REPO/git/refs" -f ref="refs/tags/v$VERSION" -f sha="$tag_sha" > /dev/null
+          target="$(gh api "repos/$REPO/git/tags/$tag_sha" --jq .object.sha)"
+          if [ "$target" != "$SHA" ]; then
+            echo "::error::tag v$VERSION points at $target, not $SHA"
+            exit 1
+          fi
+          echo "Tagged v$VERSION → $SHA" >> "$GITHUB_STEP_SUMMARY"
+      # GITHUB_TOKEN tag pushes start no workflows: start both on the tag (their workflow files come from it).
+      - name: Start the release build and the npm publish
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$REPO" --ref "v$VERSION" -f ref="v$VERSION" -f publish=true
+          gh workflow run publish-packages.yml --repo "$REPO" --ref "v$VERSION" -f ref="v$VERSION"
+          {
+            echo "Started on v$VERSION: release.yml (publishes the draft when all 6 installers and the notes are there)"
+            echo "and publish-packages.yml. Follow them in Actions; a failure leaves the draft unpublished."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,16 +9,22 @@ on:
         description: Existing release tag to rebuild
         required: true
         type: string
+      publish:
+        description: Publish the draft as Latest when every build succeeded (set by release-approve.yml)
+        required: false
+        type: boolean
+        default: false
 
-permissions:
-  contents: write
-  # GitHub OIDC for the Azure sign-in of Windows signing (no stored secret in this public repository).
-  id-token: write
+permissions: {}
 
 jobs:
   package:
     name: Package (${{ matrix.os }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write # upload installers to the draft release
+      # GitHub OIDC for the Azure sign-in of Windows signing (no stored secret in this public repository).
+      id-token: write
     # The Azure federated credential (github-ezychat-lite-release on the app ezychat-ci-signing) trusts
     # only this environment: subject repo:ossmalaysia@325334523/ezychat-lite@1400498086:environment:release
     # (the repository uses GitHub's immutable-ID subjects). Its rules allow v* tags and main.
@@ -138,3 +144,45 @@ jobs:
           files: |
             apps/desktop/release/*-${{ matrix.arch }}.exe
             apps/desktop/release/*-${{ matrix.arch }}.dmg
+
+  # Option A of the approved one-click release (docs/release.md §4): release-approve.yml starts this workflow on
+  # the tag with publish=true after the owner's approval. Runs only when every package job succeeded; any
+  # missing installer or notes leave the draft unpublished and fail the run.
+  publish:
+    name: Publish the release
+    needs: package
+    if: success() && github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == format('refs/tags/{0}', inputs.ref)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ inputs.ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Check the draft (6 installers and the notes)
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          node scripts/release-publish.mjs version "$version"
+          gh release view "$TAG" --repo "$REPO" --json isDraft,body,assets > release.json
+          node scripts/release-publish.mjs draft "$version" release.json
+      # One call: without --prerelease=false GitHub refuses Latest and installed apps ignore the release.
+      - name: Publish as Latest
+        run: gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease=false --latest
+      - name: Check releases/latest
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/$REPO/releases/latest" --jq .tag_name)"
+          if [ "$latest" != "$TAG" ]; then
+            echo "::error::releases/latest is $latest, not $TAG"
+            exit 1
+          fi
+          echo "Published $TAG as Latest" >> "$GITHUB_STEP_SUMMARY"

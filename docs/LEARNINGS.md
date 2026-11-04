@@ -171,9 +171,19 @@ into AGENTS.md.
 - Before merging a PR, wait for every check on its current head, SonarCloud included: CI jobs finish before
   SonarCloud reports, and a merge on green jobs alone shipped a quality-gate failure that needed a follow-up PR. Re-read
   the head SHA right before the merge (pass it as `expectedHeadSha`), because a child session may still be pushing.
-- Cloud sessions cannot push git tags (the git proxy answers 403 on tag refs) or run `gh release edit`. A release
-  run from the cloud stops after the release PR merges: hand the owner the exact tag, `ls-remote` check and publish
-  commands as soon as the release PR is opened, not after the 403.
+- Cloud sessions cannot push git tags (the git proxy answers 403 on tag refs) or run `gh release edit`. Release
+  from the cloud with **Release (approved)** (`release-approve.yml`, `docs/release.md` §4): after the release PR
+  merges and the owner says "release", dispatch it with `version` and `confirm`; it tags, builds and publishes.
+- A tag (or any push) made with `GITHUB_TOKEN` starts no `on: push` workflow; only `workflow_dispatch` and
+  `repository_dispatch` are allowed from it. A workflow that tags must start the tag's workflows itself
+  (`gh workflow run <file> --ref v<version> -f ref=v<version>`, `actions: write`). Workflow inputs reach shells only
+  through `env:` after a strict format check (`^[0-9]+\.[0-9]+\.[0-9]+$`), never as `${{ inputs.* }}` in `run:`.
+- A job's `environment:` that does not exist yet is created **unprotected** on its first run: never present an
+  environment as an approval gate unless its required reviewers are set; put the real gate in the workflow (dispatch
+  on `main`, a `confirm` input, strict checks). Agents start `release-approve.yml` only when the owner says "release".
+- `/security-review` in a fresh cloud clone fails on `origin/HEAD...`: run `git remote set-head origin main` first.
+- Any edit to a workflow makes SonarCloud re-flag its old workflow-level write permissions (S8233, Security C fails
+  the gate): when touching a workflow, set `permissions: {}` at the top and give each job only what it needs.
 - An edition's AI-agent limit defaults to its `maxInboxes` (`ai/service.ts`: `config.maxAgents ?? maxInboxes`), so
   Enterprise (10 numbers) has had 10 agents since core 0.1.73 without passing `maxAgents`. Before saying an edition
   lacks a feature, read the core default as well as the options the edition passes.
