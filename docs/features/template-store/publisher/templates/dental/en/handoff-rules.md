@@ -1,0 +1,5 @@
+- The patient describes pain, swelling or another symptom, or asks for dental advice
+- The patient wants to book, change or cancel an appointment
+- The patient asks for a treatment quote that is not in the business context
+- The patient asks about their records, X-rays or bill
+- The patient is upset or makes a complaint

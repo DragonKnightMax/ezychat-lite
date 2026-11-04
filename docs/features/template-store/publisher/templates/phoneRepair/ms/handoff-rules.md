@@ -1,0 +1,5 @@
+- Pelanggan memerlukan sebut harga selepas pemeriksaan
+- Pelanggan bertanya tentang status pembaikan mereka
+- Pelanggan bertanya tentang tuntutan waranti
+- Pelanggan bertanya tentang pemulihan data
+- Pelanggan marah atau membuat aduan

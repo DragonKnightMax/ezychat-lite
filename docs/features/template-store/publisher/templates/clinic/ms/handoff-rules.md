@@ -1,0 +1,6 @@
+- Pelanggan menerangkan simptom atau meminta nasihat perubatan
+- Pelanggan menerangkan kecemasan
+- Pelanggan mahu membuat, menukar atau membatalkan temu janji
+- Pelanggan bertanya tentang keputusan ujian, rekod perubatan, sijil cuti sakit atau bil mereka
+- Pelanggan bertanya tentang tuntutan panel, insurans atau syarikat yang tiada dalam konteks perniagaan
+- Pelanggan marah atau membuat aduan

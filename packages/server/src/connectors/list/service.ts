@@ -11,6 +11,7 @@ import {
 import type { AppContext } from '../../context.js';
 import { BUILTIN_CONNECTOR_LIST } from './builtin-list.js';
 import { CONNECTOR_LIST_BASE_URL, CONNECTOR_LIST_PUBLIC_KEYS } from './keys.js';
+import { DownloadTooLarge, DownloadUnavailable, downloadCapped } from './download.js';
 import { LIST_FILE, ListStore, SIG_FILE } from './store.js';
 import type { ConnectorListService } from './types.js';
 import {
@@ -199,34 +200,17 @@ export function createConnectorListService(
   }
 
   async function download(url: URL, max: number): Promise<Buffer> {
-    const response = await fetchFn(url, {
-      signal: AbortSignal.any([stop.signal, AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)]),
-      headers: { 'cache-control': 'no-cache' },
-    });
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => {});
-      throw new ListUnavailable(response.status);
+    try {
+      return await downloadCapped(url, {
+        fetch: fetchFn,
+        max,
+        signal: AbortSignal.any([stop.signal, AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)]),
+      });
+    } catch (err) {
+      if (err instanceof DownloadTooLarge) throw new ListRejected('too_large');
+      if (err instanceof DownloadUnavailable) throw new ListUnavailable(err.status);
+      throw err;
     }
-    const declared = Number(response.headers.get('content-length') ?? 0);
-    if (declared > max) {
-      await response.body?.cancel().catch(() => {});
-      throw new ListRejected('too_large');
-    }
-    const reader = response.body?.getReader();
-    if (!reader) return Buffer.alloc(0);
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > max) {
-        await reader.cancel().catch(() => {});
-        throw new ListRejected('too_large');
-      }
-      chunks.push(value);
-    }
-    return Buffer.concat(chunks);
   }
 
   /** Downloads the icons that are new or changed; any bad icon rejects the whole list. */

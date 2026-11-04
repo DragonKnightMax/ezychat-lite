@@ -11,7 +11,8 @@ into AGENTS.md.
 ## Working method
 
 - SonarCloud fails the security rating on a literal bidi control character in source (S6389: write `\u202e`, not the
-  character; an editor or tool may turn the escape into the character) and on a JSON key containing "password" (S2068,
+  character; an editor or the agent's file-writing tool may turn the escape into the character, so scan new test
+  files for U+200E/F, U+202A–202E, U+2066–2069, U+FEFF before pushing) and on a JSON key containing "password" (S2068,
   even a translation key, or a demo user's `password:` literal in an `e2e/*.mjs` script). Name such keys after what they
   mean (`unlockCodeInMessage`); a capture script creates extra users with `randomBytes` secrets or `DEMO_ADMIN`.
 - In a Playwright Test spec, `browser.newContext()` inherits the project's `storageState`: a second person's context
@@ -150,9 +151,17 @@ into AGENTS.md.
 - Two feature branches that clone the same mock baseline both prune the oldest folder and collide on merge: keep
   both feature folders, renumber the later one, archive the next oldest, and note in `latestConfirmed` which
   parallel feature's screens the next clone must add.
+- A "real" Dev Build check of a signed remote list (connectors, templates) with `--fake-wa`: the server downloads
+  nothing unless the `*_LIST_URL` env is set, so set it to the production URL (assert it equals the built-in constant)
+  and no test key. Compare the published `minAppVersion` with the branch version first: entries for the next release
+  are hidden on the current one, so check both (the build as is, and `WATI_VERSION=<release>`).
 
 ## Multi-agent process
 
+- `build-summary.mjs record` takes the short stage keys (`design dev unit e2e devbuild screen`), and release-review
+  counts a stage only when the code diff at its `--sha` equals the head's: re-record with `--sha <head>` after a
+  docs-only commit, or the stages show as `✗ missing`. The same holds for the commit cited in a
+  `docs/dev-build-checks.md` row: cite the commit that already contains a new check script, not the one before it.
 - Never rebase, stash or switch branches in a checkout where subagents are still writing files: commit each finished
   agent's files first, and rebase onto a newly merged base only after the last agent has handed back.
 - AGENTS.md is the single source of truth (CLAUDE.md imports it); edit rules there.
@@ -206,6 +215,13 @@ into AGENTS.md.
 
 ## Git, GitHub and CI
 
+- A PR whose CI never starts (no workflow run for the branch) usually has a merge conflict (`mergeable_state: dirty`):
+  `pull_request` runs need the merge commit. Merge main, then re-run e2e and the Dev Build check on the new head,
+  because release-review counts a stage only at a commit with the head's code diff.
+- In a fresh cloud clone `/security-review` fails on `origin/HEAD...`: run `git remote set-head origin main` first, and
+  review only your own commits (`git show <sha>`) when the base moved.
+- A change for another repository that a cloud session may not attach (add_repo refused) ships as a `git apply`-ready
+  patch in the feature folder (`publisher/*.patch`, checked by applying it to an empty repo) plus the owner's steps.
 - A test server that serves a payload and its signature in two requests must build them once (per version), never per
   request with a clock in the signed body: a second boundary between the two fetches fails the signature check on CI
   only (`e2e/partner-mcp/server.mjs` signed list).
@@ -533,6 +549,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   labels and open the section first in each; agents that own the page miss specs owned by other features.
 - SonarCloud's security gate fails on running a tool by bare name (S4036, PATH lookup): scripts run
   `gh`/`git` from absolute install paths or an absolute `<TOOL>_PATH` override (`scripts/build-summary.mjs`).
+  An e2e check that starts a server never spawns `npx`: run `process.execPath` with `node_modules/tsx/dist/cli.mjs`
+  (`e2e/start-multi-inbox.mjs`).
   It also fails on any `http://` literal (S5332): an RFC 3161 timestamp URL (signed replies, published as
   http) gets a `// NOSONAR (javascript:S5332): <reason>` on its line; everything else uses https.
   It treats `process.argv` in `e2e/` scripts as untrusted (SSRF S5144/S8703): parse the port with
@@ -561,6 +579,12 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Build, tooling and Windows
 
+- A contract the publishing repo validates through `z.toJSONSchema(…, { io: 'input' })` must stay plain: a
+  `.transform()` (and every check piped after it, e.g. lengths) vanishes from the schema. Clean values before
+  `safeParse` instead (`cleanAgentTemplateValue`). The root `ajv` is ESLint's v6; ajv 8 is only nested, so repo
+  scripts take a validator as a parameter and tests pass one built from the zod contract.
+- A generated folder that a test compares byte for byte with its generator goes into `.prettierignore`; Prettier
+  rewrites JSON arrays and Markdown and the drift test fails.
 - In a Linux cloud session `e2e/screens-common.mjs#launchBrowser` falls back to msedge and fails: run capture scripts
   with `PW_CHROMIUM=/opt/pw-browsers/chromium-<n>/chrome-linux64/chrome`, and restart the server on fresh data after a
   failed run (the script's seed users already exist).
@@ -905,6 +929,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - A script that writes to a folder named on the command line fails the SonarCloud gate (S8707, path
   traversal): resolve it and accept only the repo or `os.tmpdir()` (`path.relative`, no `..`), and check
   ports. Read a PR's Sonar issues with a script file: `api/issues/search?componentKeys=ossmalaysia_wa-team-inbox&pullRequest=<n>&types=VULNERABILITY` (public, no token).
+  Tests of such a guard build paths from `os.tmpdir()`, never `/tmp`: macOS's temp folder is `/var/folders/…`.
 - Every `/api/ai` route is admin-only (`ai-routes-access.test.ts` lists them all): an AI route that every
   signed-in user may call lives outside that prefix (`GET /api/reply-suggestions`, `/api/chats/:jid/ai/*`).
 - An edition limit (e.g. `maxInboxes`) never widens access by itself: a data dir can hold more rows than
@@ -967,6 +992,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   slot synchronously with the check, before any `await`: the AI SDK runs the tool calls of one step in parallel.
 - A signed list that the app downloads is trusted only after the signature over the exact bytes, a sequence that
   never goes down, and the hash of every referenced file pass; one bad file rejects the whole list.
+- Two signed lists that share keys sign a domain prefix before the bytes (`ezychat-templates-v1\n` + file): zod
+  strips unknown keys, so a validly signed list of one kind can parse as the other and replace it with an empty list.
+  Give each list file its own marker field too (`catalog: "templates"`).
 
 ## WhatsApp / Baileys
 

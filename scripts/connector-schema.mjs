@@ -15,7 +15,7 @@ import { ConnectorEntry } from '@ezychat/shared';
 export const SCHEMA_ID = 'https://dl.ezychat.ai/connectors/schema/connector-v1.json';
 
 /** Objects that list their properties get `additionalProperties: false`, so a typo fails in CI. */
-function closeObjects(node) {
+export function closeObjects(node) {
   if (Array.isArray(node)) return node.forEach(closeObjects);
   if (!node || typeof node !== 'object') return;
   if (node.type === 'object' && node.properties && node.additionalProperties === undefined)

@@ -1,0 +1,5 @@
+- The customer needs a quote after a check
+- The customer asks about the status of their repair
+- The customer asks about a warranty claim
+- The customer asks about data recovery
+- The customer is upset or makes a complaint

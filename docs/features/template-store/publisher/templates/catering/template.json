@@ -1,0 +1,36 @@
+{
+  "id": "catering",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "food",
+  "icon": "chef-hat",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Catering assistant",
+      "name": "Catering and events",
+      "description": "Answers about menus, packages and minimum orders, and collects event details for a quote.",
+      "keywords": "catering event wedding buffet party",
+      "contextName": "Catering details"
+    },
+    "ms": {
+      "agentName": "Pembantu katering",
+      "name": "Katering dan majlis",
+      "description": "Menjawab tentang menu, pakej dan pesanan minimum, serta mengumpul butiran majlis untuk sebut harga.",
+      "keywords": "katering majlis kenduri perkahwinan kahwin bufet parti catering event wedding buffet party",
+      "contextName": "Butiran katering"
+    },
+    "zh-CN": {
+      "agentName": "餐饮承办助理",
+      "name": "餐饮承办和活动",
+      "description": "回答菜单、配套和最低订量等问题，并收集活动详情以便报价。",
+      "keywords": "承办 餐饮 外烩 活动 婚宴 自助餐 派对 catering event wedding buffet party",
+      "contextName": "餐饮承办信息"
+    }
+  }
+}

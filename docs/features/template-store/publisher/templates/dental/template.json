@@ -1,0 +1,36 @@
+{
+  "id": "dental",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "health",
+  "icon": "smile",
+  "preset": "faq",
+  "texts": {
+    "en": {
+      "agentName": "Dental clinic assistant",
+      "name": "Dental clinic",
+      "description": "Answers about treatments, fees, dentists and opening hours. Never gives dental or medical advice.",
+      "keywords": "dentist teeth scaling braces filling",
+      "contextName": "Dental clinic details"
+    },
+    "ms": {
+      "agentName": "Pembantu klinik pergigian",
+      "name": "Klinik pergigian",
+      "description": "Menjawab tentang rawatan, yuran, doktor gigi dan waktu operasi. Tidak pernah memberi nasihat pergigian atau perubatan.",
+      "keywords": "doktor gigi klinik pergigian skaling braces tampal cabut dentist teeth scaling filling",
+      "contextName": "Butiran klinik pergigian"
+    },
+    "zh-CN": {
+      "agentName": "牙科诊所助理",
+      "name": "牙科诊所",
+      "description": "回答治疗项目、费用、牙医和营业时间等问题。绝不提供牙科或医疗建议。",
+      "keywords": "牙医 牙科 牙齿 洗牙 牙套 补牙 dentist teeth scaling braces filling",
+      "contextName": "牙科诊所信息"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+- Pelanggan mahu mengesahkan atau membayar pesanan
+- Pelanggan meminta reka bentuk khas atau harga yang tiada dalam konteks perniagaan
+- Pelanggan bertanya tentang alahan atau bahan yang tiada dalam konteks perniagaan
+- Pelanggan melaporkan masalah dengan pesanan
+- Pelanggan marah atau membuat aduan

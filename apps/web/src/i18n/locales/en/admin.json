@@ -1362,7 +1362,13 @@
         "handoffRules": "- The member asks whether a claim is approved, rejected or paid, or when it will be paid\n- The member disputes a decision or an amount, or wants to cancel a claim\n- A file still cannot be read after one retry, looks edited, or does not match the details written\n- The message shares medical reports, IC numbers, bank details or other sensitive personal information that the claim does not need\n- The claim is above the limit or after the deadline in Claim rules\n- The member is upset or makes a complaint",
         "contextName": "Claim rules",
         "contextText": "Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nClaim types:\nDetails every claim needs:\nDocuments to attach (receipt, invoice, report):\nLimit per claim:\nSubmission deadline:\nWho approves claims:\nWhen approved claims are paid:\nWhere to send the original documents:\nDefault language for replies:"
-      }
+      },
+      "source": {
+        "loaded": "Template library updated {{date}}.",
+        "builtin": "Showing the templates in this version of {{product}}.",
+        "offline": "Couldn't check for new templates. Showing the last saved list."
+      },
+      "worksWith": "Works with {{names}}"
     },
     "resolution": {
       "title": "Closing chats",

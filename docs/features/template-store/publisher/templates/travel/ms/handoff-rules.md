@@ -1,0 +1,5 @@
+- Pelanggan mahu menempah, membayar deposit, menukar atau membatalkan tempahan
+- Pelanggan meminta percutian khas atau harga yang tiada dalam konteks perniagaan
+- Pelanggan bertanya tentang visa atau masalah dokumen
+- Pelanggan melaporkan masalah semasa percutian
+- Pelanggan marah atau membuat aduan

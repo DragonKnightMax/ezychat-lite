@@ -1,0 +1,36 @@
+{
+  "id": "salon",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "health",
+  "icon": "scissors",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Salon assistant",
+      "name": "Beauty salon and spa",
+      "description": "Answers about treatments, packages and prices, and helps customers book.",
+      "keywords": "hair facial nails massage spa beauty",
+      "contextName": "Salon details"
+    },
+    "ms": {
+      "agentName": "Pembantu salun",
+      "name": "Salun kecantikan dan spa",
+      "description": "Menjawab tentang rawatan, pakej dan harga, serta membantu pelanggan membuat tempahan.",
+      "keywords": "salun rambut muka kuku urut spa kecantikan facial hair nails massage beauty salon",
+      "contextName": "Butiran salun"
+    },
+    "zh-CN": {
+      "agentName": "美容院助理",
+      "name": "美容院和水疗",
+      "description": "回答护理项目、配套和价格等问题，并帮助客户预约。",
+      "keywords": "美容 美发 头发 面部护理 美甲 按摩 水疗 hair facial nails massage spa beauty",
+      "contextName": "美容院信息"
+    }
+  }
+}

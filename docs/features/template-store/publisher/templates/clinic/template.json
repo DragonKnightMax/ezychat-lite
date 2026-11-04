@@ -1,0 +1,36 @@
+{
+  "id": "clinic",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "health",
+  "icon": "stethoscope",
+  "preset": "faq",
+  "texts": {
+    "en": {
+      "agentName": "Clinic assistant",
+      "name": "Clinic",
+      "description": "Answers questions about opening hours, doctors, services, fees and panels. Never gives medical advice.",
+      "keywords": "doctor GP medical klinik",
+      "contextName": "Clinic details"
+    },
+    "ms": {
+      "agentName": "Pembantu klinik",
+      "name": "Klinik",
+      "description": "Menjawab soalan tentang waktu operasi, doktor, perkhidmatan, yuran dan panel. Tidak pernah memberi nasihat perubatan.",
+      "keywords": "doktor klinik perubatan kesihatan GP doctor medical",
+      "contextName": "Butiran klinik"
+    },
+    "zh-CN": {
+      "agentName": "诊所助理",
+      "name": "诊所",
+      "description": "回答营业时间、医生、服务、费用和合作保险等问题。绝不提供医疗建议。",
+      "keywords": "医生 诊所 家庭医生 看病 doctor GP medical klinik",
+      "contextName": "诊所信息"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+- The customer wants to book, change or cancel a job
+- The customer needs a quote after an inspection
+- The customer reports a gas leak, an electrical danger or flooding
+- The customer asks about a warranty claim
+- The customer is upset or makes a complaint

@@ -1,0 +1,6 @@
+- Ahli bertanya sama ada tuntutan diluluskan, ditolak atau dibayar, atau bila ia akan dibayar
+- Ahli mempertikaikan keputusan atau jumlah, atau mahu membatalkan tuntutan
+- Fail masih tidak dapat dibaca selepas satu cubaan semula, kelihatan diubah, atau tidak sepadan dengan butiran yang ditulis
+- Mesej berkongsi laporan perubatan, nombor IC, butiran bank atau maklumat peribadi sensitif lain yang tidak diperlukan oleh tuntutan
+- Tuntutan melebihi had atau selepas tarikh akhir dalam Peraturan tuntutan
+- Ahli kecewa atau membuat aduan

@@ -1,0 +1,36 @@
+{
+  "id": "bakery",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "food",
+  "icon": "cake-slice",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Bakery assistant",
+      "name": "Bakery and cake shop",
+      "description": "Answers about cakes, prices and order lead times, and collects order details.",
+      "keywords": "cake bakery cookies birthday order",
+      "contextName": "Bakery details"
+    },
+    "ms": {
+      "agentName": "Pembantu kedai kek",
+      "name": "Kedai roti dan kek",
+      "description": "Menjawab tentang kek, harga dan tempoh tempahan awal, serta mengumpul butiran pesanan.",
+      "keywords": "kek roti bakeri biskut kuih hari jadi tempahan pesanan cake bakery cookies birthday order",
+      "contextName": "Butiran kedai kek"
+    },
+    "zh-CN": {
+      "agentName": "面包店助理",
+      "name": "面包店和蛋糕店",
+      "description": "回答蛋糕、价格和需提前多久下单等问题，并收集订单详情。",
+      "keywords": "蛋糕 面包 面包店 饼干 生日 订单 cake bakery cookies birthday order",
+      "contextName": "面包店信息"
+    }
+  }
+}

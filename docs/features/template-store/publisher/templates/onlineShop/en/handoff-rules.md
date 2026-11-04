@@ -1,0 +1,5 @@
+- The customer wants to confirm or pay for an order
+- The customer asks where their order is
+- The customer wants a return, an exchange or a refund
+- The customer asks about a product that is not in the business context
+- The customer is upset or makes a complaint

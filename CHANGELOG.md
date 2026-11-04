@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **New AI agent templates without an app update.** The business-template gallery now also reads a signed template
+  library from EzyChat's servers when it opens, so new templates (and fixes to existing ones) arrive without
+  installing a new version. The templates built into the app stay available offline, and the gallery says when the
+  library was last updated. A template still only fills the boxes after you click Apply.
 - **Manage WhatsApp groups from Group info.** EzyChat admins can rename a group, edit its description, add one
   member at a time (with a ban-risk note; when the person's privacy settings refuse, a Send invite button sends them a
   private invite), remove members, make or remove group admins, copy or reset the invite link, change the group's

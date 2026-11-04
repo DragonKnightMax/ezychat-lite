@@ -1,0 +1,36 @@
+{
+  "id": "homeServices",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "services",
+  "icon": "house",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Home services assistant",
+      "name": "Home services",
+      "description": "Answers about aircond, plumbing, cleaning and repair services and prices, and collects job details.",
+      "keywords": "aircond plumber cleaning repair electrician handyman",
+      "contextName": "Home services details"
+    },
+    "ms": {
+      "agentName": "Pembantu perkhidmatan rumah",
+      "name": "Perkhidmatan rumah",
+      "description": "Menjawab tentang perkhidmatan aircond, paip, pembersihan dan pembaikan serta harganya, dan mengumpul butiran kerja.",
+      "keywords": "aircond penghawa dingin tukang paip pembersihan cuci rumah baiki pembaikan elektrik juruelektrik tukang plumber cleaning repair electrician handyman",
+      "contextName": "Butiran perkhidmatan rumah"
+    },
+    "zh-CN": {
+      "agentName": "居家服务助理",
+      "name": "居家服务",
+      "description": "回答冷气、水管、清洁和维修服务及价格等问题，并收集工作详情。",
+      "keywords": "冷气 水管 水喉 清洁 维修 电工 杂工 aircond plumber cleaning repair electrician handyman",
+      "contextName": "居家服务信息"
+    }
+  }
+}

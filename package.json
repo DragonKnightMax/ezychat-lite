@@ -30,7 +30,8 @@
     "format:check": "prettier --check .",
     "e2e": "playwright test",
     "e2e:electron-links": "node e2e/run-electron-links.mjs",
-    "version:sync": "node scripts/sync-version.mjs"
+    "version:sync": "node scripts/sync-version.mjs",
+    "templates:export": "tsx scripts/export-templates.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

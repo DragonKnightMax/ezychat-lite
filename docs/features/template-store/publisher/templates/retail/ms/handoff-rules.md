@@ -1,0 +1,4 @@
+- Pelanggan mahu menempah atau membeli barang
+- Pelanggan bertanya sama ada barang ada stok hari ini
+- Pelanggan mahu pemulangan, pertukaran atau bayaran balik
+- Pelanggan marah atau membuat aduan

@@ -1,0 +1,5 @@
+- The parent wants to register, pay or ask for a refund
+- The parent asks about their child's progress, attendance or results
+- The parent wants to change a class or a tutor
+- The parent asks about special learning needs
+- The parent or student is upset or makes a complaint

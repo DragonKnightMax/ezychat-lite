@@ -1,0 +1,36 @@
+{
+  "id": "travel",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "services",
+  "icon": "plane",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Travel assistant",
+      "name": "Travel agency",
+      "description": "Answers about tour packages, dates and prices, and collects booking details.",
+      "keywords": "travel tour holiday umrah flight package",
+      "contextName": "Travel agency details"
+    },
+    "ms": {
+      "agentName": "Pembantu pelancongan",
+      "name": "Agensi pelancongan",
+      "description": "Menjawab tentang pakej pelancongan, tarikh dan harga, serta mengumpul butiran tempahan.",
+      "keywords": "pelancongan percutian lawatan pakej umrah tiket penerbangan travel tour holiday flight package",
+      "contextName": "Butiran agensi pelancongan"
+    },
+    "zh-CN": {
+      "agentName": "旅游助理",
+      "name": "旅行社",
+      "description": "回答旅游配套、日期和价格等问题，并收集预订详情。",
+      "keywords": "旅游 旅行 配套 假期 副朝 机票 travel tour holiday umrah flight package",
+      "contextName": "旅行社信息"
+    }
+  }
+}

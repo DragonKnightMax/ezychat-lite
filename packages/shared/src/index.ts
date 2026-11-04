@@ -17,6 +17,7 @@ export * from './fix-english.js';
 export * from './connectors.js';
 export * from './google-sheets.js';
 export * from './connector-list.js';
+export * from './template-list.js';
 export * from './reports.js';
 export * from './ask-ezy.js';
 export * from './safety.js';

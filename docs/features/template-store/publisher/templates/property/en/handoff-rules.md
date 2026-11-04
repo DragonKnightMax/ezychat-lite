@@ -1,0 +1,5 @@
+- The customer wants to book a viewing
+- The customer wants to make an offer, pay a deposit or sign an agreement
+- The customer asks about loans, legal matters or taxes
+- The customer asks about a listing that is not in the business context
+- The customer is upset or makes a complaint

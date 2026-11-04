@@ -1,0 +1,5 @@
+- Ibu bapa mahu mendaftar, membayar atau meminta bayaran balik
+- Ibu bapa bertanya tentang kemajuan, kehadiran atau keputusan anak mereka
+- Ibu bapa mahu menukar kelas atau tutor
+- Ibu bapa bertanya tentang keperluan pembelajaran khas
+- Ibu bapa atau pelajar marah atau membuat aduan

@@ -1,0 +1,36 @@
+{
+  "id": "insurance",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "services",
+  "icon": "shield-check",
+  "preset": "faq",
+  "texts": {
+    "en": {
+      "agentName": "Insurance assistant",
+      "name": "Insurance agent",
+      "description": "Answers general questions about plans and the next steps. Never gives personal financial advice.",
+      "keywords": "insurance takaful medical life car policy",
+      "contextName": "Insurance agent details"
+    },
+    "ms": {
+      "agentName": "Pembantu insurans",
+      "name": "Ejen insurans",
+      "description": "Menjawab soalan umum tentang pelan dan langkah seterusnya. Tidak pernah memberi nasihat kewangan peribadi.",
+      "keywords": "insurans takaful perubatan hayat kereta polisi insurance medical life car policy",
+      "contextName": "Butiran ejen insurans"
+    },
+    "zh-CN": {
+      "agentName": "保险助理",
+      "name": "保险代理",
+      "description": "回答关于保险计划和下一步的一般问题。绝不提供个人理财建议。",
+      "keywords": "保险 伊斯兰保险 医药 人寿 汽车 保单 insurance takaful medical life car policy",
+      "contextName": "保险代理信息"
+    }
+  }
+}

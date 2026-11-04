@@ -7,41 +7,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { TFunction } from 'i18next';
+import type { AgentTemplateCatalog } from '@ezychat/shared';
+import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
-  BUSINESS_TEMPLATES,
-  isGroupAgentTemplate,
-  TEMPLATE_CATEGORIES,
+  galleryCategories,
+  galleryTemplates,
   templateMatches,
-  type BusinessTemplateId,
-  type TemplateCategory,
+  type GalleryTemplate,
 } from './business-templates';
 
 /**
  * "Start from a business template": opens the template gallery. Apply fills the page's draft (the
  * admin checks it and saves); `pendingItem` names the Business context item the next Save adds.
  * `groupSetup` follows a group-agent template (Claims): what Save does for a new agent, or what the
- * admin still switches on an existing one, then the remaining steps.
+ * admin still switches on an existing one, then the remaining steps. `catalog` is the signed
+ * template list (none while loading or offline: the app's own templates show); `onBrowse` asks the
+ * server to check for new templates when the gallery opens.
  */
 export function BusinessTemplateCard({
   disabled,
   pendingItem,
   groupSetup = null,
+  catalog,
+  onBrowse,
   onApply,
 }: {
   disabled: boolean;
   pendingItem: string | null;
   groupSetup?: 'new' | 'existing' | null;
-  onApply: (id: BusinessTemplateId) => void;
+  catalog?: AgentTemplateCatalog;
+  onBrowse?: () => void;
+  onApply: (template: GalleryTemplate) => void;
 }) {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const [open, setOpen] = useState(false);
+  const language = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const templates = useMemo(() => galleryTemplates(t, language, catalog), [t, language, catalog]);
   return (
     <Card className="gap-4" data-testid="business-templates">
       <CardHeader>
         <CardTitle>{t('ai.businessTemplates.title')}</CardTitle>
         <CardDescription>
-          {t('ai.businessTemplates.hint', { count: BUSINESS_TEMPLATES.length })}
+          {t('ai.businessTemplates.hint', { count: templates.length })}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -67,7 +76,10 @@ export function BusinessTemplateCard({
           size="touch"
           className="md:min-h-9"
           disabled={disabled}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true);
+            onBrowse?.();
+          }}
         >
           <LayoutGrid aria-hidden />
           {t('ai.businessTemplates.browse')}
@@ -76,40 +88,63 @@ export function BusinessTemplateCard({
       <TemplateGallery
         open={open}
         onOpenChange={setOpen}
-        onApply={(id) => {
+        templates={templates}
+        categories={galleryCategories(t, language, catalog, templates)}
+        status={catalog?.status}
+        onApply={(template) => {
           setOpen(false);
-          onApply(id);
+          onApply(template);
         }}
       />
     </Card>
   );
 }
 
+/** Where the gallery's templates come from, in one muted line under the list. */
+function sourceLine(
+  status: AgentTemplateCatalog['status'] | undefined,
+  t: TFunction<'admin'>,
+): string {
+  if (status?.state === 'loaded' && status.generatedAt)
+    return t('ai.businessTemplates.source.loaded', {
+      date: formatDate(Date.parse(status.generatedAt)),
+    });
+  if (status?.state === 'offline' || status?.state === 'rejected')
+    return t('ai.businessTemplates.source.offline');
+  return t('ai.businessTemplates.source.builtin');
+}
+
 /** The gallery: search, category chips and the template cards; Apply hands the choice back. */
 function TemplateGallery({
   open,
   onOpenChange,
+  templates,
+  categories,
+  status,
   onApply,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onApply: (id: BusinessTemplateId) => void;
+  templates: readonly GalleryTemplate[];
+  categories: ReadonlyArray<{ id: string; label: string }>;
+  status: AgentTemplateCatalog['status'] | undefined;
+  onApply: (template: GalleryTemplate) => void;
 }) {
   const { t } = useTranslation('admin');
   const { t: tCommon } = useTranslation('common');
   const listId = useId();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<TemplateCategory | null>(null);
-  const [selected, setSelected] = useState<BusinessTemplateId | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = templates.find((tpl) => tpl.id === selectedId) ?? null;
   const shown = useMemo(
     () =>
-      BUSINESS_TEMPLATES.filter(
-        (tpl) =>
-          (category === null || tpl.category === category) && templateMatches(tpl.id, query, t),
+      templates.filter(
+        (tpl) => (category === null || tpl.category === category) && templateMatches(tpl, query),
       ),
-    [category, query, t],
+    [category, query, templates],
   );
-  const chip = (value: TemplateCategory | null, label: string) => (
+  const chip = (value: string | null, label: string) => (
     <Button
       key={value ?? 'all'}
       type="button"
@@ -173,7 +208,7 @@ function TemplateGallery({
           className="flex flex-wrap gap-2"
         >
           {chip(null, t('ai.businessTemplates.category.all'))}
-          {TEMPLATE_CATEGORIES.map((c) => chip(c, t(`ai.businessTemplates.category.${c}`)))}
+          {categories.map((c) => chip(c.id, c.label))}
         </div>
         {shown.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground" role="status">
@@ -183,13 +218,13 @@ function TemplateGallery({
           <RadioGroup
             id={listId}
             aria-label={t('ai.businessTemplates.galleryTitle')}
-            value={selected ?? ''}
-            onValueChange={(value) => setSelected(value as BusinessTemplateId)}
+            value={selectedId ?? ''}
+            onValueChange={setSelectedId}
             className="grid gap-3 sm:max-h-[50vh] sm:grid-cols-2 sm:overflow-y-auto sm:p-0.5 lg:grid-cols-3"
           >
-            {shown.map(({ id, preset, icon: Icon }) => {
+            {shown.map(({ id, preset, icon: Icon, texts, groupAgent, connectors }) => {
               const optionId = `${listId}-${id}`;
-              const name = t(`ai.businessTemplates.${id}.name`);
+              const name = texts.name;
               return (
                 <Label
                   key={id}
@@ -212,20 +247,26 @@ function TemplateGallery({
                     />
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {isGroupAgentTemplate(id)
+                    {groupAgent
                       ? [t(`ai.presets.${preset}`), t('ai.businessTemplates.groupAgentTag')].join(
                           ' · ',
                         )
                       : t(`ai.presets.${preset}`)}
                   </span>
-                  <span className="text-sm text-muted-foreground">
-                    {t(`ai.businessTemplates.${id}.description`)}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{texts.description}</span>
+                  {connectors.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {t('ai.businessTemplates.worksWith', { names: connectors.join(', ') })}
+                    </span>
+                  )}
                 </Label>
               );
             })}
           </RadioGroup>
         )}
+        <p className="text-xs text-muted-foreground" data-testid="template-source">
+          {sourceLine(status, t)}
+        </p>
       </div>
     </ResponsiveDialog>
   );

@@ -1,0 +1,36 @@
+{
+  "id": "carWorkshop",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "services",
+  "icon": "car",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Workshop assistant",
+      "name": "Car workshop",
+      "description": "Answers about servicing packages, prices and repairs, and helps customers book a slot.",
+      "keywords": "car service mechanic tyre workshop",
+      "contextName": "Workshop details"
+    },
+    "ms": {
+      "agentName": "Pembantu bengkel",
+      "name": "Bengkel kereta",
+      "description": "Menjawab tentang pakej servis, harga dan pembaikan, serta membantu pelanggan menempah slot.",
+      "keywords": "servis kereta mekanik tayar bengkel car service mechanic tyre workshop",
+      "contextName": "Butiran bengkel"
+    },
+    "zh-CN": {
+      "agentName": "维修厂助理",
+      "name": "汽车维修厂",
+      "description": "回答保养套餐、价格和维修问题，并帮助客户预约时段。",
+      "keywords": "汽车 保养 修车 技工 轮胎 维修厂 car service mechanic tyre workshop",
+      "contextName": "维修厂信息"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "vet",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "health",
+  "icon": "paw-print",
+  "preset": "faq",
+  "texts": {
+    "en": {
+      "agentName": "Pet care assistant",
+      "name": "Vet and pet shop",
+      "description": "Answers about vet services, grooming, products and opening hours. Never gives medical advice for pets.",
+      "keywords": "veterinary pet dog cat grooming",
+      "contextName": "Vet and pet shop details"
+    },
+    "ms": {
+      "agentName": "Pembantu penjagaan haiwan",
+      "name": "Klinik veterinar dan kedai haiwan",
+      "description": "Menjawab tentang perkhidmatan veterinar, dandanan, produk dan waktu operasi. Tidak pernah memberi nasihat perubatan untuk haiwan peliharaan.",
+      "keywords": "veterinar doktor haiwan peliharaan anjing kucing dandanan grooming veterinary vet pet dog cat",
+      "contextName": "Butiran klinik dan kedai haiwan"
+    },
+    "zh-CN": {
+      "agentName": "宠物护理助理",
+      "name": "兽医诊所和宠物店",
+      "description": "回答兽医服务、宠物美容、产品和营业时间等问题。绝不为宠物提供医疗建议。",
+      "keywords": "兽医 宠物 狗 猫 宠物美容 veterinary pet dog cat grooming",
+      "contextName": "兽医诊所和宠物店信息"
+    }
+  }
+}

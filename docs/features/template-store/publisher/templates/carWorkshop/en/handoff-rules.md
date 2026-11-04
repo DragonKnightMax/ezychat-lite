@@ -1,0 +1,5 @@
+- The customer needs a repair quotation or an inspection result
+- The customer reports a breakdown or an accident, or needs towing
+- The customer asks about an insurance or warranty claim
+- The customer wants to book, change or cancel a service slot
+- The customer complains about earlier work or a bill

@@ -1,0 +1,5 @@
+- The owner describes symptoms or asks for medical advice for a pet
+- The owner describes an emergency
+- The owner wants to book, change or cancel an appointment or grooming slot
+- The owner asks about a pet's records or bill
+- The owner is upset or makes a complaint

@@ -1,0 +1,5 @@
+- Pesakit menerangkan sakit, bengkak atau simptom lain, atau meminta nasihat pergigian
+- Pesakit mahu membuat, menukar atau membatalkan temu janji
+- Pesakit meminta sebut harga rawatan yang tiada dalam konteks perniagaan
+- Pesakit bertanya tentang rekod, X-ray atau bil mereka
+- Pesakit marah atau membuat aduan

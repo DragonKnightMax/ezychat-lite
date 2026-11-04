@@ -1,0 +1,5 @@
+- Pelanggan bertanya pelan mana yang sesuai untuk mereka atau bertanya harga premium
+- Pelanggan mahu membeli, menukar atau membatalkan polisi
+- Pelanggan mahu membuat atau menyusuli tuntutan
+- Pelanggan bertanya tentang polisi atau bayaran mereka sendiri
+- Pelanggan marah atau membuat aduan

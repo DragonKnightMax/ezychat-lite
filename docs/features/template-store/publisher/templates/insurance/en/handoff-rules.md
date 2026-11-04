@@ -1,0 +1,5 @@
+- The customer asks which plan is right for them or for a premium
+- The customer wants to buy, change or cancel a policy
+- The customer wants to make or follow up a claim
+- The customer asks about their own policy or payment
+- The customer is upset or makes a complaint

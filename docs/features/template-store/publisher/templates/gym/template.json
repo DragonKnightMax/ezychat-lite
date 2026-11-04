@@ -1,0 +1,36 @@
+{
+  "id": "gym",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "health",
+  "icon": "dumbbell",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Gym assistant",
+      "name": "Gym and fitness",
+      "description": "Answers about memberships, classes and trial passes, and helps people sign up.",
+      "keywords": "fitness gym yoga class membership trainer",
+      "contextName": "Gym details"
+    },
+    "ms": {
+      "agentName": "Pembantu gim",
+      "name": "Gim dan kecergasan",
+      "description": "Menjawab tentang keahlian, kelas dan pas percubaan, serta membantu orang ramai mendaftar.",
+      "keywords": "gim kecergasan senaman yoga kelas keahlian jurulatih fitness gym class membership trainer",
+      "contextName": "Butiran gim"
+    },
+    "zh-CN": {
+      "agentName": "健身房助理",
+      "name": "健身中心",
+      "description": "回答会员、课程和试用通行证等问题，并帮助客户报名。",
+      "keywords": "健身 健身房 瑜伽 课程 会员 教练 fitness gym yoga class membership trainer",
+      "contextName": "健身房信息"
+    }
+  }
+}

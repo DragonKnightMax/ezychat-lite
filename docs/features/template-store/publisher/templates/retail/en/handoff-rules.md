@@ -1,0 +1,4 @@
+- The customer wants to reserve or buy an item
+- The customer asks if an item is in stock today
+- The customer wants a return, an exchange or a refund
+- The customer is upset or makes a complaint

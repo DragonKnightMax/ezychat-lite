@@ -1,0 +1,5 @@
+- The customer wants to confirm or pay for an order
+- The customer asks for a custom design or a price that is not in the business context
+- The customer asks about allergies or ingredients that are not in the business context
+- The customer reports a problem with an order
+- The customer is upset or makes a complaint

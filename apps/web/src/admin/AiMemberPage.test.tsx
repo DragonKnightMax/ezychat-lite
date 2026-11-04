@@ -10,6 +10,7 @@ import {
   type AiAgentSummary,
   type AiDocument,
   type AiMemberStatus,
+  type AgentTemplateCatalog,
 } from '@ezychat/shared';
 import { AiMemberPage } from './AiMemberPage';
 import {
@@ -42,6 +43,8 @@ interface World {
   inboxes: { id: number; name: string; aiAgentId: number | null }[];
   /** The connection uses a Claude API key instead of an OpenAI one. */
   claude?: boolean;
+  /** The signed template list (GET /api/ai/templates); none answers 404 (the app's own show). */
+  templates?: AgentTemplateCatalog;
 }
 function agentStatus(
   id = 5,
@@ -131,6 +134,8 @@ function setup(
     const id = agentMatch ? Number(agentMatch[1]) : 0;
     const rest = agentMatch?.[2] ?? '';
     if (url === '/api/ai') return json(memberStatus(w));
+    if (url === '/api/ai/templates' || url === '/api/ai/templates/refresh')
+      return w.templates ? json(w.templates) : notFound();
     if (url === '/api/ai/agents' && method === 'GET') return json(list());
     if (url === '/api/ai/agents' && method === 'POST') {
       const body = JSON.parse(String(init!.body)) as AiAgentBody;
@@ -228,8 +233,12 @@ function setup(
   );
   return { fetchMock, world: w };
 }
+/** Requests that change something (the gallery's check for new templates changes nothing). */
 const writes = (fetchMock: ReturnType<typeof vi.fn>) =>
-  fetchMock.mock.calls.filter((call) => call[1]?.method && call[1].method !== 'GET');
+  fetchMock.mock.calls.filter(
+    (call) =>
+      call[1]?.method && call[1].method !== 'GET' && call[0] !== '/api/ai/templates/refresh',
+  );
 const writeLines = (fetchMock: ReturnType<typeof vi.fn>) =>
   writes(fetchMock).map((call) => `${call[1]!.method} ${call[0]}`);
 const lastBody = (fetchMock: ReturnType<typeof vi.fn>) =>
@@ -645,6 +654,66 @@ describe('AI agent page', () => {
           heldDirect: 0,
         });
       };
+
+    it('applies a template from the signed list and checks for new ones when the gallery opens', async () => {
+      const text = {
+        agentName: 'Venue assistant',
+        name: 'Event venue',
+        description: 'Answers about halls and packages.',
+        keywords: '',
+        focus: 'BUSINESS\nYou answer for an event venue.',
+        handoffRules: '- The customer wants to book a date',
+        contextName: 'Venue details',
+        contextText: 'Halls:\nPackages:',
+      };
+      const templates: AgentTemplateCatalog = {
+        status: {
+          state: 'loaded',
+          generatedAt: '2026-11-04T10:00:00.000Z',
+          sequence: 2,
+          checkedAt: 1,
+        },
+        categories: [{ id: 'events', name: { en: 'Events' } }],
+        templates: [
+          {
+            entry: {
+              id: 'venue',
+              version: 1,
+              schemaVersion: 1,
+              minAppVersion: '0.1.0',
+              editions: ['lite'],
+              category: 'events',
+              icon: 'party-popper',
+              preset: 'sales',
+              texts: { en: text },
+            },
+            connectors: [],
+          },
+        ],
+      };
+      const w = world({ maxAgents: 2, agents: [agentStatus()], templates });
+      const { fetchMock } = setup(w, '/admin/members/ai/new?preset=sales');
+      const user = userEvent.setup();
+      await applyTemplate(user, 'Event venue');
+      expect(fetchMock.mock.calls.map((call) => `${call[1]?.method ?? 'GET'} ${call[0]}`)).toEqual(
+        expect.arrayContaining(['GET /api/ai/templates', 'POST /api/ai/templates/refresh']),
+      );
+      const role = (screen.getByLabelText('Role (instructions)') as HTMLTextAreaElement).value;
+      expect(role.startsWith(SALES.instructions)).toBe(true);
+      expect(role.endsWith('You answer for an event venue.')).toBe(true);
+      expect((screen.getByLabelText('Agent name') as HTMLInputElement).value).toBe(
+        'Venue assistant',
+      );
+      await user.click(screen.getByRole('button', { name: 'Create agent' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('location').textContent).toBe('/admin/members/ai/8'),
+      );
+      expect(writeLines(fetchMock)).toEqual([
+        'POST /api/ai/agents',
+        'POST /api/ai/agents/8/documents/text',
+      ]);
+      expect(lastBody(fetchMock)).toEqual({ name: 'Venue details', text: 'Halls:\nPackages:' });
+    });
 
     it('creates a Claims agent as a group-only Custom agent with its Claim rules', async () => {
       const { fetchMock } = setup(

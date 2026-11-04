@@ -28,6 +28,7 @@ import directory from './directory.js';
 import integrations from './integrations.js';
 import oauth from './oauth.js';
 import inboxes from './inboxes.js';
+import aiTemplates from './ai-templates.js';
 import templates from './templates.js';
 import replySuggestions from './reply-suggestions.js';
 import askEzy from './ask-ezy.js';
@@ -69,6 +70,7 @@ export const routeModules: RouteModule[] = [
   integrations,
   oauth,
   inboxes,
+  aiTemplates,
   templates,
   replySuggestions,
   askEzy,

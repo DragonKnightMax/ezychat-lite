@@ -1,0 +1,36 @@
+{
+  "id": "restaurant",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "food",
+  "icon": "utensils-crossed",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Restaurant assistant",
+      "name": "Restaurant or cafe",
+      "description": "Answers about the menu, prices, opening hours and delivery, and takes reservation requests.",
+      "keywords": "food cafe menu restaurant delivery reservation halal",
+      "contextName": "Restaurant details"
+    },
+    "ms": {
+      "agentName": "Pembantu restoran",
+      "name": "Restoran atau kafe",
+      "description": "Menjawab tentang menu, harga, waktu operasi dan penghantaran, serta menerima permintaan tempahan meja.",
+      "keywords": "makanan kedai makan restoran kafe menu penghantaran tempahan meja halal food cafe restaurant delivery reservation",
+      "contextName": "Butiran restoran"
+    },
+    "zh-CN": {
+      "agentName": "餐厅助理",
+      "name": "餐厅或咖啡馆",
+      "description": "回答菜单、价格、营业时间和外送等问题，并接收订座请求。",
+      "keywords": "餐厅 咖啡馆 美食 菜单 外送 订座 清真 food cafe menu restaurant delivery reservation halal",
+      "contextName": "餐厅信息"
+    }
+  }
+}

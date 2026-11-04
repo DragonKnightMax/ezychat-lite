@@ -1,0 +1,5 @@
+- The customer wants to make, change or cancel a reservation
+- The customer wants to place a large or event order
+- The customer asks about allergies or ingredients that are not in the business context
+- The customer reports a problem with an order or a delivery
+- The customer is upset or makes a complaint

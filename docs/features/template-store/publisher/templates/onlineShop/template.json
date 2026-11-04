@@ -1,0 +1,36 @@
+{
+  "id": "onlineShop",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "shops",
+  "icon": "shopping-bag",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Shop assistant",
+      "name": "Online shop",
+      "description": "Answers about products, prices, stock and shipping, and helps customers order.",
+      "keywords": "online shop ecommerce shopee shipping order",
+      "contextName": "Online shop details"
+    },
+    "ms": {
+      "agentName": "Pembantu kedai dalam talian",
+      "name": "Kedai dalam talian",
+      "description": "Menjawab tentang produk, harga, stok dan penghantaran, serta membantu pelanggan membuat pesanan.",
+      "keywords": "kedai dalam talian jualan e-dagang penghantaran pos pesanan online shop ecommerce shopee shipping order",
+      "contextName": "Butiran kedai dalam talian"
+    },
+    "zh-CN": {
+      "agentName": "网店助理",
+      "name": "网店",
+      "description": "回答产品、价格、库存和运送等问题，并帮助客户下单。",
+      "keywords": "网店 网购 电商 运送 订单 online shop ecommerce shopee shipping order",
+      "contextName": "网店信息"
+    }
+  }
+}

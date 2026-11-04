@@ -1,0 +1,5 @@
+- Pemilik menerangkan simptom atau meminta nasihat perubatan untuk haiwan peliharaan
+- Pemilik menerangkan kecemasan
+- Pemilik mahu membuat, menukar atau membatalkan temu janji atau slot dandanan
+- Pemilik bertanya tentang rekod atau bil haiwan peliharaan mereka
+- Pemilik marah atau membuat aduan

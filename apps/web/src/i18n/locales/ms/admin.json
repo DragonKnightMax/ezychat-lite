@@ -1353,7 +1353,13 @@
         "handoffRules": "- Ahli bertanya sama ada tuntutan diluluskan, ditolak atau dibayar, atau bila ia akan dibayar\n- Ahli mempertikaikan keputusan atau jumlah, atau mahu membatalkan tuntutan\n- Fail masih tidak dapat dibaca selepas satu cubaan semula, kelihatan diubah, atau tidak sepadan dengan butiran yang ditulis\n- Mesej berkongsi laporan perubatan, nombor IC, butiran bank atau maklumat peribadi sensitif lain yang tidak diperlukan oleh tuntutan\n- Tuntutan melebihi had atau selepas tarikh akhir dalam Peraturan tuntutan\n- Ahli kecewa atau membuat aduan",
         "contextName": "Peraturan tuntutan",
         "contextText": "Isi setiap baris selepas titik bertindih dan padamkan baris yang tidak berkenaan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nJenis tuntutan:\nButiran yang diperlukan setiap tuntutan:\nDokumen untuk dilampirkan (resit, invois, laporan):\nHad setiap tuntutan:\nTarikh akhir penghantaran:\nSiapa yang meluluskan tuntutan:\nBila tuntutan yang diluluskan dibayar:\nKe mana dokumen asal dihantar:\nBahasa lalai untuk balasan:"
-      }
+      },
+      "source": {
+        "loaded": "Pustaka templat dikemas kini {{date}}.",
+        "builtin": "Menunjukkan templat dalam versi {{product}} ini.",
+        "offline": "Tidak dapat menyemak templat baharu. Menunjukkan senarai terakhir yang disimpan."
+      },
+      "worksWith": "Berfungsi dengan {{names}}"
     },
     "resolution": {
       "title": "Menutup chat",

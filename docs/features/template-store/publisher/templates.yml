@@ -1,0 +1,45 @@
+# PROPOSAL for anchorsprint/ezychat-connectors (.github/workflows/templates.yml). Pin every action to a
+# full commit SHA before use (org rule); the <sha> placeholders below are not valid as written.
+name: templates
+on:
+  pull_request:
+    paths: ['templates/**', 'schema/template-v1.json', 'scripts/build-templates.mjs']
+  push:
+    branches: [main]
+    paths: ['templates/**', 'schema/template-v1.json', 'scripts/build-templates.mjs']
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<sha> # v4
+      - uses: actions/setup-node@<sha> # v4
+        with: { node-version: 22 }
+      - run: npm ci
+      # No key on pull requests: build and check only.
+      - run: node scripts/build-templates.mjs --templates templates --schema schema/template-v1.json --out dist/templates --sequence 1
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: release # holds the signing key and the upload credentials (same as the connector list)
+    concurrency: { group: templates-publish, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@<sha> # v4
+      - uses: actions/setup-node@<sha> # v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - name: Next sequence
+        id: seq
+        run: |
+          current=$(curl -fsS https://dl.ezychat.ai/templates/templates-v1.json | jq -r '.sequence' || echo 0)
+          echo "value=$((current + 1))" >> "$GITHUB_OUTPUT"
+      - name: Build and sign
+        env:
+          TEMPLATE_LIST_SIGNING_KEY: ${{ secrets.LIST_SIGNING_KEY_PEM }}
+        run: node scripts/build-templates.mjs --templates templates --schema schema/template-v1.json --out dist/templates --sequence ${{ steps.seq.outputs.value }}
+      # Upload dist/templates/templates-v1.json and .sig to dl.ezychat.ai/templates/ with the same step
+      # the connector list uses (signature first is not needed: the app downloads both and checks them together).
+      - name: Upload
+        run: echo "reuse the connector list upload step with prefix templates/"

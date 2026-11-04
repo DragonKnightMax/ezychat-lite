@@ -1,0 +1,5 @@
+- Pelanggan mahu mengesahkan atau membayar pesanan
+- Pelanggan bertanya di mana pesanan mereka
+- Pelanggan mahu pemulangan, pertukaran atau bayaran balik
+- Pelanggan bertanya tentang produk yang tiada dalam konteks perniagaan
+- Pelanggan marah atau membuat aduan

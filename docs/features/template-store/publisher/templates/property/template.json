@@ -1,0 +1,36 @@
+{
+  "id": "property",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "services",
+  "icon": "building-2",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Property assistant",
+      "name": "Property agent",
+      "description": "Answers about listings, prices and viewing, and collects buyer and tenant needs.",
+      "keywords": "property house rent sale condo agent",
+      "contextName": "Property agent details"
+    },
+    "ms": {
+      "agentName": "Pembantu hartanah",
+      "name": "Ejen hartanah",
+      "description": "Menjawab tentang senarai hartanah, harga dan lawatan, serta mengumpul keperluan pembeli dan penyewa.",
+      "keywords": "hartanah rumah sewa jual beli kondo ejen property house rent sale condo agent",
+      "contextName": "Butiran ejen hartanah"
+    },
+    "zh-CN": {
+      "agentName": "房产助理",
+      "name": "房地产经纪",
+      "description": "回答房源、价格和看房等问题，并收集买家和租客的需求。",
+      "keywords": "房地产 房产 房子 出租 出售 公寓 经纪 property house rent sale condo agent",
+      "contextName": "房地产经纪信息"
+    }
+  }
+}

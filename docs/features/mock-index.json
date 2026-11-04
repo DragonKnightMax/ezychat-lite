@@ -16,6 +16,19 @@
   },
   "proposals": [
     {
+      "feature": "template-store",
+      "creationOrder": 32,
+      "createdAt": "2026-11-04",
+      "design": "docs/features/template-store/design.md",
+      "mock": "docs/features/template-store/mock/index.html",
+      "status": "confirmed",
+      "confirmedAt": "2026-11-04",
+      "baselineFeature": "claims-template",
+      "baselineGitRevision": "658dbf347820d2e0d167e5e2c7dceff4fc312930",
+      "coverage": "Standalone preview cloned from the claims-template preview (build-preview.mjs from the real catalogs): template gallery with the list loaded (source line, a list template with Works with, a list-only category chip), built-in only, offline; New agent after applying a list template; en/ms/zh-CN, desktop 1280 / mobile 360, light/dark. Real-app screenshots in docs/features/template-store/screenshots.",
+      "note": "Owner asked for a remote template repository like the connector store (2026-11-04); publishing repo decided (connector repo). Confirmed 2026-11-04: owner (Jazz) wrote \"279 go ahead\" (list published, no retiring of built-in templates, no New badge). Standalone gallery preview, not a cumulative full-app clone: latestConfirmed stays on group-management."
+    },
+    {
       "feature": "group-management",
       "creationOrder": 31,
       "createdAt": "2026-11-04",
@@ -80,7 +93,12 @@
       "baselineFeature": "group-mentions",
       "baselineGitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
       "coverage": "Design and checklist only; the HTML mock (clone of group-mentions plus the Google Sheets connector screens) is still owed.",
-      "note": "Built against the confirmed Google Calendar connector screens; needs the owner's mock confirmation before leaving draft."
+      "note": "Built against the confirmed Google Calendar connector screens; needs the owner's mock confirmation before leaving draft.",
+      "pruned": {
+        "at": "2026-11-04",
+        "lastRevision": "f3e8f3751820f9de01fbdef94409dff6f78e1683",
+        "reason": "retention: template-store is the sixth feature folder; recover with git show <lastRevision>:docs/features/google-sheets/..."
+      }
     },
     {
       "feature": "message-edit-delete",

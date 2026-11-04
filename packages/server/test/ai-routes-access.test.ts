@@ -52,6 +52,8 @@ const ROUTES = [
   { method: 'PUT', url: '/api/ai/phrases/1' },
   { method: 'DELETE', url: '/api/ai/phrases/1' },
   { method: 'POST', url: '/api/ai/phrases/rebuild' },
+  { method: 'GET', url: '/api/ai/templates' },
+  { method: 'POST', url: '/api/ai/templates/refresh' },
 ] as const;
 
 let t: TestApp;

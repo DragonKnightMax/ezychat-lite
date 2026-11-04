@@ -1,0 +1,6 @@
+- The member asks whether a claim is approved, rejected or paid, or when it will be paid
+- The member disputes a decision or an amount, or wants to cancel a claim
+- A file still cannot be read after one retry, looks edited, or does not match the details written
+- The message shares medical reports, IC numbers, bank details or other sensitive personal information that the claim does not need
+- The claim is above the limit or after the deadline in Claim rules
+- The member is upset or makes a complaint

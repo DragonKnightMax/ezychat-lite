@@ -1,0 +1,36 @@
+{
+  "id": "tuition",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "education",
+  "icon": "graduation-cap",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Tuition assistant",
+      "name": "Tuition centre",
+      "description": "Answers parents about subjects, levels, class times, fees and trial classes, and leads them to register.",
+      "keywords": "tuition class exam SPM teacher",
+      "contextName": "Tuition centre details"
+    },
+    "ms": {
+      "agentName": "Pembantu tuisyen",
+      "name": "Pusat tuisyen",
+      "description": "Menjawab ibu bapa tentang subjek, tahap, waktu kelas, yuran dan kelas percubaan, serta membantu mereka mendaftar.",
+      "keywords": "tuisyen kelas peperiksaan SPM cikgu guru tuition class exam teacher",
+      "contextName": "Butiran pusat tuisyen"
+    },
+    "zh-CN": {
+      "agentName": "补习助理",
+      "name": "补习中心",
+      "description": "回答家长关于科目、年级、上课时间、费用和试听课的问题，并引导他们报名。",
+      "keywords": "补习 课程 考试 老师 tuition class exam SPM teacher",
+      "contextName": "补习中心信息"
+    }
+  }
+}

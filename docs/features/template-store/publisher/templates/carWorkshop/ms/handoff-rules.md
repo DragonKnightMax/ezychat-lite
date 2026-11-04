@@ -1,0 +1,5 @@
+- Pelanggan memerlukan sebut harga pembaikan atau keputusan pemeriksaan
+- Pelanggan melaporkan kerosakan atau kemalangan, atau memerlukan tunda
+- Pelanggan bertanya tentang tuntutan insurans atau waranti
+- Pelanggan mahu menempah, menukar atau membatalkan slot servis
+- Pelanggan mengadu tentang kerja atau bil sebelum ini

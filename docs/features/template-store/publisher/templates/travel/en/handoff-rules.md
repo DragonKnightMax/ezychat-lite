@@ -1,0 +1,5 @@
+- The customer wants to book, pay a deposit, change or cancel
+- The customer asks for a custom trip or a price that is not in the business context
+- The customer asks about a visa or a document problem
+- The customer reports a problem during a trip
+- The customer is upset or makes a complaint

@@ -383,6 +383,22 @@ enforces the entry's guards before every call (`guards.ts`: confirmFirst, valueF
 fail closed; Try it never runs a write tool) and logs ids, tool names, outcome and ms only. Test partners:
 `e2e/partner-mcp/` (`node e2e/partner-mcp/cli.mjs`; e2e project `partners` on port 7497 via `e2e/start-partners.mjs`).
 
+**Template list** (design `docs/features/template-store/design.md`). AI agent templates update without a release: the
+publishing repo `anchorsprint/ezychat-connectors` (folder `templates/`, proposal files in
+`docs/features/template-store/publisher/`) builds `templates-v1.json`, signs `ezychat-templates-v1\n` + the bytes with the
+connector list keys (domain separation) and uploads it to `dl.ezychat.ai/templates/`. Contract
+`packages/shared/src/template-list.ts` (`AgentTemplateEntry` schemaVersion 1, texts per en/ms/zh-CN with whole-English
+fallback, `version`, `defaults`, `recommendedConnectors`; JSON Schema `scripts/template-schema.mjs`). Server
+`templates/` (`ctx.services.templateList`): download at start and on `POST /api/ai/templates/refresh` (admins, once per
+30 s, 10 a minute per admin, `redirect: 'error'`, 512 KB cap), signature + sequence + per-entry checks, control/bidi
+characters removed before the schema check, last good copy in `<data>/templates/`, logs counts only;
+`GET /api/ai/templates` sends only entries this app and edition can use. `EZYCHAT_TEMPLATE_LIST_URL` / `_TEST_KEY` only
+with `--mode dev --fake-wa`. Web: the app's own templates (`admin/business-templates-data.ts`, catalogs
+`ai.businessTemplates.<id>.*`, version 1) are the fallback; `galleryTemplates` merges (a list entry replaces one only
+with a higher version, adds new ids, never removes); icons are names from the bundled `TEMPLATE_ICONS` (no image is
+downloaded). A template only fills editable boxes after Apply. `npm run templates:export` rewrites the sample folder
+(kept equal to the app by `scripts/template-store.test.mjs`).
+
 **WhatsApp Safety** (design `docs/features/whatsapp-safety/design.md`, mock `docs/features/whatsapp-safety/mock`).
 `ctx.services.safety` (`safety/service.ts`) checks every inbound message at ingest (`messages/service.ts` calls `inspect`
 before presenting it; history: name and text only). Local rules `safety/rules.ts` (real type from the first bytes, a

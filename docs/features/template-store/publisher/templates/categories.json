@@ -1,0 +1,50 @@
+[
+  {
+    "id": "health",
+    "name": {
+      "en": "Health and beauty",
+      "ms": "Kesihatan dan kecantikan",
+      "zh-CN": "健康与美容"
+    }
+  },
+  {
+    "id": "food",
+    "name": {
+      "en": "Food",
+      "ms": "Makanan",
+      "zh-CN": "餐饮"
+    }
+  },
+  {
+    "id": "services",
+    "name": {
+      "en": "Services",
+      "ms": "Perkhidmatan",
+      "zh-CN": "服务"
+    }
+  },
+  {
+    "id": "shops",
+    "name": {
+      "en": "Shops",
+      "ms": "Kedai",
+      "zh-CN": "商店"
+    }
+  },
+  {
+    "id": "education",
+    "name": {
+      "en": "Education",
+      "ms": "Pendidikan",
+      "zh-CN": "教育"
+    }
+  },
+  {
+    "id": "operations",
+    "name": {
+      "en": "Team and operations",
+      "ms": "Pasukan dan operasi",
+      "zh-CN": "团队与运营"
+    }
+  }
+]

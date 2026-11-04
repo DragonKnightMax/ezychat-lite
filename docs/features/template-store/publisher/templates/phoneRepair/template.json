@@ -1,0 +1,36 @@
+{
+  "id": "phoneRepair",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "shops",
+  "icon": "smartphone",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Repair shop assistant",
+      "name": "Phone and electronics repair",
+      "description": "Answers about repairs, prices and turnaround times, and collects device details.",
+      "keywords": "phone repair screen battery laptop electronics",
+      "contextName": "Repair shop details"
+    },
+    "ms": {
+      "agentName": "Pembantu kedai baiki",
+      "name": "Baiki telefon dan elektronik",
+      "description": "Menjawab tentang pembaikan, harga dan tempoh siap, serta mengumpul butiran peranti.",
+      "keywords": "baiki telefon kedai telefon skrin bateri komputer riba elektronik phone repair screen battery laptop electronics",
+      "contextName": "Butiran kedai baiki"
+    },
+    "zh-CN": {
+      "agentName": "维修店助理",
+      "name": "手机和电子产品维修",
+      "description": "回答维修项目、价格和维修所需时间等问题，并收集设备详情。",
+      "keywords": "手机 维修 屏幕 电池 手提电脑 笔记本电脑 电子产品 phone repair screen battery laptop electronics",
+      "contextName": "维修店信息"
+    }
+  }
+}

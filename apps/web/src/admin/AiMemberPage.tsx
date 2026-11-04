@@ -32,6 +32,7 @@ import {
   useAiMember,
   type AiAgentList,
 } from '../api/ai';
+import { useRefreshTemplates, useTemplateCatalog } from '../api/ai-templates';
 import { useMakeGroupAgent } from '../api/ai-groups';
 import { ApiError, errorMessage } from '../api/client';
 import { useInboxes } from '../api/queries';
@@ -71,7 +72,7 @@ import { AgentDirectCard } from './AgentDirectCard';
 import { AgentGroupsCard, LITE_INBOX_NAME } from './AgentGroupsCard';
 import { AgentResolutionCard } from './AgentResolutionCard';
 import { BusinessTemplateCard } from './BusinessTemplateCard';
-import { businessTemplate, type BusinessTemplateId } from './business-templates';
+import { businessTemplate, type GalleryTemplate } from './business-templates';
 import { connectionReady, hasKnowledge, presetDefaults, type PresetTexts } from './ai-status';
 import { ConfirmDialog, ErrorState, Field, ListSkeleton, Pending, SaveBar } from './adminUi';
 import {
@@ -264,11 +265,14 @@ function AgentEditor({
   const [templateFor, setTemplateFor] = useState<AiAgentPreset | null>(null);
   // A business template asks first when the texts are the admin's own; its Business context item
   // is added by the next successful Save (the agent may not exist yet).
-  const [businessFor, setBusinessFor] = useState<BusinessTemplateId | null>(null);
+  const [businessFor, setBusinessFor] = useState<GalleryTemplate | null>(null);
   const [pendingItem, setPendingItem] = useState<AiContextTextBody | null>(null);
   // A group-agent template (Claims): a new agent is made group-only on Save, an existing one gets a hint.
   const [groupSetup, setGroupSetup] = useState(false);
   const addText = useAddAgentText();
+  // The signed template list; the gallery shows the app's own templates until (or unless) it loads.
+  const templateCatalog = useTemplateCatalog();
+  const refreshTemplates = useRefreshTemplates();
   const makeGroupAgent = useMakeGroupAgent();
   const [deleting, setDeleting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -376,8 +380,8 @@ function AgentEditor({
     else if (isNew) setTemplateFor(p);
     else setPreset(p);
   };
-  const applyBusiness = (templateId: BusinessTemplateId) => {
-    const tpl = businessTemplate(templateId, t);
+  const applyBusiness = (template: GalleryTemplate) => {
+    const tpl = businessTemplate(template, t);
     setPreset(tpl.preset);
     setDraft((old) => ({
       ...old,
@@ -387,15 +391,13 @@ function AgentEditor({
     }));
     setPendingItem(tpl.contextItem);
     setGroupSetup(tpl.groupAgent);
-    toast.success(
-      t('ai.businessTemplates.applied', { name: t(`ai.businessTemplates.${templateId}.name`) }),
-    );
+    toast.success(t('ai.businessTemplates.applied', { name: template.texts.name }));
   };
   /** Replaces unedited starting texts at once; the admin's own texts are replaced only after asking. */
-  const chooseBusiness = (templateId: BusinessTemplateId) => {
+  const chooseBusiness = (template: GalleryTemplate) => {
     if (onTemplate || (!draft.instructions.trim() && !draft.handoffRules.trim()))
-      applyBusiness(templateId);
-    else setBusinessFor(templateId);
+      applyBusiness(template);
+    else setBusinessFor(template);
   };
   /** Adds the applied template's Business context item once the agent is saved. */
   const addPendingItem = async (agentId: number) => {
@@ -652,6 +654,8 @@ function AgentEditor({
         disabled={busy}
         pendingItem={pendingItem?.name ?? null}
         groupSetup={groupSetupMode}
+        catalog={templateCatalog.data}
+        onBrowse={() => refreshTemplates.mutate()}
         onApply={chooseBusiness}
       />
 
@@ -1038,7 +1042,7 @@ function AgentEditor({
       <ConfirmDialog
         open={businessFor !== null}
         title={t('ai.businessTemplates.confirmTitle', {
-          name: businessFor ? t(`ai.businessTemplates.${businessFor}.name`) : '',
+          name: businessFor?.texts.name ?? '',
         })}
         confirmLabel={t('ai.businessTemplates.apply')}
         onConfirm={() => {

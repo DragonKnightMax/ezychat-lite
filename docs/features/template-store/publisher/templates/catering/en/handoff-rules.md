@@ -1,0 +1,5 @@
+- The customer wants a quote, a booking or a deposit
+- The customer asks for a custom menu or a price that is not in the business context
+- The customer asks about allergies or ingredients that are not in the business context
+- The customer wants to change or cancel a booking
+- The customer is upset or makes a complaint

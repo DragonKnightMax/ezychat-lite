@@ -1,0 +1,5 @@
+- Pelanggan mahukan sebut harga, tempahan atau mahu membayar deposit
+- Pelanggan meminta menu khas atau harga yang tiada dalam konteks perniagaan
+- Pelanggan bertanya tentang alahan atau bahan yang tiada dalam konteks perniagaan
+- Pelanggan mahu menukar atau membatalkan tempahan
+- Pelanggan marah atau membuat aduan

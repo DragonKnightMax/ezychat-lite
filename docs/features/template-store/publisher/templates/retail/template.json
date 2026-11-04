@@ -1,0 +1,36 @@
+{
+  "id": "retail",
+  "version": 1,
+  "schemaVersion": 1,
+  "minAppVersion": "0.1.75",
+  "editions": [
+    "lite",
+    "enterprise"
+  ],
+  "category": "shops",
+  "icon": "store",
+  "preset": "sales",
+  "texts": {
+    "en": {
+      "agentName": "Store assistant",
+      "name": "Retail shop",
+      "description": "Answers about products, prices, stock and opening hours for a physical shop.",
+      "keywords": "shop store retail outlet stock",
+      "contextName": "Shop details"
+    },
+    "ms": {
+      "agentName": "Pembantu kedai",
+      "name": "Kedai fizikal",
+      "description": "Menjawab tentang produk, harga, stok dan waktu operasi bagi kedai fizikal.",
+      "keywords": "kedai fizikal runcit cawangan outlet stok shop store retail stock",
+      "contextName": "Butiran kedai"
+    },
+    "zh-CN": {
+      "agentName": "门市助理",
+      "name": "零售店",
+      "description": "回答实体店的产品、价格、库存和营业时间等问题。",
+      "keywords": "商店 店铺 零售 门市 库存 shop store retail outlet stock",
+      "contextName": "商店信息"
+    }
+  }
+}

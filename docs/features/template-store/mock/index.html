@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claims template preview</title>
+    <style>
+      :root {
+        --background: #f8fafc;
+        --foreground: #0f172a;
+        --card: #fff;
+        --primary: #0f766e;
+        --primary-foreground: #fff;
+        --muted-foreground: #475569;
+        --accent: #f0fdfa;
+        --border: #e2e8f0;
+        --info: #0369a1;
+        --info-bg: #e0f2fe;
+        --success: #15803d;
+        --note: #fffbeb;
+        --note-border: #fcd34d;
+        --note-foreground: #78350f;
+        --overlay: rgb(0 0 0 / 0.5);
+      }
+      :root[data-theme='dark'] {
+        --background: #0b1220;
+        --foreground: #f1f5f9;
+        --card: #111827;
+        --primary: #14b8a6;
+        --primary-foreground: #04201d;
+        --muted-foreground: #94a3b8;
+        --accent: #12302d;
+        --border: #243042;
+        --info: #7dd3fc;
+        --info-bg: #0c2a3f;
+        --success: #22c55e;
+        --note: #2b2111;
+        --note-border: #b45309;
+        --note-foreground: #fde68a;
+        --overlay: rgb(0 0 0 / 0.7);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 16px;
+        border-bottom: 2px dashed var(--note-border);
+        background: var(--note);
+        color: var(--note-foreground);
+      }
+      .bar strong {
+        margin-right: 8px;
+      }
+      .bar button,
+      .bar select {
+        min-height: 36px;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .muted {
+        color: var(--muted-foreground);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      button {
+        font: inherit;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        padding: 6px 14px;
+        min-height: 44px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      button[aria-pressed='true'] {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chips button {
+        border-radius: 999px;
+        min-height: 36px;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+      .tpl {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: var(--card);
+      }
+      .tpl[aria-checked='true'] {
+        border-color: var(--primary);
+        background: var(--accent);
+      }
+      .tpl b {
+        font-weight: 600;
+      }
+      .banner {
+        display: flex;
+        gap: 10px;
+        border: 1px solid var(--info);
+        background: var(--info-bg);
+        color: var(--foreground);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .banner p {
+        margin: 0;
+      }
+      .banner p + p {
+        margin-top: 4px;
+      }
+      label {
+        font-weight: 600;
+      }
+      input,
+      textarea {
+        font: inherit;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: var(--card);
+        color: var(--foreground);
+      }
+      textarea {
+        min-height: 220px;
+        white-space: pre-wrap;
+      }
+      .types {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .type {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .type.on {
+        border-color: var(--primary);
+        background: var(--accent);
+      }
+      .switch {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .pill {
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+        align-self: center;
+      }
+      .pill.on {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .toast {
+        border: 1px solid var(--success);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: var(--card);
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font: inherit;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--overlay);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .dialog {
+        background: var(--card);
+        border-radius: 12px;
+        max-width: 900px;
+        width: 100%;
+        max-height: calc(100vh - 32px);
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (max-width: 640px) {
+        .types {
+          grid-template-columns: 1fr;
+        }
+        .overlay {
+          padding: 0;
+          align-items: flex-end;
+        }
+        .dialog {
+          border-radius: 12px 12px 0 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar" role="region" aria-label="Mock only">
+      <strong>Mock only</strong>
+      <button data-screen="gallery" data-list="loaded">1 Gallery: list loaded</button>
+      <button data-screen="gallery" data-list="builtin">2 Gallery: built-in only</button>
+      <button data-screen="gallery" data-list="offline">3 Gallery: offline</button>
+      <button data-screen="new">4 New agent from a list template</button>
+      <select id="lang" aria-label="Language">
+        <option value="en">English</option>
+        <option value="ms">Bahasa Melayu</option>
+        <option value="zh-CN">简体中文</option>
+      </select>
+      <button id="theme">Dark / Light</button>
+    </div>
+    <main id="app"></main>
+    <script>
+      const TEXTS = {
+        en: {
+          bt: {
+            title: 'Start from a business template',
+            hint: 'Ready-made AI agents for {{count}} kinds of business. Pick yours and apply it: the agent gets a name, a type, instructions and hand-off rules made for that business. You can change everything before you save.',
+            applyHint: 'Applying fills the boxes below. Nothing is saved until you click Save.',
+            apply: 'Apply template',
+            applied: '{{name}} template applied. Check the texts, then save.',
+            pendingItem:
+              'Save also adds the Business context item “{{item}}”. Fill in its lines afterwards.',
+            confirmTitle: 'Apply the {{name}} template?',
+            confirmBody:
+              'This replaces the instructions and hand-off rules in the boxes below with the template. Your saved agent changes only when you click Save.',
+            browse: 'Browse templates',
+            galleryTitle: 'Business templates',
+            galleryHint: 'Search or pick a category, select your business, then apply it.',
+            search: 'Search templates',
+            searchPlaceholder: 'For example dental, cake or aircond',
+            categories: 'Categories',
+            noMatch: 'No template matches. Try another word, or start from a type below.',
+            groupAgentTag: 'For WhatsApp groups',
+            groupSetupNew:
+              'Save also makes it a group agent: it answers in WhatsApp groups only, never in direct chats.',
+            groupSetupExisting:
+              'To finish: on this page turn on Answer in groups and turn off Answer direct chats.',
+            groupSetupNext:
+              'Then connect Google Sheets with a tab named Claims set to Add rows, and turn on Reads every message in each claims group (Group info).',
+            groupSetupDone:
+              '{{name}} now answers in WhatsApp groups only. Next: connect Google Sheets and choose its groups.',
+            groupSetupFailed:
+              'The agent was saved, but its group settings were not. Turn on Answer in groups and turn off Answer direct chats below.',
+            worksWith: 'Works with {{names}}',
+          },
+          category: {
+            all: 'All',
+            health: 'Health and beauty',
+            food: 'Food',
+            services: 'Services',
+            shops: 'Shops',
+            education: 'Education',
+            operations: 'Team and operations',
+          },
+          source: {
+            loaded: 'Template library updated {{date}}.',
+            builtin: 'Showing the templates in this version of {{product}}.',
+            offline: "Couldn't check for new templates. Showing the last saved list.",
+          },
+          worksWith: 'Works with {{names}}',
+          templates: {
+            clinic: {
+              name: 'Clinic',
+              description:
+                'Answers questions about opening hours, doctors, services, fees and panels. Never gives medical advice.',
+              agentName: 'Clinic assistant',
+              focus:
+                'BUSINESS\nYou answer for a clinic. Help patients with opening hours, doctors on duty, services and fees, panel and insurance, and how to book.\n- Never diagnose, never suggest medicine or doses, and never say whether a symptom is serious.\n- If the customer describes an emergency (for example chest pain, trouble breathing or heavy bleeding), tell them to call 999 or go to the nearest emergency department now, then hand over.',
+              handoffRules:
+                '- The customer describes symptoms or asks for medical advice\n- The customer describes an emergency\n- The customer wants to book, change or cancel an appointment\n- The customer asks about their test results, medical records, medical certificate or bill\n- The customer asks about a panel, insurance or company claim that is not in the business context\n- The customer is upset or makes a complaint',
+              contextName: 'Clinic details',
+              contextText:
+                'Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nClinic name:\nAddress and parking:\nOpening hours:\nPublic holidays:\nDoctors and their days:\nServices and fees:\nPanel and insurance accepted:\nHow to book an appointment:\nWhat to bring:\nPayment methods:\nDefault language for replies:',
+              keywords: 'doctor GP medical klinik',
+            },
+            insurance: {
+              name: 'Insurance agent',
+              description:
+                'Answers general questions about plans and the next steps. Never gives personal financial advice.',
+              keywords: 'insurance takaful medical life car policy',
+              agentName: 'Insurance assistant',
+              focus:
+                'BUSINESS\nYou answer for an insurance or takaful agent. Help customers with the types of plans offered, what information the agent needs and how to arrange a meeting.\n- Never recommend a plan for a person, never quote a premium and never promise what a policy covers.\n- Collect the type of cover they want and a good time to call, then let our team follow up.',
+              handoffRules:
+                '- The customer asks which plan is right for them or for a premium\n- The customer wants to buy, change or cancel a policy\n- The customer wants to make or follow up a claim\n- The customer asks about their own policy or payment\n- The customer is upset or makes a complaint',
+              contextName: 'Insurance agent details',
+              contextText:
+                'Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nAgent name:\nCompany:\nTypes of plans offered:\nAreas covered:\nWorking hours:\nHow to arrange a meeting:\nDocuments needed:\nDefault language for replies:',
+            },
+            tuition: {
+              name: 'Tuition centre',
+              description:
+                'Answers parents about subjects, levels, class times, fees and trial classes, and leads them to register.',
+              agentName: 'Tuition assistant',
+              focus:
+                "BUSINESS\nYou answer for a tuition centre. Help parents and students with subjects, levels, class times, fees, trial classes and how to register.\n- Ask for the student's level (for example Standard 5, Form 4 or IGCSE) when it changes the answer.\n- Give only fees and times written in the business context.",
+              handoffRules:
+                "- The parent wants to register, pay or ask for a refund\n- The parent asks about their child's progress, attendance or results\n- The parent wants to change a class or a tutor\n- The parent asks about special learning needs\n- The parent or student is upset or makes a complaint",
+              contextName: 'Tuition centre details',
+              contextText:
+                'Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nCentre name:\nAddress and parking:\nSubjects and levels:\nClass schedule:\nClass size:\nFees (per month or per subject):\nRegistration fee and deposit:\nTrial class:\nOnline or physical classes:\nHow to register:\nHolidays and replacement classes:\nDefault language for replies:',
+              keywords: 'tuition class exam SPM teacher',
+            },
+            retail: {
+              name: 'Retail shop',
+              description:
+                'Answers about products, prices, stock and opening hours for a physical shop.',
+              keywords: 'shop store retail outlet stock',
+              agentName: 'Store assistant',
+              focus:
+                'BUSINESS\nYou answer for a retail shop. Help customers with products and prices, opening hours, location, promotions and whether they can reserve an item.\n- Give only products, prices and promotions written in the business context; never promise stock.',
+              handoffRules:
+                '- The customer wants to reserve or buy an item\n- The customer asks if an item is in stock today\n- The customer wants a return, an exchange or a refund\n- The customer is upset or makes a complaint',
+              contextName: 'Shop details',
+              contextText:
+                'Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nShop name:\nAddress and parking:\nOpening hours:\nProducts and prices:\nCurrent promotions:\nReturns and exchanges:\nPayment methods:\nDefault language for replies:',
+            },
+            claims: {
+              name: 'Claims agent',
+              description:
+                'Records claims posted in your WhatsApp groups to Google Sheets, confirms each one and asks for missing details. Never approves or pays.',
+              keywords:
+                'claim claims expense reimbursement receipt invoice policy insurance sheet group',
+              agentName: 'Claims assistant',
+              focus:
+                'CLAIMS\nYou record claims that members post in our WhatsApp groups. You are not a sales or customer service agent.\n- A claim needs: policy or member number, date of the event, what happened, and the amount claimed. The Business context item "Claim rules" lists the claim types and any other details needed.\n- When a member posts a claim, save it as a new row in the tab "Claims". Fill each column only from what the member wrote or from the receipt, invoice or PDF they sent. Never guess a value.\n- After saving, reply "Recorded ✅" to their message and repeat the key values (number, date, amount) so they can check them.\n- If a detail is missing or unclear, do not save yet. Ask only for what is missing, then save when they reply.\n- Read photos and PDFs of receipts and invoices for the date and amount. If a file cannot be read, ask for a clearer copy.\n- If a member corrects a claim, save the corrected claim as a new row and say it replaces the earlier one.\n- Stay quiet on messages that are not a claim (greetings, chat, thanks, messages between members).\n- Never approve or reject a claim, never promise payment or a payment date, and never say whether something is covered.',
+              handoffRules:
+                '- The member asks whether a claim is approved, rejected or paid, or when it will be paid\n- The member disputes a decision or an amount, or wants to cancel a claim\n- A file still cannot be read after one retry, looks edited, or does not match the details written\n- The message shares medical reports, IC numbers, bank details or other sensitive personal information that the claim does not need\n- The claim is above the limit or after the deadline in Claim rules\n- The member is upset or makes a complaint',
+              contextName: 'Claim rules',
+              contextText:
+                'Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nClaim types:\nDetails every claim needs:\nDocuments to attach (receipt, invoice, report):\nLimit per claim:\nSubmission deadline:\nWho approves claims:\nWhen approved claims are paid:\nWhere to send the original documents:\nDefault language for replies:',
+            },
+          },
+          presets: {
+            sales: 'Sales',
+            faq: 'FAQ',
+            custom: 'Custom',
+            salesDescription: 'Answers product questions and guides customers to order.',
+            faqDescription: 'Answers questions from your Business context. Never sells.',
+            customDescription: 'Starts blank: you write the role and the hand-over rules.',
+            badge: '{{preset}} agent',
+          },
+          ui: {
+            name: 'Agent name',
+            newAgent: 'New AI agent',
+            role: 'Role (instructions)',
+            handoff: 'Hand-over rules',
+            create: 'Create agent',
+            save: 'Save',
+            cancel: 'Cancel',
+            pick: 'Starting point',
+            context: 'Business context',
+            direct: 'Direct chats',
+            directSwitch: 'Answer direct chats',
+            groups: 'Groups',
+            groupsSwitch: 'Answer in groups',
+          },
+        },
+        ms: {
+          bt: {
+            title: 'Mula daripada templat perniagaan',
+            hint: 'Ejen AI sedia ada untuk {{count}} jenis perniagaan. Pilih perniagaan anda dan gunakannya: ejen mendapat nama, jenis, arahan dan peraturan serahan yang dibuat untuk perniagaan itu. Anda boleh mengubah semuanya sebelum menyimpan.',
+            applyHint:
+              'Templat mengisi kotak di bawah. Tiada apa-apa disimpan sehingga anda klik Simpan.',
+            apply: 'Gunakan templat',
+            applied: 'Templat {{name}} digunakan. Semak teks, kemudian simpan.',
+            pendingItem:
+              'Simpan juga menambah item Konteks perniagaan “{{item}}”. Isi barisnya selepas itu.',
+            confirmTitle: 'Gunakan templat {{name}}?',
+            confirmBody:
+              'Ini menggantikan arahan dan peraturan serahan dalam kotak di bawah dengan templat. Ejen yang disimpan berubah hanya apabila anda klik Simpan.',
+            browse: 'Lihat templat',
+            galleryTitle: 'Templat perniagaan',
+            galleryHint: 'Cari atau pilih kategori, pilih perniagaan anda, kemudian gunakannya.',
+            search: 'Cari templat',
+            searchPlaceholder: 'Contohnya gigi, kek atau aircond',
+            categories: 'Kategori',
+            noMatch:
+              'Tiada templat yang sepadan. Cuba perkataan lain, atau mula daripada jenis di bawah.',
+            groupAgentTag: 'Untuk kumpulan WhatsApp',
+            groupSetupNew:
+              'Simpan juga menjadikannya ejen kumpulan: ia menjawab dalam kumpulan WhatsApp sahaja, tidak pernah dalam sembang terus.',
+            groupSetupExisting:
+              'Untuk selesai: pada halaman ini hidupkan Jawab dalam kumpulan dan matikan Jawab sembang terus.',
+            groupSetupNext:
+              'Kemudian sambungkan Google Sheets dengan tab bernama Claims yang ditetapkan Tambah baris, dan hidupkan Membaca setiap mesej dalam setiap kumpulan tuntutan (Maklumat kumpulan).',
+            groupSetupDone:
+              '{{name}} kini menjawab dalam kumpulan WhatsApp sahaja. Seterusnya: sambungkan Google Sheets dan pilih kumpulannya.',
+            groupSetupFailed:
+              'Ejen telah disimpan, tetapi tetapan kumpulannya tidak. Hidupkan Jawab dalam kumpulan dan matikan Jawab sembang terus di bawah.',
+            worksWith: 'Berfungsi dengan {{names}}',
+          },
+          category: {
+            all: 'Semua',
+            health: 'Kesihatan dan kecantikan',
+            food: 'Makanan',
+            services: 'Perkhidmatan',
+            shops: 'Kedai',
+            education: 'Pendidikan',
+            operations: 'Pasukan dan operasi',
+          },
+          source: {
+            loaded: 'Pustaka templat dikemas kini {{date}}.',
+            builtin: 'Menunjukkan templat dalam versi {{product}} ini.',
+            offline:
+              'Tidak dapat menyemak templat baharu. Menunjukkan senarai terakhir yang disimpan.',
+          },
+          worksWith: 'Berfungsi dengan {{names}}',
+          templates: {
+            clinic: {
+              name: 'Klinik',
+              description:
+                'Menjawab soalan tentang waktu operasi, doktor, perkhidmatan, yuran dan panel. Tidak pernah memberi nasihat perubatan.',
+              agentName: 'Pembantu klinik',
+              focus:
+                'PERNIAGAAN\nAnda menjawab bagi pihak sebuah klinik. Bantu pesakit tentang waktu operasi, doktor bertugas, perkhidmatan dan yuran, panel dan insurans, serta cara membuat temu janji.\n- Jangan sekali-kali mendiagnosis, mencadangkan ubat atau dos, atau menyatakan sama ada sesuatu simptom serius.\n- Jika pelanggan menerangkan kecemasan (contohnya sakit dada, sukar bernafas atau pendarahan teruk), suruh mereka menghubungi 999 atau pergi ke jabatan kecemasan terdekat sekarang, kemudian serahkan sembang.',
+              handoffRules:
+                '- Pelanggan menerangkan simptom atau meminta nasihat perubatan\n- Pelanggan menerangkan kecemasan\n- Pelanggan mahu membuat, menukar atau membatalkan temu janji\n- Pelanggan bertanya tentang keputusan ujian, rekod perubatan, sijil cuti sakit atau bil mereka\n- Pelanggan bertanya tentang tuntutan panel, insurans atau syarikat yang tiada dalam konteks perniagaan\n- Pelanggan marah atau membuat aduan',
+              contextName: 'Butiran klinik',
+              contextText:
+                'Isi setiap baris selepas titik bertindih dan padam baris yang tidak berkaitan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nNama klinik:\nAlamat dan tempat letak kereta:\nWaktu operasi:\nCuti umum:\nDoktor dan hari bertugas:\nPerkhidmatan dan yuran:\nPanel dan insurans yang diterima:\nCara membuat temu janji:\nApa yang perlu dibawa:\nKaedah pembayaran:\nBahasa lalai untuk balasan:',
+              keywords: 'doktor klinik perubatan kesihatan GP doctor medical',
+            },
+            insurance: {
+              name: 'Ejen insurans',
+              description:
+                'Menjawab soalan umum tentang pelan dan langkah seterusnya. Tidak pernah memberi nasihat kewangan peribadi.',
+              keywords:
+                'insurans takaful perubatan hayat kereta polisi insurance medical life car policy',
+              agentName: 'Pembantu insurans',
+              focus:
+                'PERNIAGAAN\nAnda menjawab bagi pihak seorang ejen insurans atau takaful. Bantu pelanggan tentang jenis pelan yang ditawarkan, maklumat yang ejen perlukan dan cara mengatur pertemuan.\n- Jangan sekali-kali mengesyorkan pelan untuk seseorang, menyebut harga premium atau menjanjikan apa yang dilindungi oleh sesuatu polisi.\n- Kumpul jenis perlindungan yang dikehendaki dan masa yang sesuai untuk dihubungi, kemudian biar pasukan kami membuat susulan.',
+              handoffRules:
+                '- Pelanggan bertanya pelan mana yang sesuai untuk mereka atau bertanya harga premium\n- Pelanggan mahu membeli, menukar atau membatalkan polisi\n- Pelanggan mahu membuat atau menyusuli tuntutan\n- Pelanggan bertanya tentang polisi atau bayaran mereka sendiri\n- Pelanggan marah atau membuat aduan',
+              contextName: 'Butiran ejen insurans',
+              contextText:
+                'Isi setiap baris selepas titik bertindih dan padam baris yang tidak berkaitan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nNama ejen:\nSyarikat:\nJenis pelan yang ditawarkan:\nKawasan liputan:\nWaktu bekerja:\nCara mengatur pertemuan:\nDokumen yang diperlukan:\nBahasa lalai untuk balasan:',
+            },
+            tuition: {
+              name: 'Pusat tuisyen',
+              description:
+                'Menjawab ibu bapa tentang subjek, tahap, waktu kelas, yuran dan kelas percubaan, serta membantu mereka mendaftar.',
+              agentName: 'Pembantu tuisyen',
+              focus:
+                'PERNIAGAAN\nAnda menjawab bagi pihak sebuah pusat tuisyen. Bantu ibu bapa dan pelajar tentang subjek, tahap, waktu kelas, yuran, kelas percubaan dan cara mendaftar.\n- Tanya tahap pelajar (contohnya Tahun 5, Tingkatan 4 atau IGCSE) apabila ia mengubah jawapan.\n- Beri hanya yuran dan waktu yang tertulis dalam konteks perniagaan.',
+              handoffRules:
+                '- Ibu bapa mahu mendaftar, membayar atau meminta bayaran balik\n- Ibu bapa bertanya tentang kemajuan, kehadiran atau keputusan anak mereka\n- Ibu bapa mahu menukar kelas atau tutor\n- Ibu bapa bertanya tentang keperluan pembelajaran khas\n- Ibu bapa atau pelajar marah atau membuat aduan',
+              contextName: 'Butiran pusat tuisyen',
+              contextText:
+                'Isi setiap baris selepas titik bertindih dan padam baris yang tidak berkaitan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nNama pusat:\nAlamat dan tempat letak kereta:\nSubjek dan tahap:\nJadual kelas:\nSaiz kelas:\nYuran (sebulan atau setiap subjek):\nYuran pendaftaran dan deposit:\nKelas percubaan:\nKelas dalam talian atau fizikal:\nCara mendaftar:\nCuti dan kelas gantian:\nBahasa lalai untuk balasan:',
+              keywords: 'tuisyen kelas peperiksaan SPM cikgu guru tuition class exam teacher',
+            },
+            retail: {
+              name: 'Kedai fizikal',
+              description:
+                'Menjawab tentang produk, harga, stok dan waktu operasi bagi kedai fizikal.',
+              keywords: 'kedai fizikal runcit cawangan outlet stok shop store retail stock',
+              agentName: 'Pembantu kedai',
+              focus:
+                'PERNIAGAAN\nAnda menjawab bagi pihak sebuah kedai fizikal. Bantu pelanggan tentang produk dan harga, waktu operasi, lokasi, promosi dan sama ada mereka boleh menempah sesuatu barang.\n- Beri hanya produk, harga dan promosi yang tertulis dalam konteks perniagaan; jangan sekali-kali menjanjikan stok.',
+              handoffRules:
+                '- Pelanggan mahu menempah atau membeli barang\n- Pelanggan bertanya sama ada barang ada stok hari ini\n- Pelanggan mahu pemulangan, pertukaran atau bayaran balik\n- Pelanggan marah atau membuat aduan',
+              contextName: 'Butiran kedai',
+              contextText:
+                'Isi setiap baris selepas titik bertindih dan padam baris yang tidak berkaitan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nNama kedai:\nAlamat dan tempat letak kereta:\nWaktu operasi:\nProduk dan harga:\nPromosi semasa:\nPemulangan dan pertukaran:\nKaedah pembayaran:\nBahasa lalai untuk balasan:',
+            },
+            claims: {
+              name: 'Ejen tuntutan',
+              description:
+                'Merekod tuntutan yang dihantar dalam kumpulan WhatsApp anda ke Google Sheets, mengesahkan setiap satu dan meminta butiran yang tiada. Tidak pernah meluluskan atau membayar.',
+              keywords:
+                'tuntutan claim klaim perbelanjaan bayaran balik resit invois polisi insurans helaian kumpulan claims expense reimbursement receipt invoice policy insurance sheet group',
+              agentName: 'Pembantu tuntutan',
+              focus:
+                'TUNTUTAN\nAnda merekod tuntutan yang dihantar oleh ahli dalam kumpulan WhatsApp kami. Anda bukan ejen jualan atau khidmat pelanggan.\n- Setiap tuntutan memerlukan: nombor polisi atau ahli, tarikh kejadian, apa yang berlaku dan jumlah yang dituntut. Item Konteks perniagaan "Peraturan tuntutan" menyenaraikan jenis tuntutan dan butiran lain yang diperlukan.\n- Apabila ahli menghantar tuntutan, simpan sebagai baris baharu dalam tab "Claims". Isi setiap lajur hanya daripada apa yang ditulis oleh ahli atau daripada resit, invois atau PDF yang dihantarnya. Jangan sekali-kali meneka nilai.\n- Selepas menyimpan, balas "Direkod ✅" kepada mesejnya dan ulang nilai utama (nombor, tarikh, jumlah) supaya dia boleh menyemaknya.\n- Jika butiran tiada atau tidak jelas, jangan simpan dahulu. Tanya hanya apa yang tiada, kemudian simpan apabila dia membalas.\n- Baca foto dan PDF resit dan invois untuk tarikh dan jumlah. Jika fail tidak dapat dibaca, minta salinan yang lebih jelas.\n- Jika ahli membetulkan tuntutan, simpan tuntutan yang dibetulkan sebagai baris baharu dan katakan ia menggantikan yang sebelumnya.\n- Diam bagi mesej yang bukan tuntutan (ucapan, sembang, terima kasih, mesej antara ahli).\n- Jangan sekali-kali meluluskan atau menolak tuntutan, menjanjikan bayaran atau tarikh bayaran, atau mengatakan sama ada sesuatu dilindungi.',
+              handoffRules:
+                '- Ahli bertanya sama ada tuntutan diluluskan, ditolak atau dibayar, atau bila ia akan dibayar\n- Ahli mempertikaikan keputusan atau jumlah, atau mahu membatalkan tuntutan\n- Fail masih tidak dapat dibaca selepas satu cubaan semula, kelihatan diubah, atau tidak sepadan dengan butiran yang ditulis\n- Mesej berkongsi laporan perubatan, nombor IC, butiran bank atau maklumat peribadi sensitif lain yang tidak diperlukan oleh tuntutan\n- Tuntutan melebihi had atau selepas tarikh akhir dalam Peraturan tuntutan\n- Ahli kecewa atau membuat aduan',
+              contextName: 'Peraturan tuntutan',
+              contextText:
+                'Isi setiap baris selepas titik bertindih dan padamkan baris yang tidak berkenaan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nJenis tuntutan:\nButiran yang diperlukan setiap tuntutan:\nDokumen untuk dilampirkan (resit, invois, laporan):\nHad setiap tuntutan:\nTarikh akhir penghantaran:\nSiapa yang meluluskan tuntutan:\nBila tuntutan yang diluluskan dibayar:\nKe mana dokumen asal dihantar:\nBahasa lalai untuk balasan:',
+            },
+          },
+          presets: {
+            sales: 'Jualan',
+            faq: 'Soalan lazim',
+            custom: 'Tersuai',
+            salesDescription:
+              'Menjawab soalan produk dan membimbing pelanggan untuk membuat pesanan.',
+            faqDescription:
+              'Menjawab soalan daripada konteks perniagaan anda. Tidak pernah menjual.',
+            customDescription: 'Bermula kosong: anda menulis peranan dan peraturan serahan.',
+            badge: 'Ejen {{preset}}',
+          },
+          ui: {
+            name: 'Nama ejen',
+            newAgent: 'Ejen AI baharu',
+            role: 'Peranan (arahan)',
+            handoff: 'Peraturan serahan',
+            create: 'Cipta ejen',
+            save: 'Simpan',
+            cancel: 'Batal',
+            pick: 'Titik permulaan',
+            context: 'Konteks perniagaan',
+            direct: 'Sembang terus',
+            directSwitch: 'Jawab sembang terus',
+            groups: 'Kumpulan',
+            groupsSwitch: 'Jawab dalam kumpulan',
+          },
+        },
+        'zh-CN': {
+          bt: {
+            title: '从行业模板开始',
+            hint: '为 {{count}} 种行业准备好的 AI 代理。选择您的行业并应用：代理会获得为该行业准备的名称、类型、指令和转交规则。保存前您可以修改所有内容。',
+            applyHint: '应用模板会填写下方的输入框。点击“保存”之前不会保存任何内容。',
+            apply: '应用模板',
+            applied: '已应用“{{name}}”模板。请检查文本，然后保存。',
+            pendingItem: '保存时还会添加业务背景条目“{{item}}”。之后请填写其中各行。',
+            confirmTitle: '应用“{{name}}”模板？',
+            confirmBody:
+              '这会用模板替换下方输入框中的指令和转交规则。只有点击“保存”后，已保存的代理才会更改。',
+            browse: '浏览模板',
+            galleryTitle: '行业模板',
+            galleryHint: '搜索或选择类别，选中您的行业，然后应用。',
+            search: '搜索模板',
+            searchPlaceholder: '例如 牙医、蛋糕或冷气',
+            categories: '类别',
+            noMatch: '没有匹配的模板。请换个词，或从下方的类型开始。',
+            groupAgentTag: '用于 WhatsApp 群组',
+            groupSetupNew: '保存时还会把它设为群组代理：它只在 WhatsApp 群组中回答，从不回答私聊。',
+            groupSetupExisting: '最后一步：在本页打开“在群组中回答”，并关闭“回答私聊”。',
+            groupSetupNext:
+              '然后连接 Google Sheets，把名为 Claims 的工作表设为“添加行”，并在每个理赔群组的“群组信息”中打开“读取每条消息”。',
+            groupSetupDone:
+              '{{name}} 现在只在 WhatsApp 群组中回答。下一步：连接 Google Sheets 并选择它的群组。',
+            groupSetupFailed:
+              '代理已保存，但群组设置没有保存。请在下方打开“在群组中回答”，并关闭“回答私聊”。',
+            worksWith: '可搭配 {{names}}',
+          },
+          category: {
+            all: '全部',
+            health: '健康与美容',
+            food: '餐饮',
+            services: '服务',
+            shops: '商店',
+            education: '教育',
+            operations: '团队与运营',
+          },
+          source: {
+            loaded: '模板库已于 {{date}} 更新。',
+            builtin: '显示此版本 {{product}} 自带的模板。',
+            offline: '无法检查新模板，显示上次保存的列表。',
+          },
+          worksWith: '可搭配 {{names}}',
+          templates: {
+            clinic: {
+              name: '诊所',
+              description: '回答营业时间、医生、服务、费用和合作保险等问题。绝不提供医疗建议。',
+              agentName: '诊所助理',
+              focus:
+                '业务\n您代表一家诊所回答问题。帮助患者了解营业时间、值班医生、服务和费用、合作保险（panel）以及如何预约。\n- 绝不诊断，绝不建议药物或剂量，也绝不判断某个症状是否严重。\n- 如果客户描述紧急情况（例如胸痛、呼吸困难或大量出血），请让他们立即拨打 999 或前往最近的急诊部，然后转交聊天。',
+              handoffRules:
+                '- 客户描述症状或寻求医疗建议\n- 客户描述紧急情况\n- 客户想预约、更改或取消预约\n- 客户询问自己的检查结果、病历、病假单或账单\n- 客户询问业务背景中没有的合作保险、保险或公司报销\n- 客户不满或投诉',
+              contextName: '诊所信息',
+              contextText:
+                '请在每行冒号后填写内容，并删除不适用的行。AI 会把空白行视为未知，并把聊天转交给您的团队。\n\n诊所名称：\n地址和停车：\n营业时间：\n公共假期：\n医生及值班日：\n服务和费用：\n接受的合作保险（panel）和保险：\n如何预约：\n需要携带的物品：\n付款方式：\n回复的默认语言：',
+              keywords: '医生 诊所 家庭医生 看病 doctor GP medical klinik',
+            },
+            insurance: {
+              name: '保险代理',
+              description: '回答关于保险计划和下一步的一般问题。绝不提供个人理财建议。',
+              keywords:
+                '保险 伊斯兰保险 医药 人寿 汽车 保单 insurance takaful medical life car policy',
+              agentName: '保险助理',
+              focus:
+                '业务\n您代表一位保险或 takaful（伊斯兰保险）代理回答问题。帮助客户了解提供的保险计划类型、代理需要哪些资料，以及如何安排见面。\n- 绝不为个人推荐计划，绝不报保费，也绝不承诺保单的保障范围。\n- 请收集他们想要的保障类型和方便来电的时间，然后让我们的团队跟进。',
+              handoffRules:
+                '- 客户询问哪个计划适合自己，或询问保费\n- 客户想购买、更改或取消保单\n- 客户想提出或跟进索赔\n- 客户询问自己的保单或付款\n- 客户不满或投诉',
+              contextName: '保险代理信息',
+              contextText:
+                '请在每行冒号后填写内容，并删除不适用的行。AI 会把空白行视为未知，并把聊天转交给您的团队。\n\n代理姓名：\n公司：\n提供的保险计划类型：\n服务地区：\n工作时间：\n如何安排见面：\n所需文件：\n回复的默认语言：',
+            },
+            tuition: {
+              name: '补习中心',
+              description: '回答家长关于科目、年级、上课时间、费用和试听课的问题，并引导他们报名。',
+              agentName: '补习助理',
+              focus:
+                '业务\n您代表一家补习中心回答问题。帮助家长和学生了解科目、年级、上课时间、费用、试听课以及如何报名。\n- 当学生年级会影响答案时（例如五年级、中四或 IGCSE），请询问学生的年级。\n- 只提供业务背景中写明的费用和时间。',
+              handoffRules:
+                '- 家长想报名、付款或申请退款\n- 家长询问孩子的进度、出勤或成绩\n- 家长想更换班级或老师\n- 家长询问特殊学习需求\n- 家长或学生不满或投诉',
+              contextName: '补习中心信息',
+              contextText:
+                '请在每行冒号后填写内容，并删除不适用的行。AI 会把空白行视为未知，并把聊天转交给您的团队。\n\n中心名称：\n地址和停车：\n科目和年级：\n上课时间表：\n班级人数：\n费用（按月或按科目）：\n报名费和押金：\n试听课：\n线上或实体课：\n如何报名：\n假期和补课：\n回复的默认语言：',
+              keywords: '补习 课程 考试 老师 tuition class exam SPM teacher',
+            },
+            retail: {
+              name: '零售店',
+              description: '回答实体店的产品、价格、库存和营业时间等问题。',
+              keywords: '商店 店铺 零售 门市 库存 shop store retail outlet stock',
+              agentName: '门市助理',
+              focus:
+                '业务\n您代表一家零售店回答问题。帮助客户了解产品和价格、营业时间、地点、促销，以及能否预留商品。\n- 只提供业务背景中写明的产品、价格和促销；绝不保证有货。',
+              handoffRules:
+                '- 客户想预留或购买商品\n- 客户询问某件商品今天是否有货\n- 客户想退货、换货或退款\n- 客户不满或投诉',
+              contextName: '商店信息',
+              contextText:
+                '请在每行冒号后填写内容，并删除不适用的行。AI 会把空白行视为未知，并把聊天转交给您的团队。\n\n店名：\n地址和停车：\n营业时间：\n产品和价格：\n当前促销：\n退货和换货：\n付款方式：\n回复的默认语言：',
+            },
+            claims: {
+              name: '理赔代理',
+              description:
+                '把 WhatsApp 群组中提交的理赔记录到 Google Sheets，逐一确认，并询问缺少的资料。从不批准或付款。',
+              keywords:
+                '理赔 索赔 报销 收据 发票 保单 保险 表格 群组 claim claims expense reimbursement receipt invoice policy insurance sheet group',
+              agentName: '理赔助理',
+              focus:
+                '理赔\n您负责记录成员在我们 WhatsApp 群组中提交的理赔。您不是销售或客服代理。\n- 每项理赔需要：保单号或会员号、事件日期、发生了什么，以及理赔金额。业务背景条目“理赔规则”列出了理赔类型和其他所需资料。\n- 成员提交理赔时，把它作为新的一行保存到工作表“Claims”。每一列只能根据成员所写的内容，或他们发送的收据、发票或 PDF 填写。绝不猜测任何数值。\n- 保存后，回复他们的消息“已记录 ✅”，并重复关键数值（号码、日期、金额），方便他们核对。\n- 如果资料缺少或不清楚，先不要保存。只询问缺少的部分，等他们回复后再保存。\n- 读取收据和发票的照片及 PDF 中的日期和金额。如果文件无法读取，请对方发送更清晰的副本。\n- 如果成员更正理赔，把更正后的理赔保存为新的一行，并说明它取代之前那一行。\n- 对不是理赔的消息保持沉默（问候、闲聊、道谢、成员之间的消息）。\n- 绝不批准或拒绝理赔，绝不承诺付款或付款日期，也绝不说明某项是否在保障范围内。',
+              handoffRules:
+                '- 成员询问理赔是否已批准、被拒绝或已付款，或何时付款\n- 成员对决定或金额有异议，或想取消理赔\n- 文件重试一次后仍无法读取、看起来被修改过，或与所写资料不符\n- 消息分享了理赔不需要的医疗报告、身份证号码、银行资料或其他敏感个人信息\n- 理赔超过“理赔规则”中的限额或截止日期\n- 成员不满或投诉',
+              contextName: '理赔规则',
+              contextText:
+                '请在每行冒号后填写内容，并删除不适用的行。AI 会把空白行视为未知，并把聊天转交给您的团队。\n\n理赔类型：\n每项理赔需要的资料：\n需附上的文件（收据、发票、报告）：\n每项理赔限额：\n提交截止日期：\n谁批准理赔：\n批准后的理赔何时付款：\n原始文件寄往何处：\n回复的默认语言：',
+            },
+          },
+          presets: {
+            sales: '销售',
+            faq: '常见问题',
+            custom: '自定义',
+            salesDescription: '回答产品问题，并引导客户下单。',
+            faqDescription: '根据您的业务背景回答问题。从不推销。',
+            customDescription: '从空白开始：由您编写角色和转交规则。',
+            badge: '{{preset}}客服',
+          },
+          ui: {
+            name: '客服名称',
+            newAgent: '新建 AI 客服',
+            role: '角色（指令）',
+            handoff: '转交规则',
+            create: '创建客服',
+            save: '保存',
+            cancel: '取消',
+            pick: '起点',
+            context: '业务背景',
+            direct: '私聊',
+            directSwitch: '回答私聊',
+            groups: '群组',
+            groupsSwitch: '在群组中回答',
+          },
+        },
+      };
+      const ICON = {
+        clinic: '🩺',
+        insurance: '🛡️',
+        tuition: '🎓',
+        retail: '🏪',
+        claims: '🧾',
+        venue: '🎉',
+      };
+      const CATS = {
+        clinic: 'health',
+        insurance: 'services',
+        tuition: 'education',
+        retail: 'shops',
+        claims: 'operations',
+        venue: 'events',
+      };
+      const PRESET = {
+        clinic: 'faq',
+        insurance: 'faq',
+        tuition: 'sales',
+        retail: 'sales',
+        claims: 'custom',
+        venue: 'sales',
+      };
+      // Mock data only: one template from the signed list (English and Malay; Chinese falls back to
+      // the whole English set) in a category only the list defines.
+      const VENUE = {
+        en: {
+          agentName: 'Venue assistant',
+          name: 'Event venue',
+          description:
+            'Answers about halls, dates, packages and deposits. Hands bookings to your team.',
+          contextName: 'Venue details',
+          focus:
+            'BUSINESS\nYou answer for an event venue. Help customers with halls, capacity, packages, prices and free dates.',
+          handoffRules:
+            '- The customer wants to book or hold a date\n- The customer asks for a discount\n- The customer is upset or makes a complaint',
+          contextText:
+            'Fill in each line after the colon.\n\nVenue name:\nHalls and capacity:\nPackages and prices:\nDeposit and payment:',
+        },
+        ms: {
+          agentName: 'Pembantu dewan',
+          name: 'Dewan acara',
+          description:
+            'Menjawab tentang dewan, tarikh, pakej dan deposit. Tempahan diserahkan kepada pasukan anda.',
+          contextName: 'Butiran dewan',
+          focus: 'PERNIAGAAN\nAnda menjawab untuk dewan acara.',
+          handoffRules: '- Pelanggan mahu menempah tarikh',
+          contextText: 'Nama dewan:\nDewan dan kapasiti:',
+        },
+      };
+      const EVENTS = { en: 'Events', ms: 'Acara' };
+      const LIST_DATE = { en: '4 Nov 2026', ms: '4 Nov 2026', 'zh-CN': '2026年11月4日' };
+      const state = { screen: 'gallery', list: 'loaded', lang: 'en', cat: null, selected: 'venue' };
+      const venue = () => VENUE[state.lang] ?? VENUE.en;
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      const fill = (s, vars) => s.replace(/{{(\w+)}}/g, (_, k) => vars[k] ?? '');
+      function gallery(T) {
+        const listed = state.list !== 'builtin';
+        const cats = ['health', 'food', 'services', 'shops', 'education', 'operations'];
+        if (listed) cats.push('events');
+        const all = { ...T.templates, ...(listed ? { venue: venue() } : {}) };
+        const catName = (c) => (c === 'events' ? (EVENTS[state.lang] ?? EVENTS.en) : T.category[c]);
+        const shown = Object.keys(all).filter((id) => !state.cat || CATS[id] === state.cat);
+        const source =
+          state.list === 'loaded'
+            ? fill(T.source.loaded, { date: LIST_DATE[state.lang] })
+            : state.list === 'offline'
+              ? T.source.offline
+              : fill(T.source.builtin, { product: 'EzyChat Lite' });
+        return `<div class="overlay"><div class="dialog" role="dialog" aria-label="${esc(T.bt.galleryTitle)}">
+          <h2 style="margin:0">${esc(T.bt.galleryTitle)}</h2><p class="muted" style="margin:0">${esc(T.bt.galleryHint)}</p>
+          <input type="search" placeholder="${esc(T.bt.searchPlaceholder)}" aria-label="${esc(T.bt.search)}" />
+          <div class="chips" role="group">${[null, ...cats].map((c) => `<button data-cat="${c ?? ''}" aria-pressed="${state.cat === c}">${esc(c ? catName(c) : T.category.all)}</button>`).join('')}</div>
+          <div class="grid" role="radiogroup">${shown
+            .map(
+              (
+                id,
+              ) => `<div class="tpl" role="radio" tabindex="0" data-tpl="${id}" aria-checked="${state.selected === id}">
+            <span>${ICON[id]} <b>${esc(all[id].name)}</b></span>
+            <span class="small muted">${esc(T.presets[PRESET[id]])}${id === 'claims' ? ' · ' + esc(T.bt.groupAgentTag) : ''}</span>
+            <span class="muted">${esc(all[id].description)}</span>${id === 'venue' ? `<span class="small muted">${esc(fill(T.worksWith, { names: 'Google Sheets' }))}</span>` : ''}</div>`,
+            )
+            .join('')}</div>
+          <p class="small muted" style="margin:0" data-testid="template-source">${esc(source)}</p>
+          <div class="row" style="justify-content:flex-end"><button>${esc(T.ui.cancel)}</button><button class="primary" data-go="new" ${state.selected ? '' : 'disabled'}>${esc(T.bt.apply)}</button></div>
+        </div></div>`;
+      }
+      function templateCard(T, mode) {
+        return `<section class="card"><h2>${esc(T.bt.title)}</h2>
+          <div class="row"><p class="muted" style="margin:0;flex:1 1 240px">${mode === 'created' ? esc(T.bt.applyHint) : esc(fill(T.bt.pendingItem, { item: venue().contextName }))}</p><button class="primary">${esc(T.bt.browse)}</button></div>
+        </section>`;
+      }
+      function editor(T, name, button) {
+        const c = venue();
+        return `<section class="card"><label for="n">${esc(T.ui.name)}</label><input id="n" value="${esc(name)}" />
+          <span>${esc(T.ui.pick)}</span><div class="types">${['sales', 'faq', 'custom'].map((p) => `<div class="type ${p === 'sales' ? 'on' : ''}"><b>${esc(T.presets[p])}</b><div class="small muted">${esc(T.presets[p + 'Description'])}</div></div>`).join('')}</div>
+          <label for="r">${esc(T.ui.role)}</label><textarea id="r">${esc('ROLE … (Sales starting text) …\n\n' + c.focus)}</textarea>
+          <label for="h">${esc(T.ui.handoff)}</label><textarea id="h" style="min-height:140px">${esc(c.handoffRules)}</textarea>
+          <div class="row" style="justify-content:flex-end"><button class="primary" data-go="gallery">${esc(button)}</button></div></section>`;
+      }
+      function render() {
+        const T = TEXTS[state.lang];
+        document.documentElement.lang = state.lang;
+        const app = document.getElementById('app');
+        const c = venue();
+        if (state.screen === 'gallery')
+          app.innerHTML = `<h1>${esc(T.ui.newAgent)}</h1>${templateCard(T, 'created')}${gallery(T)}`;
+        if (state.screen === 'new')
+          app.innerHTML = `<h1>${esc(c.agentName)}</h1>${templateCard(T, 'new')}${editor(T, c.agentName, T.ui.create)}`;
+      }
+      document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-screen],[data-cat],[data-tpl],[data-go]');
+        if (!el) return;
+        if (el.dataset.screen) state.screen = el.dataset.screen;
+        if (el.dataset.list) state.list = el.dataset.list;
+        if (state.list === 'builtin' && state.selected === 'venue') state.selected = 'claims';
+        if (el.dataset.cat !== undefined) state.cat = el.dataset.cat || null;
+        if (el.dataset.tpl) state.selected = el.dataset.tpl;
+        if (el.dataset.go) state.screen = el.dataset.go;
+        render();
+      });
+      document.getElementById('lang').addEventListener('change', (e) => {
+        state.lang = e.target.value;
+        render();
+      });
+      document.getElementById('theme').addEventListener('click', () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      });
+      const params = new URLSearchParams(location.search);
+      if (params.get('screen')) state.screen = params.get('screen');
+      if (params.get('list')) state.list = params.get('list');
+      if (state.list === 'builtin') state.selected = 'claims';
+      if (params.get('lang')) state.lang = params.get('lang');
+      if (params.get('cat')) state.cat = params.get('cat');
+      if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+      document.getElementById('lang').value = state.lang;
+      render();
+    </script>
+  </body>
+</html>

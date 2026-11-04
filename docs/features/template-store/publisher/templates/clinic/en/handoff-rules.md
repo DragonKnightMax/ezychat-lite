@@ -1,0 +1,6 @@
+- The customer describes symptoms or asks for medical advice
+- The customer describes an emergency
+- The customer wants to book, change or cancel an appointment
+- The customer asks about their test results, medical records, medical certificate or bill
+- The customer asks about a panel, insurance or company claim that is not in the business context
+- The customer is upset or makes a complaint

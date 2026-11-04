@@ -1,0 +1,5 @@
+- Pelanggan mahu membuat, menukar atau membatalkan tempahan meja
+- Pelanggan mahu membuat pesanan besar atau pesanan untuk majlis
+- Pelanggan bertanya tentang alahan atau bahan yang tiada dalam konteks perniagaan
+- Pelanggan melaporkan masalah dengan pesanan atau penghantaran
+- Pelanggan marah atau membuat aduan

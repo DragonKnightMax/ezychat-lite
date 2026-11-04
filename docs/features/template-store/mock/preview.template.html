@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claims template preview</title>
+    <style>
+      :root {
+        --background: #f8fafc;
+        --foreground: #0f172a;
+        --card: #fff;
+        --primary: #0f766e;
+        --primary-foreground: #fff;
+        --muted-foreground: #475569;
+        --accent: #f0fdfa;
+        --border: #e2e8f0;
+        --info: #0369a1;
+        --info-bg: #e0f2fe;
+        --success: #15803d;
+        --note: #fffbeb;
+        --note-border: #fcd34d;
+        --note-foreground: #78350f;
+        --overlay: rgb(0 0 0 / 0.5);
+      }
+      :root[data-theme='dark'] {
+        --background: #0b1220;
+        --foreground: #f1f5f9;
+        --card: #111827;
+        --primary: #14b8a6;
+        --primary-foreground: #04201d;
+        --muted-foreground: #94a3b8;
+        --accent: #12302d;
+        --border: #243042;
+        --info: #7dd3fc;
+        --info-bg: #0c2a3f;
+        --success: #22c55e;
+        --note: #2b2111;
+        --note-border: #b45309;
+        --note-foreground: #fde68a;
+        --overlay: rgb(0 0 0 / 0.7);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 16px;
+        border-bottom: 2px dashed var(--note-border);
+        background: var(--note);
+        color: var(--note-foreground);
+      }
+      .bar strong {
+        margin-right: 8px;
+      }
+      .bar button,
+      .bar select {
+        min-height: 36px;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .muted {
+        color: var(--muted-foreground);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      button {
+        font: inherit;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        padding: 6px 14px;
+        min-height: 44px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      button[aria-pressed='true'] {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chips button {
+        border-radius: 999px;
+        min-height: 36px;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+      .tpl {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: var(--card);
+      }
+      .tpl[aria-checked='true'] {
+        border-color: var(--primary);
+        background: var(--accent);
+      }
+      .tpl b {
+        font-weight: 600;
+      }
+      .banner {
+        display: flex;
+        gap: 10px;
+        border: 1px solid var(--info);
+        background: var(--info-bg);
+        color: var(--foreground);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .banner p {
+        margin: 0;
+      }
+      .banner p + p {
+        margin-top: 4px;
+      }
+      label {
+        font-weight: 600;
+      }
+      input,
+      textarea {
+        font: inherit;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: var(--card);
+        color: var(--foreground);
+      }
+      textarea {
+        min-height: 220px;
+        white-space: pre-wrap;
+      }
+      .types {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .type {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .type.on {
+        border-color: var(--primary);
+        background: var(--accent);
+      }
+      .switch {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .pill {
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+        align-self: center;
+      }
+      .pill.on {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .toast {
+        border: 1px solid var(--success);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: var(--card);
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font: inherit;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--overlay);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .dialog {
+        background: var(--card);
+        border-radius: 12px;
+        max-width: 900px;
+        width: 100%;
+        max-height: calc(100vh - 32px);
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (max-width: 640px) {
+        .types {
+          grid-template-columns: 1fr;
+        }
+        .overlay {
+          padding: 0;
+          align-items: flex-end;
+        }
+        .dialog {
+          border-radius: 12px 12px 0 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar" role="region" aria-label="Mock only">
+      <strong>Mock only</strong>
+      <button data-screen="gallery" data-list="loaded">1 Gallery: list loaded</button>
+      <button data-screen="gallery" data-list="builtin">2 Gallery: built-in only</button>
+      <button data-screen="gallery" data-list="offline">3 Gallery: offline</button>
+      <button data-screen="new">4 New agent from a list template</button>
+      <select id="lang" aria-label="Language">
+        <option value="en">English</option>
+        <option value="ms">Bahasa Melayu</option>
+        <option value="zh-CN">简体中文</option>
+      </select>
+      <button id="theme">Dark / Light</button>
+    </div>
+    <main id="app"></main>
+    <script>
+      /*TEXTS*/
+      const ICON = {
+        clinic: '🩺',
+        insurance: '🛡️',
+        tuition: '🎓',
+        retail: '🏪',
+        claims: '🧾',
+        venue: '🎉',
+      };
+      const CATS = {
+        clinic: 'health',
+        insurance: 'services',
+        tuition: 'education',
+        retail: 'shops',
+        claims: 'operations',
+        venue: 'events',
+      };
+      const PRESET = {
+        clinic: 'faq',
+        insurance: 'faq',
+        tuition: 'sales',
+        retail: 'sales',
+        claims: 'custom',
+        venue: 'sales',
+      };
+      // Mock data only: one template from the signed list (English and Malay; Chinese falls back to
+      // the whole English set) in a category only the list defines.
+      const VENUE = {
+        en: {
+          agentName: 'Venue assistant',
+          name: 'Event venue',
+          description:
+            'Answers about halls, dates, packages and deposits. Hands bookings to your team.',
+          contextName: 'Venue details',
+          focus:
+            'BUSINESS\nYou answer for an event venue. Help customers with halls, capacity, packages, prices and free dates.',
+          handoffRules:
+            '- The customer wants to book or hold a date\n- The customer asks for a discount\n- The customer is upset or makes a complaint',
+          contextText:
+            'Fill in each line after the colon.\n\nVenue name:\nHalls and capacity:\nPackages and prices:\nDeposit and payment:',
+        },
+        ms: {
+          agentName: 'Pembantu dewan',
+          name: 'Dewan acara',
+          description:
+            'Menjawab tentang dewan, tarikh, pakej dan deposit. Tempahan diserahkan kepada pasukan anda.',
+          contextName: 'Butiran dewan',
+          focus: 'PERNIAGAAN\nAnda menjawab untuk dewan acara.',
+          handoffRules: '- Pelanggan mahu menempah tarikh',
+          contextText: 'Nama dewan:\nDewan dan kapasiti:',
+        },
+      };
+      const EVENTS = { en: 'Events', ms: 'Acara' };
+      const LIST_DATE = { en: '4 Nov 2026', ms: '4 Nov 2026', 'zh-CN': '2026年11月4日' };
+      const state = { screen: 'gallery', list: 'loaded', lang: 'en', cat: null, selected: 'venue' };
+      const venue = () => VENUE[state.lang] ?? VENUE.en;
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      const fill = (s, vars) => s.replace(/{{(\w+)}}/g, (_, k) => vars[k] ?? '');
+      function gallery(T) {
+        const listed = state.list !== 'builtin';
+        const cats = ['health', 'food', 'services', 'shops', 'education', 'operations'];
+        if (listed) cats.push('events');
+        const all = { ...T.templates, ...(listed ? { venue: venue() } : {}) };
+        const catName = (c) => (c === 'events' ? (EVENTS[state.lang] ?? EVENTS.en) : T.category[c]);
+        const shown = Object.keys(all).filter((id) => !state.cat || CATS[id] === state.cat);
+        const source =
+          state.list === 'loaded'
+            ? fill(T.source.loaded, { date: LIST_DATE[state.lang] })
+            : state.list === 'offline'
+              ? T.source.offline
+              : fill(T.source.builtin, { product: 'EzyChat Lite' });
+        return `<div class="overlay"><div class="dialog" role="dialog" aria-label="${esc(T.bt.galleryTitle)}">
+          <h2 style="margin:0">${esc(T.bt.galleryTitle)}</h2><p class="muted" style="margin:0">${esc(T.bt.galleryHint)}</p>
+          <input type="search" placeholder="${esc(T.bt.searchPlaceholder)}" aria-label="${esc(T.bt.search)}" />
+          <div class="chips" role="group">${[null, ...cats].map((c) => `<button data-cat="${c ?? ''}" aria-pressed="${state.cat === c}">${esc(c ? catName(c) : T.category.all)}</button>`).join('')}</div>
+          <div class="grid" role="radiogroup">${shown
+            .map(
+              (
+                id,
+              ) => `<div class="tpl" role="radio" tabindex="0" data-tpl="${id}" aria-checked="${state.selected === id}">
+            <span>${ICON[id]} <b>${esc(all[id].name)}</b></span>
+            <span class="small muted">${esc(T.presets[PRESET[id]])}${id === 'claims' ? ' · ' + esc(T.bt.groupAgentTag) : ''}</span>
+            <span class="muted">${esc(all[id].description)}</span>${id === 'venue' ? `<span class="small muted">${esc(fill(T.worksWith, { names: 'Google Sheets' }))}</span>` : ''}</div>`,
+            )
+            .join('')}</div>
+          <p class="small muted" style="margin:0" data-testid="template-source">${esc(source)}</p>
+          <div class="row" style="justify-content:flex-end"><button>${esc(T.ui.cancel)}</button><button class="primary" data-go="new" ${state.selected ? '' : 'disabled'}>${esc(T.bt.apply)}</button></div>
+        </div></div>`;
+      }
+      function templateCard(T, mode) {
+        return `<section class="card"><h2>${esc(T.bt.title)}</h2>
+          <div class="row"><p class="muted" style="margin:0;flex:1 1 240px">${mode === 'created' ? esc(T.bt.applyHint) : esc(fill(T.bt.pendingItem, { item: venue().contextName }))}</p><button class="primary">${esc(T.bt.browse)}</button></div>
+        </section>`;
+      }
+      function editor(T, name, button) {
+        const c = venue();
+        return `<section class="card"><label for="n">${esc(T.ui.name)}</label><input id="n" value="${esc(name)}" />
+          <span>${esc(T.ui.pick)}</span><div class="types">${['sales', 'faq', 'custom'].map((p) => `<div class="type ${p === 'sales' ? 'on' : ''}"><b>${esc(T.presets[p])}</b><div class="small muted">${esc(T.presets[p + 'Description'])}</div></div>`).join('')}</div>
+          <label for="r">${esc(T.ui.role)}</label><textarea id="r">${esc('ROLE … (Sales starting text) …\n\n' + c.focus)}</textarea>
+          <label for="h">${esc(T.ui.handoff)}</label><textarea id="h" style="min-height:140px">${esc(c.handoffRules)}</textarea>
+          <div class="row" style="justify-content:flex-end"><button class="primary" data-go="gallery">${esc(button)}</button></div></section>`;
+      }
+      function render() {
+        const T = TEXTS[state.lang];
+        document.documentElement.lang = state.lang;
+        const app = document.getElementById('app');
+        const c = venue();
+        if (state.screen === 'gallery')
+          app.innerHTML = `<h1>${esc(T.ui.newAgent)}</h1>${templateCard(T, 'created')}${gallery(T)}`;
+        if (state.screen === 'new')
+          app.innerHTML = `<h1>${esc(c.agentName)}</h1>${templateCard(T, 'new')}${editor(T, c.agentName, T.ui.create)}`;
+      }
+      document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-screen],[data-cat],[data-tpl],[data-go]');
+        if (!el) return;
+        if (el.dataset.screen) state.screen = el.dataset.screen;
+        if (el.dataset.list) state.list = el.dataset.list;
+        if (state.list === 'builtin' && state.selected === 'venue') state.selected = 'claims';
+        if (el.dataset.cat !== undefined) state.cat = el.dataset.cat || null;
+        if (el.dataset.tpl) state.selected = el.dataset.tpl;
+        if (el.dataset.go) state.screen = el.dataset.go;
+        render();
+      });
+      document.getElementById('lang').addEventListener('change', (e) => {
+        state.lang = e.target.value;
+        render();
+      });
+      document.getElementById('theme').addEventListener('click', () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      });
+      const params = new URLSearchParams(location.search);
+      if (params.get('screen')) state.screen = params.get('screen');
+      if (params.get('list')) state.list = params.get('list');
+      if (state.list === 'builtin') state.selected = 'claims';
+      if (params.get('lang')) state.lang = params.get('lang');
+      if (params.get('cat')) state.cat = params.get('cat');
+      if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+      document.getElementById('lang').value = state.lang;
+      render();
+    </script>
+  </body>
+</html>

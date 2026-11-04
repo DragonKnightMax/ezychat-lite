@@ -2,20 +2,61 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BusinessTemplateCard } from './BusinessTemplateCard';
+import type { AgentTemplateCatalog } from '@ezychat/shared';
 import { BUSINESS_TEMPLATES } from './business-templates';
 
-function setup(pendingItem: string | null = null, groupSetup: 'new' | 'existing' | null = null) {
+function setup(
+  pendingItem: string | null = null,
+  groupSetup: 'new' | 'existing' | null = null,
+  catalog?: AgentTemplateCatalog,
+) {
   const onApply = vi.fn();
+  const onBrowse = vi.fn();
   render(
     <BusinessTemplateCard
       disabled={false}
       pendingItem={pendingItem}
       groupSetup={groupSetup}
+      catalog={catalog}
+      onBrowse={onBrowse}
       onApply={onApply}
     />,
   );
-  return { onApply };
+  return { onApply, onBrowse };
 }
+
+const venueText = {
+  agentName: 'Venue assistant',
+  name: 'Event venue',
+  description: 'Answers about halls, dates and packages.',
+  keywords: 'dewan wedding',
+  focus: 'BUSINESS\nYou answer for an event venue.',
+  handoffRules: '- The customer wants to book',
+  contextName: 'Venue details',
+  contextText: 'Halls:',
+};
+const listCatalog = (
+  state: AgentTemplateCatalog['status']['state'] = 'loaded',
+): AgentTemplateCatalog => ({
+  status: { state, generatedAt: '2026-11-04T10:00:00.000Z', sequence: 3, checkedAt: 1 },
+  categories: [{ id: 'events', name: { en: 'Events' } }],
+  templates: [
+    {
+      entry: {
+        id: 'venue',
+        version: 1,
+        schemaVersion: 1,
+        minAppVersion: '0.1.0',
+        editions: ['lite'],
+        category: 'events',
+        icon: 'party-popper',
+        preset: 'sales',
+        texts: { en: venueText },
+      },
+      connectors: [{ id: 'google-sheets', name: 'Google Sheets' }],
+    },
+  ],
+});
 
 const radios = (gallery: HTMLElement) =>
   within(gallery)
@@ -106,7 +147,7 @@ describe('business template gallery', () => {
     expect(apply).toHaveProperty('disabled', true);
     await user.click(within(gallery).getByRole('radio', { name: 'Tuition centre' }));
     await user.click(apply);
-    expect(onApply).toHaveBeenCalledWith('tuition');
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ id: 'tuition', source: 'app' }));
     expect(screen.queryByRole('dialog', { name: 'Business templates' })).toBeNull();
   });
 
@@ -134,7 +175,9 @@ describe('business template gallery', () => {
     expect(radios(gallery)).toEqual(['Claims agent']);
     await user.click(within(gallery).getByRole('radio', { name: 'Claims agent' }));
     await user.click(within(gallery).getByRole('button', { name: 'Apply template' }));
-    expect(onApply).toHaveBeenCalledWith('claims');
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'claims', groupAgent: true }),
+    );
   });
 
   it('says what Save does for a new group agent, and what is left for an existing one', () => {
@@ -153,4 +196,45 @@ describe('business template gallery', () => {
     setup('Clinic details');
     expect(screen.queryByTestId('group-setup')).toBeNull();
   });
+
+  it('asks for new templates when the gallery opens and says the app list is shown', async () => {
+    const { onBrowse } = setup();
+    const { gallery } = await openGallery();
+    expect(onBrowse).toHaveBeenCalledTimes(1);
+    expect(within(gallery).getByTestId('template-source').textContent).toBe(
+      'Showing the templates in this version of EzyChat Lite.',
+    );
+  });
+
+  it('shows a list template with its category, connectors and the update date', async () => {
+    const { onApply } = setup(null, null, listCatalog());
+    expect(
+      screen.getByText(new RegExp(`for ${BUSINESS_TEMPLATES.length + 1} kinds of business`)),
+    ).toBeTruthy();
+    const { user, gallery } = await openGallery();
+    expect(within(gallery).getByTestId('template-source').textContent).toMatch(
+      /^Template library updated 4 Nov 2026\.$/,
+    );
+    await user.click(within(gallery).getByRole('button', { name: 'Events' }));
+    expect(radios(gallery)).toEqual(['Event venue']);
+    const card = within(gallery).getByRole('radio', { name: 'Event venue' }).closest('label')!;
+    expect(card.textContent).toContain('Works with Google Sheets');
+    expect(card.textContent).toContain('Answers about halls');
+    await user.click(within(gallery).getByRole('radio', { name: 'Event venue' }));
+    await user.click(within(gallery).getByRole('button', { name: 'Apply template' }));
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'venue', source: 'list', connectors: ['Google Sheets'] }),
+    );
+  });
+
+  it.each(['offline', 'rejected'] as const)(
+    'says the last saved list is shown when the list is %s',
+    async (state) => {
+      setup(null, null, listCatalog(state));
+      const { gallery } = await openGallery();
+      expect(within(gallery).getByTestId('template-source').textContent).toBe(
+        "Couldn't check for new templates. Showing the last saved list.",
+      );
+    },
+  );
 });

@@ -54,6 +54,10 @@ initializers.push(initGoogleSheets);
 import { initConnectorList } from './connectors/list/service.js';
 initializers.push(initConnectorList);
 
+// AI agent templates from the signed template list (docs/features/template-store/design.md).
+import { initTemplateList } from './templates/service.js';
+initializers.push(initTemplateList);
+
 import { initConnectorMcp } from './connectors/mcp/service.js';
 initializers.push(initConnectorMcp);
 

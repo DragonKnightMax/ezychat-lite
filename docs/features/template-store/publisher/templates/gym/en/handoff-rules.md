@@ -1,0 +1,4 @@
+- The person wants to sign up, pay, freeze or cancel a membership
+- The person asks about an injury or a health condition
+- The person asks for a personal training plan or a price that is not in the business context
+- The person is upset or makes a complaint
