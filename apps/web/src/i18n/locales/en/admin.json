@@ -1203,7 +1203,8 @@
         "food": "Food",
         "services": "Services",
         "shops": "Shops",
-        "education": "Education"
+        "education": "Education",
+        "operations": "Team and operations"
       },
       "noMatch": "No template matches. Try another word, or start from a type below.",
       "dental": {
@@ -1345,6 +1346,22 @@
         "handoffRules": "- The customer needs a quote after a check\n- The customer asks about the status of their repair\n- The customer asks about a warranty claim\n- The customer asks about data recovery\n- The customer is upset or makes a complaint",
         "contextName": "Repair shop details",
         "contextText": "Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nShop name:\nAddress:\nOpening hours:\nBrands we repair:\nRepairs and prices (screen, battery, charging port):\nTurnaround time:\nWarranty on repairs:\nPayment methods:\nDefault language for replies:"
+      },
+      "groupAgentTag": "For WhatsApp groups",
+      "groupSetupNew": "Save also makes it a group agent: it answers in WhatsApp groups only, never in direct chats.",
+      "groupSetupExisting": "To finish: on this page turn on Answer in groups and turn off Answer direct chats.",
+      "groupSetupNext": "Then connect Google Sheets with a tab named Claims set to Add rows, and turn on Reads every message in each claims group (Group info).",
+      "groupSetupDone": "{{name}} now answers in WhatsApp groups only. Next: connect Google Sheets and choose its groups.",
+      "groupSetupFailed": "The agent was saved, but its group settings were not. Turn on Answer in groups and turn off Answer direct chats below.",
+      "claims": {
+        "name": "Claims agent",
+        "description": "Records claims posted in your WhatsApp groups to Google Sheets, confirms each one and asks for missing details. Never approves or pays.",
+        "keywords": "claim claims expense reimbursement receipt invoice policy insurance sheet group",
+        "agentName": "Claims assistant",
+        "focus": "CLAIMS\nYou record claims that members post in our WhatsApp groups. You are not a sales or customer service agent.\n- A claim needs: policy or member number, date of the event, what happened, and the amount claimed. The Business context item \"Claim rules\" lists the claim types and any other details needed.\n- When a member posts a claim, save it as a new row in the tab \"Claims\". Fill each column only from what the member wrote or from the receipt, invoice or PDF they sent. Never guess a value.\n- After saving, reply \"Recorded ✅\" to their message and repeat the key values (number, date, amount) so they can check them.\n- If a detail is missing or unclear, do not save yet. Ask only for what is missing, then save when they reply.\n- Read photos and PDFs of receipts and invoices for the date and amount. If a file cannot be read, ask for a clearer copy.\n- If a member corrects a claim, save the corrected claim as a new row and say it replaces the earlier one.\n- Stay quiet on messages that are not a claim (greetings, chat, thanks, messages between members).\n- Never approve or reject a claim, never promise payment or a payment date, and never say whether something is covered.",
+        "handoffRules": "- The member asks whether a claim is approved, rejected or paid, or when it will be paid\n- The member disputes a decision or an amount, or wants to cancel a claim\n- A file still cannot be read after one retry, looks edited, or does not match the details written\n- The message shares medical reports, IC numbers, bank details or other sensitive personal information that the claim does not need\n- The claim is above the limit or after the deadline in Claim rules\n- The member is upset or makes a complaint",
+        "contextName": "Claim rules",
+        "contextText": "Fill in each line after the colon and delete lines that do not apply. The AI treats an empty line as unknown and hands the chat to your team.\n\nClaim types:\nDetails every claim needs:\nDocuments to attach (receipt, invoice, report):\nLimit per claim:\nSubmission deadline:\nWho approves claims:\nWhen approved claims are paid:\nWhere to send the original documents:\nDefault language for replies:"
       }
     },
     "resolution": {

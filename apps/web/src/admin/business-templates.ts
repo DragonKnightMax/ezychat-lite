@@ -7,6 +7,7 @@ import {
   GraduationCap,
   House,
   PawPrint,
+  ReceiptText,
   Plane,
   Scissors,
   ShieldCheck,
@@ -28,7 +29,14 @@ import { presetDefaults } from './ai-status';
  * fill-in lines (a blank line gives the AI no fact, so it hands the chat over instead of guessing).
  * Texts live in the catalogs (`ai.businessTemplates.<id>.*`), so each language gets its own copy.
  */
-export const TEMPLATE_CATEGORIES = ['health', 'food', 'services', 'shops', 'education'] as const;
+export const TEMPLATE_CATEGORIES = [
+  'health',
+  'food',
+  'services',
+  'shops',
+  'education',
+  'operations',
+] as const;
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 
 export const BUSINESS_TEMPLATES = [
@@ -49,6 +57,8 @@ export const BUSINESS_TEMPLATES = [
   { id: 'retail', preset: 'sales', category: 'shops', icon: Store },
   { id: 'phoneRepair', preset: 'sales', category: 'shops', icon: Smartphone },
   { id: 'tuition', preset: 'sales', category: 'education', icon: GraduationCap },
+  // Custom: it records claims only, so it starts from no sales or FAQ text.
+  { id: 'claims', preset: 'custom', category: 'operations', icon: ReceiptText },
 ] as const satisfies ReadonlyArray<{
   id: string;
   preset: AiAgentPreset;
@@ -58,12 +68,24 @@ export const BUSINESS_TEMPLATES = [
 
 export type BusinessTemplateId = (typeof BUSINESS_TEMPLATES)[number]['id'];
 
+/**
+ * Templates for an agent that works in WhatsApp groups only (Answer in groups on, Answer direct
+ * chats off). A new agent made from one is set up that way on Save; an existing agent gets a hint.
+ */
+const GROUP_AGENT_TEMPLATES: ReadonlySet<BusinessTemplateId> = new Set(['claims']);
+
+export function isGroupAgentTemplate(id: BusinessTemplateId): boolean {
+  return GROUP_AGENT_TEMPLATES.has(id);
+}
+
 export interface BusinessTemplateTexts {
   preset: AiAgentPreset;
   agentName: string;
   instructions: string;
   handoffRules: string;
   contextItem: AiContextTextBody;
+  /** Works in WhatsApp groups only (see `isGroupAgentTemplate`). */
+  groupAgent: boolean;
 }
 
 export function businessTemplate(
@@ -72,12 +94,16 @@ export function businessTemplate(
 ): BusinessTemplateTexts {
   const { preset } = BUSINESS_TEMPLATES.find((tpl) => tpl.id === id)!;
   const key = `ai.businessTemplates.${id}` as const;
+  // A Custom template has no starting text: its business part is the whole role.
+  const start = presetDefaults(preset, t).instructions;
+  const focus = t(`${key}.focus`);
   return {
     preset,
     agentName: t(`${key}.agentName`),
-    instructions: `${presetDefaults(preset, t).instructions}\n\n${t(`${key}.focus`)}`,
+    instructions: start ? `${start}\n\n${focus}` : focus,
     handoffRules: t(`${key}.handoffRules`),
     contextItem: { name: t(`${key}.contextName`), text: t(`${key}.contextText`) },
+    groupAgent: isGroupAgentTemplate(id),
   };
 }
 

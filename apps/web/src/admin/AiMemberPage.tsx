@@ -32,6 +32,7 @@ import {
   useAiMember,
   type AiAgentList,
 } from '../api/ai';
+import { useMakeGroupAgent } from '../api/ai-groups';
 import { ApiError, errorMessage } from '../api/client';
 import { useInboxes } from '../api/queries';
 import { Banner, EmptyState, PageHeader, StatusDot } from '@/components/app';
@@ -265,7 +266,10 @@ function AgentEditor({
   // is added by the next successful Save (the agent may not exist yet).
   const [businessFor, setBusinessFor] = useState<BusinessTemplateId | null>(null);
   const [pendingItem, setPendingItem] = useState<AiContextTextBody | null>(null);
+  // A group-agent template (Claims): a new agent is made group-only on Save, an existing one gets a hint.
+  const [groupSetup, setGroupSetup] = useState(false);
   const addText = useAddAgentText();
+  const makeGroupAgent = useMakeGroupAgent();
   const [deleting, setDeleting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   // The field stays set while the dialog closes so its content doesn't vanish mid-animation.
@@ -304,7 +308,7 @@ function AgentEditor({
     !lite && draft.inboxId !== null && draft.inboxId !== saved.inboxId
       ? list.agents.find((a) => a.inboxId === draft.inboxId && a.id !== id && a.answerDirect)
       : undefined;
-  const busy = action.isPending || addText.isPending;
+  const busy = action.isPending || addText.isPending || makeGroupAgent.isPending;
   const dirty = isNew || changed;
 
   const template = presetDefaults(preset, t);
@@ -382,6 +386,7 @@ function AgentEditor({
       handoffRules: tpl.handoffRules,
     }));
     setPendingItem(tpl.contextItem);
+    setGroupSetup(tpl.groupAgent);
     toast.success(
       t('ai.businessTemplates.applied', { name: t(`ai.businessTemplates.${templateId}.name`) }),
     );
@@ -400,6 +405,17 @@ function AgentEditor({
       setPendingItem(null);
     } catch (error) {
       toast.error(agentErrorMessage(error, t));
+    }
+  };
+  let groupSetupMode: 'new' | 'existing' | null = null;
+  if (groupSetup) groupSetupMode = isNew ? 'new' : 'existing';
+  /** A new agent from a group-agent template: Answer in groups on, Answer direct chats off. */
+  const setUpGroupAgent = async (agentId: number, name: string) => {
+    try {
+      await makeGroupAgent.mutateAsync(agentId);
+      toast.success(t('ai.businessTemplates.groupSetupDone', { name }));
+    } catch {
+      toast.error(t('ai.businessTemplates.groupSetupFailed'));
     }
   };
   const [typeOpen, setTypeOpen] = useState(false);
@@ -464,6 +480,7 @@ function AgentEditor({
       if (isNew) {
         writeStoredDraft(storeKey, null);
         toast.success(t('ai.agents.created', { name }));
+        if (groupSetup) await setUpGroupAgent(result.agent.id, name);
         navigate(`/admin/members/ai/${result.agent.id}`, { replace: true });
         // The new agent page starts at the top: its name, status and Next steps.
         window.scrollTo({ top: 0, left: 0 });
@@ -634,6 +651,7 @@ function AgentEditor({
       <BusinessTemplateCard
         disabled={busy}
         pendingItem={pendingItem?.name ?? null}
+        groupSetup={groupSetupMode}
         onApply={chooseBusiness}
       />
 

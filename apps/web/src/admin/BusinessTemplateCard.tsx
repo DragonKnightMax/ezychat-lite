@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Search } from 'lucide-react';
-import { ResponsiveDialog } from '@/components/app';
+import { Banner, ResponsiveDialog } from '@/components/app';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import {
   BUSINESS_TEMPLATES,
+  isGroupAgentTemplate,
   TEMPLATE_CATEGORIES,
   templateMatches,
   type BusinessTemplateId,
@@ -19,14 +20,18 @@ import {
 /**
  * "Start from a business template": opens the template gallery. Apply fills the page's draft (the
  * admin checks it and saves); `pendingItem` names the Business context item the next Save adds.
+ * `groupSetup` follows a group-agent template (Claims): what Save does for a new agent, or what the
+ * admin still switches on an existing one, then the remaining steps.
  */
 export function BusinessTemplateCard({
   disabled,
   pendingItem,
+  groupSetup = null,
   onApply,
 }: {
   disabled: boolean;
   pendingItem: string | null;
+  groupSetup?: 'new' | 'existing' | null;
   onApply: (id: BusinessTemplateId) => void;
 }) {
   const { t } = useTranslation('admin');
@@ -45,6 +50,18 @@ export function BusinessTemplateCard({
             ? t('ai.businessTemplates.pendingItem', { item: pendingItem })
             : t('ai.businessTemplates.applyHint')}
         </p>
+        {groupSetup && (
+          <div className="order-last basis-full" data-testid="group-setup">
+            <Banner tone="info">
+              <p>
+                {groupSetup === 'new'
+                  ? t('ai.businessTemplates.groupSetupNew')
+                  : t('ai.businessTemplates.groupSetupExisting')}
+              </p>
+              <p className="mt-1">{t('ai.businessTemplates.groupSetupNext')}</p>
+            </Banner>
+          </div>
+        )}
         <Button
           type="button"
           size="touch"
@@ -194,7 +211,13 @@ function TemplateGallery({
                       className="ml-auto"
                     />
                   </span>
-                  <span className="text-xs text-muted-foreground">{t(`ai.presets.${preset}`)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {isGroupAgentTemplate(id)
+                      ? [t(`ai.presets.${preset}`), t('ai.businessTemplates.groupAgentTag')].join(
+                          ' · ',
+                        )
+                      : t(`ai.presets.${preset}`)}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {t(`ai.businessTemplates.${id}.description`)}
                   </span>

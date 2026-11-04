@@ -131,7 +131,8 @@ into AGENTS.md.
 - Before building UI for existing data, check the live data for why the current UI is empty; prefer making
   the data appear over adding UI.
 - Re-fetch `main` and re-verify paths and conventions right before planning or executing a plan; plans in
-  this repo go stale within hours.
+  this repo go stale within hours. A cloud checkout's `origin/main` ref can be days behind its own detached
+  HEAD: `git fetch origin main` before `git checkout -b … origin/main`, or the branch starts on an old release.
 - Reshape existing data once at startup, before any service runs; runtime code only routes and resolves.
 - Evals and tests must assert the business outcome (chat handed to the team, order not lost), not only the
   agent's words.
@@ -553,7 +554,12 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   shot helper): copying that setup from an older script made SonarCloud fail on duplication of new code (20 %,
   limit 3 %). A script that shoots the setup wizard needs fresh data on every run: `signInDemoAdmin` creates the
   admin, and `/setup` then no longer shows (a second run times out waiting for it). A desktop-only screen gets
-  its bridge from `addInitScript` (`e2e/lite-protected-screens.mjs`).
+  its bridge from `addInitScript` (`e2e/lite-protected-screens.mjs`). Grep `e2e/` for a shared module before
+  copying any script's setup (the rule applies to Dev Build checks too: PASS/FAIL from `devbuild-client.mjs`). In a
+  cloud session `launchBrowser` needs `PW_CHROMIUM=/opt/pw-browsers/chromium-*/chrome-linux64/chrome`. A script's
+  fetch sends `content-type: application/json` only with a body: the server answers 400 to a bodiless DELETE with it.
+  Its API calls go through `cookieSession` (`devbuild-client.mjs`): a raw `fetch(base + path)` fails SonarCloud's
+  security rating (S7044/S8476, request forgery from argv input).
 - An antivirus "threat blocked" report on our installer: first compare the file's SHA-256 with the release digest
   (`gh api …/releases/tags/<tag>` asset `digest`; Enterprise `latest.json`) and check `Get-AuthenticodeSignature`
   (signer Anchor Sprint Pte. Ltd.). Genuine and signed means a reputation false positive (each release is a new,
@@ -1075,7 +1081,11 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - Ready-made Business context (templates) uses blank fill-in lines (`Opening hours:`), never sample
   values or `[your price]` placeholders: the AI repeats a placeholder as a fact, but a blank line is no
   fact, so it hands over. Build template instructions as the type's tested text plus a short business
-  part, and test the length limits in every language.
+  part, and test the length limits in every language. A Custom template has no starting text: its business
+  part is the whole role (no leading blank lines, no sales/FAQ text). A template that changes how an agent
+  works (Claims: groups only) flips switches only on a new agent; an existing agent gets a note, because
+  turning direct chats off hands its open chats back. A text naming a sheet tab keeps the tab's real name
+  in every language, and its test accepts the language's quotes (zh-CN writes “Claims”).
 - An MCP tool that writes text a person reads in a box must say the format: AI assistants hard-wrap long
   text at about 60–80 characters, and the box shows every line break, so rules looked cut short. The
   `update_ai_setup` description and `text` field say "one line per paragraph or list item".

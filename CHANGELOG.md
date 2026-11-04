@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Claims agent template.** The business-template gallery of the AI agent page has a new category, Team and
+  operations, with a Claims agent: it records claims that members post in your WhatsApp groups to the Claims tab of
+  Google Sheets, replies "Recorded ✅" with the key values, asks for missing details, reads receipts and PDFs, stays
+  quiet on other messages and never approves or promises payment. Applying it fills the name, instructions and
+  hand-off rules and adds a "Claim rules" Business context item to fill in. A new agent made from it answers in groups
+  only; an existing agent shows which switches to change.
+
 ## [0.1.73] - 2026-11-04
 
 ### Added

@@ -4,9 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { BusinessTemplateCard } from './BusinessTemplateCard';
 import { BUSINESS_TEMPLATES } from './business-templates';
 
-function setup(pendingItem: string | null = null) {
+function setup(pendingItem: string | null = null, groupSetup: 'new' | 'existing' | null = null) {
   const onApply = vi.fn();
-  render(<BusinessTemplateCard disabled={false} pendingItem={pendingItem} onApply={onApply} />);
+  render(
+    <BusinessTemplateCard
+      disabled={false}
+      pendingItem={pendingItem}
+      groupSetup={groupSetup}
+      onApply={onApply}
+    />,
+  );
   return { onApply };
 }
 
@@ -109,5 +116,41 @@ describe('business template gallery', () => {
     await user.click(within(gallery).getByRole('radio', { name: 'Gym and fitness' }));
     await user.click(within(gallery).getByRole('button', { name: 'Cancel' }));
     expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it('lists the Claims agent under Team and operations, marked for WhatsApp groups', async () => {
+    const { onApply } = setup();
+    const { user, gallery } = await openGallery();
+    await user.click(within(gallery).getByRole('button', { name: 'Team and operations' }));
+    expect(radios(gallery)).toEqual(['Claims agent']);
+    const option = within(gallery).getByRole('radio', { name: 'Claims agent' }).closest('label')!;
+    expect(option.textContent).toContain('Custom · For WhatsApp groups');
+    // Other templates show their type only.
+    await user.click(within(gallery).getByRole('button', { name: 'All' }));
+    const clinic = within(gallery).getByRole('radio', { name: 'Clinic' }).closest('label')!;
+    expect(clinic.textContent).not.toContain('WhatsApp groups');
+    // Found by its English words too.
+    await user.type(within(gallery).getByRole('searchbox'), 'receipt');
+    expect(radios(gallery)).toEqual(['Claims agent']);
+    await user.click(within(gallery).getByRole('radio', { name: 'Claims agent' }));
+    await user.click(within(gallery).getByRole('button', { name: 'Apply template' }));
+    expect(onApply).toHaveBeenCalledWith('claims');
+  });
+
+  it('says what Save does for a new group agent, and what is left for an existing one', () => {
+    setup('Claim rules', 'new');
+    const note = screen.getByTestId('group-setup');
+    expect(note.textContent).toContain('Save also makes it a group agent');
+    expect(note.textContent).toContain('tab named Claims set to Add rows');
+    cleanup();
+    setup('Claim rules', 'existing');
+    const left = screen.getByTestId('group-setup');
+    expect(left.textContent).toContain('turn on Answer in groups and turn off Answer direct chats');
+    expect(left.textContent).toContain('Reads every message');
+  });
+
+  it('shows no group note for other templates', () => {
+    setup('Clinic details');
+    expect(screen.queryByTestId('group-setup')).toBeNull();
   });
 });

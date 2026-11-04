@@ -117,3 +117,29 @@ export function useSetGroupChatAi() {
     },
   });
 }
+
+/**
+ * Makes a newly created agent a group agent (a template such as Claims): Answer in groups on, then
+ * Answer direct chats off. Only for an agent that holds no chats yet, so nothing is released.
+ */
+export function useMakeGroupAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (agentId: number) => {
+      await api(`/ai/agents/${agentId}/groups`, {
+        method: 'PUT',
+        body: { enabled: true },
+        schema: AiAgentGroups,
+      });
+      return api(`/ai/agents/${agentId}/direct`, {
+        method: 'PUT',
+        body: { enabled: false } satisfies AiAgentDirectBody,
+        schema: AiAgentGroups,
+      });
+    },
+    onSuccess: (saved, agentId) => {
+      qc.setQueryData(agentGroupsKey(agentId), saved);
+      void qc.invalidateQueries({ queryKey: qk.directory });
+    },
+  });
+}

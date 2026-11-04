@@ -625,6 +625,125 @@ describe('AI agent page', () => {
       );
       expect(screen.queryByText(/Save also adds the Business context item/)).toBeNull();
     });
+
+    /** Answers the two group switches of a new agent; `fail` refuses "Answer in groups". */
+    const groupSwitches =
+      (fail = false): Respond =>
+      (url, init) => {
+        if (init?.method !== 'PUT' || !/^\/api\/ai\/agents\/\d+\/(groups|direct)$/.test(url))
+          return undefined;
+        if (fail) return json({ error: { code: 'internal', message: 'Failed' } }, 500);
+        const enabled = (JSON.parse(String(init.body)) as { enabled: boolean }).enabled;
+        const direct = url.endsWith('/direct');
+        return json({
+          enabled: direct ? true : enabled,
+          inboxName: 'Claims line',
+          groups: [],
+          loopGuard: 10,
+          answerDirect: direct ? enabled : true,
+          directAvailable: true,
+          heldDirect: 0,
+        });
+      };
+
+    it('creates a Claims agent as a group-only Custom agent with its Claim rules', async () => {
+      const { fetchMock } = setup(
+        world({ maxAgents: 2, agents: [agentStatus()] }),
+        '/admin/members/ai/new?preset=sales',
+        groupSwitches(),
+      );
+      const user = userEvent.setup();
+      const card = await applyTemplate(user, 'Claims agent');
+      expect((screen.getByLabelText('Agent name') as HTMLInputElement).value).toBe(
+        'Claims assistant',
+      );
+      const role = (screen.getByLabelText('Role (instructions)') as HTMLTextAreaElement).value;
+      // Its own text only: no sales or FAQ starting text before it.
+      expect(role.startsWith('CLAIMS\n')).toBe(true);
+      expect(role).toContain('save it as a new row in the tab "Claims"');
+      expect(role).not.toContain(SALES.instructions.split('\n')[0]);
+      expect((screen.getByLabelText('Hand-over rules') as HTMLTextAreaElement).value).toContain(
+        'approved, rejected or paid',
+      );
+      const picker = screen.getByRole('radiogroup', { name: 'Starting point' });
+      expect(
+        (within(picker).getByRole('radio', { name: /Custom/ }) as HTMLButtonElement).dataset.state,
+      ).toBe('checked');
+      expect(within(card).getByTestId('group-setup').textContent).toContain(
+        'Save also makes it a group agent',
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Create agent' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('location').textContent).toBe('/admin/members/ai/8'),
+      );
+      expect(writeLines(fetchMock)).toEqual([
+        'POST /api/ai/agents',
+        'POST /api/ai/agents/8/documents/text',
+        'PUT /api/ai/agents/8/groups',
+        'PUT /api/ai/agents/8/direct',
+      ]);
+      const bodies = writes(fetchMock).map((call) => JSON.parse(String(call[1]!.body)));
+      expect(bodies[0]).toMatchObject({ preset: 'custom', instructions: role });
+      expect(bodies[1].name).toBe('Claim rules');
+      expect(bodies[1].text.split('\n')).toContain('Submission deadline:');
+      expect(bodies.slice(2)).toEqual([{ enabled: true }, { enabled: false }]);
+    });
+
+    it('keeps the new Claims agent when its group settings fail', async () => {
+      const { fetchMock } = setup(
+        world({ maxAgents: 2, agents: [agentStatus()] }),
+        '/admin/members/ai/new?preset=sales',
+        groupSwitches(true),
+      );
+      const user = userEvent.setup();
+      await applyTemplate(user, 'Claims agent');
+      await user.click(screen.getByRole('button', { name: 'Create agent' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('location').textContent).toBe('/admin/members/ai/8'),
+      );
+      // Answer direct chats stays on when Answer in groups could not be turned on.
+      expect(writeLines(fetchMock)).toEqual([
+        'POST /api/ai/agents',
+        'POST /api/ai/agents/8/documents/text',
+        'PUT /api/ai/agents/8/groups',
+      ]);
+    });
+
+    it('only tells an existing agent which switches to change (its chats stay)', async () => {
+      const { fetchMock } = setup(world(), undefined, groupSwitches());
+      const user = userEvent.setup();
+      const card = await applyTemplate(user, 'Claims agent');
+      // Unedited Sales texts: replaced at once, and the saved name is kept.
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect((screen.getByLabelText('Agent name') as HTMLInputElement).value).toBe(
+        'Sales Assistant',
+      );
+      expect(within(card).getByTestId('group-setup').textContent).toContain(
+        'turn on Answer in groups and turn off Answer direct chats',
+      );
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(writeLines(fetchMock)).toEqual([
+          'PUT /api/ai/agents/5',
+          'POST /api/ai/agents/5/documents/text',
+        ]),
+      );
+      // The steps stay in view after Save.
+      expect(within(card).getByTestId('group-setup')).toBeTruthy();
+    });
+
+    it('drops the group note when another template replaces Claims', async () => {
+      setup(world({ maxAgents: 2 }), '/admin/members/ai/new?preset=sales');
+      const user = userEvent.setup();
+      const card = await applyTemplate(user, 'Claims agent');
+      expect(within(card).getByTestId('group-setup')).toBeTruthy();
+      await applyTemplate(user, 'Clinic');
+      // The Claims texts are not a type's starting text, so it asks first.
+      const confirm = await screen.findByRole('alertdialog');
+      await user.click(within(confirm).getByRole('button', { name: 'Apply template' }));
+      await waitFor(() => expect(within(card).queryByTestId('group-setup')).toBeNull());
+    });
   });
 
   it('Try it sends the agent id and the unsaved name and texts', async () => {

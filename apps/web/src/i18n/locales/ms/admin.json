@@ -1194,7 +1194,8 @@
         "food": "Makanan",
         "services": "Perkhidmatan",
         "shops": "Kedai",
-        "education": "Pendidikan"
+        "education": "Pendidikan",
+        "operations": "Pasukan dan operasi"
       },
       "noMatch": "Tiada templat yang sepadan. Cuba perkataan lain, atau mula daripada jenis di bawah.",
       "dental": {
@@ -1336,6 +1337,22 @@
         "handoffRules": "- Pelanggan memerlukan sebut harga selepas pemeriksaan\n- Pelanggan bertanya tentang status pembaikan mereka\n- Pelanggan bertanya tentang tuntutan waranti\n- Pelanggan bertanya tentang pemulihan data\n- Pelanggan marah atau membuat aduan",
         "contextName": "Butiran kedai baiki",
         "contextText": "Isi setiap baris selepas titik bertindih dan padam baris yang tidak berkaitan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nNama kedai:\nAlamat:\nWaktu operasi:\nJenama yang kami baiki:\nPembaikan dan harga (skrin, bateri, port pengecasan):\nTempoh siap:\nWaranti pembaikan:\nKaedah pembayaran:\nBahasa lalai untuk balasan:"
+      },
+      "groupAgentTag": "Untuk kumpulan WhatsApp",
+      "groupSetupNew": "Simpan juga menjadikannya ejen kumpulan: ia menjawab dalam kumpulan WhatsApp sahaja, tidak pernah dalam sembang terus.",
+      "groupSetupExisting": "Untuk selesai: pada halaman ini hidupkan Jawab dalam kumpulan dan matikan Jawab sembang terus.",
+      "groupSetupNext": "Kemudian sambungkan Google Sheets dengan tab bernama Claims yang ditetapkan Tambah baris, dan hidupkan Membaca setiap mesej dalam setiap kumpulan tuntutan (Maklumat kumpulan).",
+      "groupSetupDone": "{{name}} kini menjawab dalam kumpulan WhatsApp sahaja. Seterusnya: sambungkan Google Sheets dan pilih kumpulannya.",
+      "groupSetupFailed": "Ejen telah disimpan, tetapi tetapan kumpulannya tidak. Hidupkan Jawab dalam kumpulan dan matikan Jawab sembang terus di bawah.",
+      "claims": {
+        "name": "Ejen tuntutan",
+        "description": "Merekod tuntutan yang dihantar dalam kumpulan WhatsApp anda ke Google Sheets, mengesahkan setiap satu dan meminta butiran yang tiada. Tidak pernah meluluskan atau membayar.",
+        "keywords": "tuntutan claim klaim perbelanjaan bayaran balik resit invois polisi insurans helaian kumpulan claims expense reimbursement receipt invoice policy insurance sheet group",
+        "agentName": "Pembantu tuntutan",
+        "focus": "TUNTUTAN\nAnda merekod tuntutan yang dihantar oleh ahli dalam kumpulan WhatsApp kami. Anda bukan ejen jualan atau khidmat pelanggan.\n- Setiap tuntutan memerlukan: nombor polisi atau ahli, tarikh kejadian, apa yang berlaku dan jumlah yang dituntut. Item Konteks perniagaan \"Peraturan tuntutan\" menyenaraikan jenis tuntutan dan butiran lain yang diperlukan.\n- Apabila ahli menghantar tuntutan, simpan sebagai baris baharu dalam tab \"Claims\". Isi setiap lajur hanya daripada apa yang ditulis oleh ahli atau daripada resit, invois atau PDF yang dihantarnya. Jangan sekali-kali meneka nilai.\n- Selepas menyimpan, balas \"Direkod ✅\" kepada mesejnya dan ulang nilai utama (nombor, tarikh, jumlah) supaya dia boleh menyemaknya.\n- Jika butiran tiada atau tidak jelas, jangan simpan dahulu. Tanya hanya apa yang tiada, kemudian simpan apabila dia membalas.\n- Baca foto dan PDF resit dan invois untuk tarikh dan jumlah. Jika fail tidak dapat dibaca, minta salinan yang lebih jelas.\n- Jika ahli membetulkan tuntutan, simpan tuntutan yang dibetulkan sebagai baris baharu dan katakan ia menggantikan yang sebelumnya.\n- Diam bagi mesej yang bukan tuntutan (ucapan, sembang, terima kasih, mesej antara ahli).\n- Jangan sekali-kali meluluskan atau menolak tuntutan, menjanjikan bayaran atau tarikh bayaran, atau mengatakan sama ada sesuatu dilindungi.",
+        "handoffRules": "- Ahli bertanya sama ada tuntutan diluluskan, ditolak atau dibayar, atau bila ia akan dibayar\n- Ahli mempertikaikan keputusan atau jumlah, atau mahu membatalkan tuntutan\n- Fail masih tidak dapat dibaca selepas satu cubaan semula, kelihatan diubah, atau tidak sepadan dengan butiran yang ditulis\n- Mesej berkongsi laporan perubatan, nombor IC, butiran bank atau maklumat peribadi sensitif lain yang tidak diperlukan oleh tuntutan\n- Tuntutan melebihi had atau selepas tarikh akhir dalam Peraturan tuntutan\n- Ahli kecewa atau membuat aduan",
+        "contextName": "Peraturan tuntutan",
+        "contextText": "Isi setiap baris selepas titik bertindih dan padamkan baris yang tidak berkenaan. AI menganggap baris kosong sebagai tidak diketahui dan menyerahkan sembang kepada pasukan anda.\n\nJenis tuntutan:\nButiran yang diperlukan setiap tuntutan:\nDokumen untuk dilampirkan (resit, invois, laporan):\nHad setiap tuntutan:\nTarikh akhir penghantaran:\nSiapa yang meluluskan tuntutan:\nBila tuntutan yang diluluskan dibayar:\nKe mana dokumen asal dihantar:\nBahasa lalai untuk balasan:"
       }
     },
     "resolution": {

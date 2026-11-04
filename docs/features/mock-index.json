@@ -16,6 +16,18 @@
   },
   "proposals": [
     {
+      "feature": "claims-template",
+      "creationOrder": 30,
+      "createdAt": "2026-11-04",
+      "design": "docs/features/claims-template/design.md",
+      "mock": "docs/features/claims-template/mock/index.html",
+      "status": "proposal",
+      "baselineFeature": "group-agents",
+      "baselineGitRevision": "c589b88a4479472c36aea90eea434e5867ceec6a",
+      "coverage": "Standalone preview built from the real catalogs (build-preview.mjs): template gallery with the Team and operations category and the Claims agent card, a new agent after Apply (name, Custom type, role, hand-over rules, Claim rules note, group-agent note), after Create agent (Direct chats off, Groups on, Claim rules item), an existing Lite agent (finish-steps note); en/ms/zh-CN, desktop 1280 / mobile 360, light/dark. The cumulative full-app clone is still owed (the latestConfirmed mock predates the template gallery).",
+      "note": "Owner asked for the template on 2026-11-04 and said to go ahead with implementation; the mock is recorded for review, not yet confirmed."
+    },
+    {
       "feature": "group-agents",
       "creationOrder": 29,
       "createdAt": "2026-11-03",
@@ -94,7 +106,7 @@
       "confirmation": "Owner wrote 2026-10-31 \"build it until merge to main\" after reviewing the mock screenshots: the @ member picker as proposed.",
       "gitRevision": "f6f0d2b06f53c95c6b31c5994af00ef52cf5def4",
       "parallelFeatures": ["whatsapp-safety"],
-      "note": "Confirmed in parallel with whatsapp-safety (24, merged to main first); both cloned from ai-handoff-rules, so neither mock has the other's change. The next enhancement clones latestConfirmed and copies the WhatsApp Safety screens from docs/features/whatsapp-safety/mock."
+      "note": "Confirmed in parallel with whatsapp-safety (24, merged to main first); both cloned from ai-handoff-rules, so neither mock has the other's change. The next enhancement clones latestConfirmed and copies the WhatsApp Safety screens from docs/features/whatsapp-safety/mock. Folder pruned by the claims-template change (retention 5); recover it from git revision 2e820c944a84d2767d971ae7635e94617631d453."
     },
     {
       "feature": "whatsapp-safety",
