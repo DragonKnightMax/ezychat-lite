@@ -355,3 +355,7 @@ Decision: **risk:human**
 ## 2026-11-04 · PR #284 · `8180019` · approved by the owner
 
 > ok merge and release
+
+## 2026-11-04 · PR #286 · `197b966` · approved by the owner
+
+> yes (include PR #286 in this release)

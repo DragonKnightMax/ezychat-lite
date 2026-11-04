@@ -368,7 +368,8 @@ export function windowsResetAdminScript(o: {
       ...windowsRuntimeSecurityHelpers(),
       `Assert-ProtectedRuntime ${psQuote(o.exe)}`,
       `$env:ELECTRON_RUN_AS_NODE = '1'`,
-      `& ${psQuote(o.exe)} ${psQuote(o.entry)} --data ${psQuote(o.dataDir)} --reset-admin`,
+      // Electron is a GUI program: only a piped call makes PowerShell wait and set $LASTEXITCODE.
+      `& ${psQuote(o.exe)} ${psQuote(o.entry)} --data ${psQuote(o.dataDir)} --reset-admin | Write-Output`,
       checkExit('reset admin'),
     ].join('\r\n') + '\r\n'
   );

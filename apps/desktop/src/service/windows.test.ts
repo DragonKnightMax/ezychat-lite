@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -140,6 +141,47 @@ describe('Windows LocalSystem runtime protection', () => {
       }
     },
     30_000,
+  );
+
+  // Electron is a GUI program: PowerShell waits for it and sets $LASTEXITCODE only when its output is
+  // piped. Without the pipe the reset ran in the background and its new password was lost.
+  it.skipIf(process.platform !== 'win32')(
+    'reset-admin waits for the Electron runtime and keeps the new password in the output',
+    () => {
+      const temp = mkdtempSync(join(tmpdir(), 'ezychat-reset-admin-'));
+      const entry = join(temp, 'server.cjs');
+      const inner = join(temp, 'task.ps1');
+      const outer = join(temp, 'run.ps1');
+      const log = join(temp, 'out.log');
+      try {
+        writeFileSync(
+          entry,
+          "setTimeout(() => { console.log('New admin password for jazz: Abc-123'); process.exit(0); }, 300);",
+        );
+        const script = windowsResetAdminScript({
+          exe: createRequire(import.meta.url)('electron') as string,
+          entry,
+          dataDir: join(temp, 'data'),
+        });
+        // The runtime check needs Program Files; this test checks only how the runtime is started.
+        writeFileSync(inner, script.replace(/^Assert-ProtectedRuntime .*$/m, ''));
+        writeFileSync(
+          outer,
+          `& ${psQuote(inner)} *>&1 | Out-File -LiteralPath ${psQuote(log)} -Encoding utf8`,
+        );
+        execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', outer], {
+          windowsHide: true,
+          stdio: 'pipe',
+          timeout: 30_000,
+        });
+        const output = readFileSync(log, 'utf8');
+        expect(output).toContain('New admin password for jazz: Abc-123');
+        expect(output).not.toContain('failed with exit code');
+      } finally {
+        rmSync(temp, { recursive: true, force: true });
+      }
+    },
+    45_000,
   );
 });
 

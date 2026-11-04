@@ -593,6 +593,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Build, tooling and Windows
 
+- PowerShell does not wait for a GUI-subsystem program (Electron, also with `ELECTRON_RUN_AS_NODE=1`) called with
+  `&`, and leaves `$LASTEXITCODE` unset, so its output and exit code are lost: pipe the call (`& $exe … | Write-Output`)
+  and test the generated script with the real Electron binary (`windows.test.ts`). A test that sets `$LASTEXITCODE`
+  itself makes a local copy; read `$global:LASTEXITCODE`.
 - Measuring a slow tunnel locally: put a proxy that delays every request (and the WebSocket upgrade) in front
   of the server; Chrome throttling does not slow the service worker's own fetches. The fake WhatsApp has no
   photos, so give contacts a photo address in a measurement-only preload. Do not use Playwright `context.route`

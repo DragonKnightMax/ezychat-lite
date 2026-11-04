@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the requests. Everything kept on the phone is removed when you sign out, and files that WhatsApp Safety flags or
   is still checking are never kept.
 
+### Fixed
+
+- **Reset admin password from the tray works when EzyChat runs as a background service.** Before, it set a new
+  password but did not show it, so you could not sign in. It now waits and shows the new password.
+
 ## [0.1.75] - 2026-11-04
 
 ### Added
