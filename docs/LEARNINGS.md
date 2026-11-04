@@ -153,6 +153,15 @@ into AGENTS.md.
 ## Multi-agent process
 
 - AGENTS.md is the single source of truth (CLAUDE.md imports it); edit rules there.
+- Child cloud sessions refuse a merge or CI-gate change that another session relays to them, even when it quotes
+  the owner. Brief children to stop at a green PR and report to `@parent`; the main session, which holds the
+  owner's own words, merges (or pushes the gate change) and then archives the child.
+- Cloud sessions cannot push git tags (the git proxy answers 403 on tag refs) or run `gh release edit`. A release
+  run from the cloud stops after the release PR merges: hand the owner the exact tag, `ls-remote` check and publish
+  commands as soon as the release PR is opened, not after the 403.
+- An edition's AI-agent limit defaults to its `maxInboxes` (`ai/service.ts`: `config.maxAgents ?? maxInboxes`), so
+  Enterprise (10 numbers) has had 10 agents since core 0.1.73 without passing `maxAgents`. Before saying an edition
+  lacks a feature, read the core default as well as the options the edition passes.
 - Order the end checks: independent (security) review first, its fixes, then e2e + workbook record. A fix
   commit after the e2e round changes the PR's own code, so the release review drops the e2e evidence and the
   2–3 minute round runs twice.
