@@ -1,7 +1,20 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { requireUser } from '../auth/guards.js';
+import {
+  AddGroupMemberBody,
+  EditGroupBody,
+  GroupJoinDecisionBody,
+  GroupSettingsBody,
+  SetGroupMemberRoleBody,
+  type AddGroupMemberResponse,
+  type GroupAdminResponse,
+  type GroupChangeOkResponse,
+  type GroupInviteLinkResponse,
+  type SendGroupInviteResponse,
+} from '@ezychat/shared';
+import { requireAdmin, requireUser } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
+import { createGroupAdminService, type GroupAdminService } from '../groups/admin.js';
 import { createGroupService, type GroupService } from '../groups/service.js';
 import { clientIp } from '../http/client-ip.js';
 import { parse } from '../http/errors.js';
@@ -12,6 +25,7 @@ import { chatJidParam } from './chats.js';
 declare module '../context.js' {
   interface Services {
     groups?: GroupService;
+    groupAdmin?: GroupAdminService;
   }
 }
 
@@ -20,10 +34,16 @@ const MemberParams = z.object({
   member: z.string().min(3).max(256),
 });
 
-/** Group info: members of a WhatsApp group chat. Read-only, except starting a direct chat. */
+const OK: GroupChangeOkResponse = { ok: true };
+
+/**
+ * Group info: members of a WhatsApp group chat (any user with inbox access), and group management
+ * (`/chats/:jid/group*`: EzyChat admins change it, everyone with access reads its state).
+ */
 export default async function groupRoutes(app: FastifyInstance, ctx: AppContext) {
   app.addHook('preHandler', requireUser(ctx));
   const groups = (ctx.services.groups ??= createGroupService(ctx));
+  const admin = (ctx.services.groupAdmin ??= createGroupAdminService(ctx, groups));
   const photo = createProfileImages(ctx, ctx.log.child({ mod: 'groups' }), { max: 2000 });
 
   app.get('/chats/:jid/members', async (req) => groups.info(chatJidParam(ctx, req)));
@@ -53,4 +73,82 @@ export default async function groupRoutes(app: FastifyInstance, ctx: AppContext)
     });
     return { chatJid };
   });
+
+  // ---- group management ----
+  const actor = (req: FastifyRequest) => ({ userId: req.user!.id, ip: clientIp(req) });
+  const adminOnly = { preHandler: requireAdmin(ctx) };
+
+  app.get('/chats/:jid/group', async (req): Promise<GroupAdminResponse> =>
+    admin.state(chatJidParam(ctx, req), { isAdmin: req.user!.role === 'admin' }),
+  );
+
+  app.patch('/chats/:jid/group', adminOnly, async (req): Promise<GroupChangeOkResponse> => {
+    const jid = chatJidParam(ctx, req);
+    await admin.edit(jid, parse(EditGroupBody, req.body), actor(req));
+    return OK;
+  });
+
+  app.post('/chats/:jid/group/members', adminOnly, async (req): Promise<AddGroupMemberResponse> => {
+    const jid = chatJidParam(ctx, req);
+    const { phone } = parse(AddGroupMemberBody, req.body);
+    return admin.addMember(jid, phone, actor(req));
+  });
+
+  app.post(
+    '/chats/:jid/group/members/:member/invite',
+    adminOnly,
+    async (req): Promise<SendGroupInviteResponse> => {
+      const { member } = parse(MemberParams, req.params);
+      await admin.sendInvite(chatJidParam(ctx, req), member, actor(req));
+      return { result: 'sent' };
+    },
+  );
+
+  app.delete(
+    '/chats/:jid/group/members/:member',
+    adminOnly,
+    async (req): Promise<GroupChangeOkResponse> => {
+      const { member } = parse(MemberParams, req.params);
+      await admin.removeMember(chatJidParam(ctx, req), member, actor(req));
+      return OK;
+    },
+  );
+
+  app.put(
+    '/chats/:jid/group/members/:member/role',
+    adminOnly,
+    async (req): Promise<GroupChangeOkResponse> => {
+      const { member } = parse(MemberParams, req.params);
+      const jid = chatJidParam(ctx, req);
+      const body = parse(SetGroupMemberRoleBody, req.body);
+      await admin.setRole(jid, member, body.admin, actor(req));
+      return OK;
+    },
+  );
+
+  app.post(
+    '/chats/:jid/group/invite-link/reset',
+    adminOnly,
+    async (req): Promise<GroupInviteLinkResponse> => ({
+      inviteLink: await admin.resetInviteLink(chatJidParam(ctx, req), actor(req)),
+    }),
+  );
+
+  app.put('/chats/:jid/group/settings', adminOnly, async (req): Promise<GroupChangeOkResponse> => {
+    const jid = chatJidParam(ctx, req);
+    await admin.setSettings(jid, parse(GroupSettingsBody, req.body), actor(req));
+    return OK;
+  });
+
+  app.post(
+    '/chats/:jid/group/requests/:member',
+    adminOnly,
+    async (req): Promise<GroupChangeOkResponse> => {
+      const { member } = parse(MemberParams, req.params);
+      const jid = chatJidParam(ctx, req);
+      const { approve } = parse(GroupJoinDecisionBody, req.body);
+      await admin.decideJoin(jid, member, approve, actor(req));
+      return OK;
+    },
+  );
 }

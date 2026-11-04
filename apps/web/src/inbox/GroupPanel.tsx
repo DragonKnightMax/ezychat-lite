@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { formatDate } from '../lib/format';
 import { encodeJid } from '../lib/jid';
 import { ChatAvatar } from './ChatAvatar';
+import { GroupAdminBar, MemberAdminActions } from './GroupAdmin';
 import { GroupAiRow } from './GroupAiRow';
 import { PanelHeader } from './PanelHeader';
 
@@ -159,7 +160,17 @@ function MemberList({
               : t('groupInfo.createdOn', { date: formatDate(group.createdAt) })}
           </p>
         )}
+        {group.description && (
+          <p
+            className="line-clamp-3 pt-1 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]"
+            data-testid="group-description"
+          >
+            {group.description}
+          </p>
+        )}
       </div>
+      {/* Manage the group without switching to the phone (EzyChat admins, what the connection allows). */}
+      <GroupAdminBar data={data} />
       {/* Whether the AI agent answers in this group when tagged or quoted. */}
       <GroupAiRow jid={group.jid} isAdmin={isAdmin} />
       <div className="relative mx-4 mt-2 mb-1.5">
@@ -417,6 +428,7 @@ function MemberDetail({
           </AlertDialog>
         </>
       )}
+      <MemberAdminActions groupJid={groupJid} member={member} label={label} onRemoved={onBack} />
     </div>
   );
 }

@@ -209,6 +209,8 @@ export function attachRealtime(server: HttpServer, ctx: AppContext): RealtimeSer
   const onChatUpdated = (c: Chat) => toChat(c.jid).emit('chat:updated', c);
   const onChatEvent = (e: ChatEvent) => toChat(e.chatJid).emit('chat:event', e);
   const onNote = (n: Note) => toChat(n.chatJid).emit('note:new', n);
+  const onGroupChanged = (p: { chatJid: string }) =>
+    toChat(p.chatJid).emit('group:changed', { chatJid: p.chatJid });
   const onWaStatus = (s: WaStatus) => {
     io.to('admins').emit('wa:status', s);
     io.to(inboxRoom(PRIMARY_INBOX_ID))
@@ -269,6 +271,7 @@ export function attachRealtime(server: HttpServer, ctx: AppContext): RealtimeSer
   bus.on('chat:updated', onChatUpdated);
   bus.on('chat:event', onChatEvent);
   bus.on('note:new', onNote);
+  bus.on('group:changed', onGroupChanged);
   bus.on('wa:status', onWaStatus);
   bus.on('inbox:status', onInboxStatus);
   bus.on('inboxes:changed', onInboxesChanged);
@@ -293,6 +296,7 @@ export function attachRealtime(server: HttpServer, ctx: AppContext): RealtimeSer
       bus.off('chat:updated', onChatUpdated);
       bus.off('chat:event', onChatEvent);
       bus.off('note:new', onNote);
+      bus.off('group:changed', onGroupChanged);
       bus.off('wa:status', onWaStatus);
       bus.off('inbox:status', onInboxStatus);
       bus.off('inboxes:changed', onInboxesChanged);

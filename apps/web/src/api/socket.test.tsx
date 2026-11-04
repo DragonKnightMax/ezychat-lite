@@ -539,3 +539,22 @@ it('refreshes a group AI state on a group line and when a teammate writes during
   expect(groupCalls()).toHaveLength(2);
   qc.clear();
 });
+
+it('reloads Group info and its admin view when a group changes', async () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const group = '120363000000000001@g.us';
+  const invalidate = vi.spyOn(qc, 'invalidateQueries');
+  render(
+    <QueryClientProvider client={qc}>
+      <RealtimeProvider>
+        <span>ready</span>
+      </RealtimeProvider>
+    </QueryClientProvider>,
+  );
+  await screen.findByText('ready');
+  act(() => socket.listeners.get('group:changed')!({ chatJid: group }));
+  const keys = invalidate.mock.calls.map(([f]) => JSON.stringify(f?.queryKey));
+  expect(keys).toContain(JSON.stringify(['group-admin', group]));
+  expect(keys).toContain(JSON.stringify(['group-members', group]));
+  qc.clear();
+});

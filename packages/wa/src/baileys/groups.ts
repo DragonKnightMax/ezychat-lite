@@ -1,6 +1,7 @@
 import type { GroupMetadata } from 'baileys';
 import type { WaGroupInfo, WaGroupParticipant } from '../types.js';
 import { normalizeContactJid } from './contact-aliases.js';
+import { mapGroupSettings } from './group-admin.js';
 
 const ROLE: Record<string, WaGroupParticipant['role']> = {
   superadmin: 'superadmin',
@@ -36,6 +37,7 @@ export function mapGroupMetadata(meta: GroupMetadata): WaGroupInfo {
     ownerJid: normalizeContactJid(meta.owner) ?? normalizeContactJid(meta.ownerPn),
     size: Math.max(Number(meta.size) || 0, participants.length),
     participants,
+    settings: mapGroupSettings(meta),
   };
 }
 

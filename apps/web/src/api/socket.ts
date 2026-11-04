@@ -31,6 +31,7 @@ import {
 } from './queries';
 import { voiceStatusKey } from './voice';
 import { groupChatAiKey } from './ai-groups';
+import { groupAdminKey } from './group-admin';
 import { dispatchAccessRecheck } from '../access/events';
 import { ProfileImageContext } from '../inbox/ProfileImageContext';
 import { registerResumeReconnect } from './resume-reconnect';
@@ -211,6 +212,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           [p.chatJid]: [...list, { userId: p.userId, displayName: p.displayName, at: Date.now() }],
         };
       });
+    });
+    socket.on('group:changed', ({ chatJid }) => {
+      // Changed here or on WhatsApp: Group info reads the members and the admin view again.
+      void qc.invalidateQueries({ queryKey: groupAdminKey(chatJid) });
+      void qc.invalidateQueries({ queryKey: qk.groupMembers(chatJid) });
     });
     socket.on('session:revoked', () => {
       socket.disconnect();

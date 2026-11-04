@@ -135,6 +135,81 @@ export interface WaGroupInfo {
   /** Member count reported by WhatsApp (can exceed participants.length for very large groups). */
   size: number;
   participants: WaGroupParticipant[];
+  /** WhatsApp's group settings, when the connection reports them (group management). */
+  settings?: Partial<WaGroupSettings>;
+}
+
+/** WhatsApp's group settings EzyChat can change. */
+export interface WaGroupSettings {
+  /** Only admins can send messages. */
+  announce: boolean;
+  /** Only admins can edit the group name, photo and description. */
+  locked: boolean;
+  /** Who can add members. */
+  memberAdd: 'admins' | 'all';
+  /** New members need an admin's approval. */
+  approval: boolean;
+}
+
+export type WaGroupSettingKey = keyof WaGroupSettings;
+
+/**
+ * What a connection can change in a group it is admin of (`WaCapabilities.groupAdmin`). Each flag
+ * gates one optional `WaAdapter` group method; absent capability = read-only.
+ */
+export interface WaGroupAdminCapabilities {
+  /** `setGroupSubject` + `setGroupDescription`. */
+  editInfo: boolean;
+  /** `updateGroupMembers(…, 'add')` (+ `sendGroupInvite` after a privacy refusal). */
+  addMembers: boolean;
+  /** People join only through the invite link (Business API). */
+  inviteOnly: boolean;
+  /** `updateGroupMembers(…, 'remove')`. */
+  removeMembers: boolean;
+  /** `updateGroupMembers(…, 'promote' | 'demote')`. */
+  admins: boolean;
+  /** `getGroupInviteLink`. */
+  inviteLink: boolean;
+  /** `resetGroupInviteLink`. */
+  resetInviteLink: boolean;
+  /** Settings `setGroupSettings` can change. */
+  settings: WaGroupSettingKey[];
+  /** `listGroupJoinRequests` + `decideGroupJoinRequest`. */
+  joinRequests: boolean;
+  /** Members besides the business number; null = WhatsApp's own limit. */
+  maxMembers: number | null;
+  /** Longest name the connection takes. */
+  nameMax: number;
+  /** Longest description the connection takes. */
+  descriptionMax: number;
+}
+
+/** A private group invite WhatsApp hands back when a person's privacy settings refuse an add. */
+export interface WaGroupInvite {
+  code: string;
+  /** epoch ms */
+  expiresAt: number;
+}
+
+/** Outcome of a member change for one person. Never throws for a per-person refusal. */
+export interface WaParticipantResult {
+  jid: string;
+  /**
+   * ok; invite_needed (privacy refused an add: `invite` is set); already (already a member / admin);
+   * not_member; not_allowed (WhatsApp refused, e.g. not admin or the creator); full; failed (other).
+   */
+  status: 'ok' | 'invite_needed' | 'already' | 'not_member' | 'not_allowed' | 'full' | 'failed';
+  invite?: WaGroupInvite;
+}
+
+/** Someone asking to join a group (approval on). */
+export interface WaGroupJoinRequest {
+  /** The requester's address (phone JID or WhatsApp ID). */
+  jid: string;
+  /** Phone-number JID when WhatsApp shares it. */
+  phoneJid: string | null;
+  /** epoch ms, null when unknown */
+  at: number | null;
 }
 
 export interface WaMessageStatusUpdate {
@@ -261,7 +336,25 @@ export interface WaCapabilities {
   deleteForEveryone?: boolean;
   /** Deletes a message on the linked device itself (`deleteForMe`). Absent: no. */
   deleteForMe?: boolean;
+  /** Changes groups it is admin of (group management). Absent: read-only Group info. */
+  groupAdmin?: WaGroupAdminCapabilities;
 }
+
+/** Everything a linked phone can change in a group (Baileys and the fake). */
+export const LINKED_PHONE_GROUP_ADMIN: WaGroupAdminCapabilities = Object.freeze({
+  editInfo: true,
+  addMembers: true,
+  inviteOnly: false,
+  removeMembers: true,
+  admins: true,
+  inviteLink: true,
+  resetInviteLink: true,
+  settings: Object.freeze(['announce', 'locked', 'memberAdd', 'approval']) as WaGroupSettingKey[],
+  joinRequests: true,
+  maxMembers: null,
+  nameMax: 100,
+  descriptionMax: 2048,
+}) as WaGroupAdminCapabilities;
 
 /** The capabilities of an adapter that declares none: a phone linked by QR (Baileys, the fake). */
 export const LINKED_PHONE_CAPABILITIES: WaCapabilities = Object.freeze({
@@ -277,6 +370,7 @@ export const LINKED_PHONE_CAPABILITIES: WaCapabilities = Object.freeze({
   editMessage: true,
   deleteForEveryone: true,
   deleteForMe: true,
+  groupAdmin: LINKED_PHONE_GROUP_ADMIN,
 });
 
 /** An approved message template of the number's business account. */
@@ -348,6 +442,38 @@ export interface WaAdapter {
   getProfilePicture(jid: string): Promise<string | null>;
   /** Members and details of a group this number belongs to. Throws WaUnavailableError when offline. */
   getGroupInfo(groupJid: string): Promise<WaGroupInfo>;
+  // ---- group management (each gated by `capabilities.groupAdmin`; all throw WaUnavailableError
+  // offline, change only groups the linked number is admin of, and emit nothing themselves:
+  // WhatsApp's own group notifications raise `groupChanged`) ----
+  /** Rename a group (`groupAdmin.editInfo`). */
+  setGroupSubject?(groupJid: string, subject: string): Promise<void>;
+  /** Set or clear (null) a group's description (`groupAdmin.editInfo`). */
+  setGroupDescription?(groupJid: string, description: string | null): Promise<void>;
+  /**
+   * Add, remove, promote or demote exactly one member (a one-element tuple: bulk is impossible by
+   * type). Per-person refusals come back as a result, never as a throw.
+   */
+  updateGroupMembers?(
+    groupJid: string,
+    jids: [string],
+    action: 'add' | 'remove' | 'promote' | 'demote',
+  ): Promise<WaParticipantResult[]>;
+  /** Send the private invite from an `invite_needed` add result to that person (`groupAdmin.addMembers`). */
+  sendGroupInvite?(groupJid: string, toJid: string, invite: WaGroupInvite): Promise<void>;
+  /** The group's invite link (`https://chat.whatsapp.com/…`, `groupAdmin.inviteLink`). */
+  getGroupInviteLink?(groupJid: string): Promise<string>;
+  /** Revoke the invite link and return the new one (`groupAdmin.resetInviteLink`). */
+  resetGroupInviteLink?(groupJid: string): Promise<string>;
+  /** Change settings listed in `groupAdmin.settings`. */
+  setGroupSettings?(groupJid: string, settings: Partial<WaGroupSettings>): Promise<void>;
+  /** Pending join requests (`groupAdmin.joinRequests`). */
+  listGroupJoinRequests?(groupJid: string): Promise<WaGroupJoinRequest[]>;
+  /** Approve or reject one join request (`groupAdmin.joinRequests`). */
+  decideGroupJoinRequest?(
+    groupJid: string,
+    jid: string,
+    approve: boolean,
+  ): Promise<WaParticipantResult>;
   /** A person's WhatsApp "About" text; null when hidden or unset. Throws when it cannot be read. */
   getAbout(jid: string): Promise<string | null>;
   /**

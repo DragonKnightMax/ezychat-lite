@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Manage WhatsApp groups from Group info.** EzyChat admins can rename a group, edit its description, add one
+  member at a time (with a ban-risk note; when the person's privacy settings refuse, a Send invite button sends them a
+  private invite), remove members, make or remove group admins, copy or reset the invite link, change the group's
+  settings (only admins send, only admins edit info, who can add members, approve new members) and approve or reject
+  join requests, without switching to the phone. Only what the connection supports is shown, the linked number must
+  be a group admin, adds are limited to 20 a day and 6 an hour per number, and Settings lists the recent changes
+  made in EzyChat. Team members see Group info read-only.
+
 ### Fixed
 
 - **Fix English no longer suggests the same fix again or adds the text twice.** After you apply a grammar fix

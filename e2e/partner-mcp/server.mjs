@@ -301,8 +301,20 @@ export async function startPartnerMcp(options = {}) {
     sendJson(res, 200, Object.fromEntries(states));
   };
 
+  // Built once per sequence: the list and its .sig come in two requests, and a list rebuilt for the second one
+  // carries a new generatedAt (whole seconds), so across a second boundary the signature would not match.
+  let signedCache = null;
+  const signedList = () => {
+    if (signedCache?.sequence !== sequence)
+      signedCache = {
+        sequence,
+        signed: buildSignedList({ origin, privateKey: keys.privateKey, sequence }),
+      };
+    return signedCache.signed;
+  };
+
   const handleList = (req, res, path) => {
-    const signed = buildSignedList({ origin, privateKey: keys.privateKey, sequence });
+    const signed = signedList();
     if (path === '/connectors/list-v1.json')
       return void res
         .writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })

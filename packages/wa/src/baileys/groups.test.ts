@@ -83,6 +83,19 @@ describe('mapGroupMetadata', () => {
       ownerJid: null,
       size: 1,
     });
+    expect(g.settings).toEqual({});
+  });
+
+  it('maps the group settings WhatsApp reports', () => {
+    const g = mapGroupMetadata(
+      meta({ announce: true, restrict: true, memberAddMode: false, joinApprovalMode: true }),
+    );
+    expect(g.settings).toEqual({
+      announce: true,
+      locked: true,
+      memberAdd: 'admins',
+      approval: true,
+    });
   });
 });
 

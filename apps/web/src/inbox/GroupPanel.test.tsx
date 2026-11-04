@@ -305,6 +305,24 @@ describe('GroupPanel', () => {
     expect(screen.queryByRole('button', { name: 'Open chat' })).toBeNull();
   });
 
+  it('shows the description, and Group info still works when the admin view cannot be read', async () => {
+    const calls = mockApi({
+      ...info(),
+      group: { ...info().group, description: 'Founders only.\nBe kind.' },
+    });
+    renderPanel();
+    expect((await screen.findByTestId('group-description')).textContent).toBe(
+      'Founders only.\nBe kind.',
+    );
+    await waitFor(() =>
+      expect(calls.some((c) => c.url === `/api/chats/${encodeURIComponent(GROUP)}/group`)).toBe(
+        true,
+      ),
+    );
+    expect(screen.queryByRole('region', { name: 'Manage group' })).toBeNull();
+    expect(screen.getByRole('list', { name: 'Group members' })).toBeTruthy();
+  });
+
   it('explains when members cannot be loaded and lets you retry', async () => {
     mockApi(null);
     renderPanel();

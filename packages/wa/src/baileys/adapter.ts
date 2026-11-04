@@ -33,7 +33,11 @@ import {
   type WaAliasSource,
   type WaContactAlias,
   type WaGroupInfo,
+  type WaGroupInvite,
+  type WaGroupJoinRequest,
+  type WaGroupSettings,
   type WaMessageStatusUpdate,
+  type WaParticipantResult,
   type WaMessageTarget,
   type WaReactionTarget,
   type WaSendFile,
@@ -50,6 +54,14 @@ import { contactAliasPair, normalizeContactJid } from './contact-aliases.js';
 import { checkedNumberJid } from './number-check.js';
 import { profilePhoto } from './photos.js';
 import { aboutFromStatusResult, mapGroupMetadata } from './groups.js';
+import {
+  inviteLink,
+  iqErrorCode,
+  mapJoinRequests,
+  mapParticipantEntry,
+  pickParticipantEntry,
+  settingCalls,
+} from './group-admin.js';
 
 type ILogger = NonNullable<Parameters<typeof makeWASocket>[0]['logger']>;
 
@@ -383,6 +395,10 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
       for (const g of gs) if (g.id) this.emitTyped('groupChanged', { groupJid: g.id });
     });
     sock.ev.on('group-participants.update', ({ id }) => {
+      if (alive() && id) this.emitTyped('groupChanged', { groupJid: id });
+    });
+    // Someone asked to join, withdrew, or an admin decided: the pending request list changed.
+    sock.ev.on('group.join-request', ({ id }) => {
       if (alive() && id) this.emitTyped('groupChanged', { groupJid: id });
     });
   }
@@ -896,6 +912,140 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
   async getGroupInfo(groupJid: string): Promise<WaGroupInfo> {
     const sock = this.requireOpen();
     return mapGroupMetadata(await sock.groupMetadata(groupJid));
+  }
+
+  /**
+   * Run one group query on the open socket. A dropped connection becomes WaUnavailableError;
+   * WhatsApp's own refusals (Baileys Boom, `data` = code) pass through. Emits nothing: WhatsApp's
+   * notifications of the change raise `groupChanged`.
+   */
+  private async groupCall<T>(run: (sock: WASocket) => Promise<T>): Promise<T> {
+    const sock = this.requireOpen();
+    try {
+      return await run(sock);
+    } catch (err) {
+      if (isConnectionError(err) || this.sock !== sock || this._status.state !== 'open')
+        throw new WaUnavailableError(
+          `WhatsApp connection lost: ${String((err as Error)?.message ?? err)}`,
+        );
+      throw err;
+    }
+  }
+
+  async setGroupSubject(groupJid: string, subject: string): Promise<void> {
+    await this.groupCall((sock) => sock.groupUpdateSubject(groupJid, subject));
+    this.logger.info({ op: 'subject' }, 'group change');
+  }
+
+  async setGroupDescription(groupJid: string, description: string | null): Promise<void> {
+    // Baileys reads the current description id itself and deletes it when given none.
+    await this.groupCall((sock) => sock.groupUpdateDescription(groupJid, description || undefined));
+    this.logger.info({ op: 'description', cleared: !description }, 'group change');
+  }
+
+  /** One person only (the tuple type); a whole-request 401/403 is that person's "not allowed". */
+  private async participantCall(
+    personJid: string,
+    run: (sock: WASocket, jid: string) => Promise<unknown>,
+    op: string,
+  ): Promise<WaParticipantResult> {
+    const jid = normalizeContactJid(personJid) ?? personJid;
+    let result: WaParticipantResult;
+    try {
+      result = mapParticipantEntry(
+        jid,
+        pickParticipantEntry(jid, await this.groupCall((s) => run(s, jid))),
+      );
+    } catch (err) {
+      const code = iqErrorCode(err);
+      if (err instanceof WaUnavailableError || (code !== 401 && code !== 403)) throw err;
+      result = { jid, status: 'not_allowed' };
+    }
+    // The outcome only, never the number.
+    this.logger.info({ op, status: result.status }, 'group member change');
+    return result;
+  }
+
+  async updateGroupMembers(
+    groupJid: string,
+    jids: [string],
+    action: 'add' | 'remove' | 'promote' | 'demote',
+  ): Promise<WaParticipantResult[]> {
+    const [person] = jids;
+    return [
+      await this.participantCall(
+        person,
+        (sock, jid) => sock.groupParticipantsUpdate(groupJid, [jid], action),
+        action,
+      ),
+    ];
+  }
+
+  async sendGroupInvite(groupJid: string, toJid: string, invite: WaGroupInvite): Promise<void> {
+    const to = normalizeContactJid(toJid) ?? toJid;
+    // The invite card shows the group's name; read it fresh (a rename may be seconds old).
+    const meta = await this.groupCall((sock) => sock.groupMetadata(groupJid));
+    await this.send(
+      to,
+      {
+        groupInvite: {
+          inviteCode: invite.code,
+          inviteExpiration: Math.floor(invite.expiresAt / 1000),
+          text: '',
+          jid: groupJid,
+          subject: meta.subject ?? '',
+        },
+      },
+      undefined,
+      false,
+    );
+    this.logger.info({ op: 'invite' }, 'group change');
+  }
+
+  async getGroupInviteLink(groupJid: string): Promise<string> {
+    return inviteLink(await this.groupCall((sock) => sock.groupInviteCode(groupJid)));
+  }
+
+  async resetGroupInviteLink(groupJid: string): Promise<string> {
+    const link = inviteLink(await this.groupCall((sock) => sock.groupRevokeInvite(groupJid)));
+    this.logger.info({ op: 'reset_link' }, 'group change');
+    return link;
+  }
+
+  async setGroupSettings(groupJid: string, settings: Partial<WaGroupSettings>): Promise<void> {
+    // One query per setting, in a fixed order; the first refusal stops the rest.
+    for (const call of settingCalls(settings)) {
+      await this.groupCall((sock) => {
+        switch (call.fn) {
+          case 'groupSettingUpdate':
+            return sock.groupSettingUpdate(groupJid, call.arg);
+          case 'groupMemberAddMode':
+            return sock.groupMemberAddMode(groupJid, call.arg);
+          case 'groupJoinApprovalMode':
+            return sock.groupJoinApprovalMode(groupJid, call.arg);
+        }
+      });
+      this.logger.info({ op: 'setting', setting: call.arg }, 'group change');
+    }
+  }
+
+  async listGroupJoinRequests(groupJid: string): Promise<WaGroupJoinRequest[]> {
+    return mapJoinRequests(
+      await this.groupCall((sock) => sock.groupRequestParticipantsList(groupJid)),
+    );
+  }
+
+  decideGroupJoinRequest(
+    groupJid: string,
+    jid: string,
+    approve: boolean,
+  ): Promise<WaParticipantResult> {
+    return this.participantCall(
+      jid,
+      (sock, person) =>
+        sock.groupRequestParticipantsUpdate(groupJid, [person], approve ? 'approve' : 'reject'),
+      approve ? 'approve' : 'reject',
+    );
   }
 
   async checkNumber(phone: string): Promise<string | null> {

@@ -7,7 +7,7 @@
   },
   "latestConfirmed": {
     "feature": "group-management",
-    "gitRevision": "354868444543916b7c252245884db9253ca95712",
+    "gitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
     "mock": "docs/features/group-management/mock/index.html",
     "design": "docs/features/group-management/design.md",
     "confirmedAt": "2026-11-04",
