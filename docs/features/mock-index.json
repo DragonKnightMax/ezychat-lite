@@ -6,15 +6,29 @@
     "olderReferences": "git-history"
   },
   "latestConfirmed": {
-    "feature": "in-app-feedback",
-    "gitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
-    "mock": "docs/features/in-app-feedback/mock/index.html",
-    "design": "docs/features/in-app-feedback/design.md",
-    "confirmedAt": "2026-11-03",
-    "confirmation": "Owner wrote 2026-11-03 \"ok build until it work then pr and merge verify\" after reviewing the Send feedback screenshots; open questions as proposed.",
-    "note": "Clone of group-mentions; the next clone also adds the screens of message-edit-delete and whatsapp-safety (parallel features, see the previous latestConfirmed note)."
+    "feature": "group-management",
+    "gitRevision": "354868444543916b7c252245884db9253ca95712",
+    "mock": "docs/features/group-management/mock/index.html",
+    "design": "docs/features/group-management/design.md",
+    "confirmedAt": "2026-11-04",
+    "confirmation": "Owner (Jazz) wrote 2026-11-04 \"go with your suggestion, run multiple subagent to implement independent part, only merge to main and archive it, we will release daily.\" = every open question as proposed (admins only, Send invite button, 20/day + 6/hour adds, settings + join requests in v1, Business API via core actions, EzyChat-made changes only, ships in Lite).",
+    "note": "Clone of in-app-feedback plus Group info management; still owes the message-edit-delete, whatsapp-safety, group-agents and claims-template screens (see the proposal notes)."
   },
   "proposals": [
+    {
+      "feature": "group-management",
+      "creationOrder": 31,
+      "createdAt": "2026-11-04",
+      "design": "docs/features/group-management/design.md",
+      "mock": "docs/features/group-management/mock/index.html",
+      "status": "confirmed",
+      "confirmedAt": "2026-11-04",
+      "baselineFeature": "in-app-feedback",
+      "baselineGitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
+      "coverage": "Full app clone of the confirmed in-app-feedback reference; Group info for EzyChat admins: description, Manage bar (Edit info, Add member, Invite link, Settings), join requests (approve/reject), Edit info dialog, Add member (ban-risk note, privacy refusal -> Send invite -> sent, not on WhatsApp), member actions (Make group admin, Remove as admin, Remove from group with confirm, creator protected), invite link (copy, reset with confirm), group settings (only admins send, only admins edit info, who can add, approve new members) with Recent changes, number not a group admin, WhatsApp offline, Business API connection (invite only, n of 8, remove only, no settings) via a Mock only switch, agent read-only; mock-only routes /api/mock/group-admin*; desktop 1280 / mobile 360 touch, light/dark (group-admin-shots.mjs)",
+      "note": "Inherits the coverage gaps of in-app-feedback (message-edit-delete, whatsapp-safety, group-agents and claims-template screens still owed). Baseline drift: the feedback stand-in route now yields to the shipped core route. Parallel with claims-template (30), which does not touch Group info.",
+      "confirmation": "Owner (Jazz) wrote 2026-11-04 \"go with your suggestion, run multiple subagent to implement independent part, only merge to main and archive it, we will release daily.\" = every open question as proposed (admins only, Send invite button, 20/day + 6/hour adds, settings + join requests in v1, Business API via core actions, EzyChat-made changes only, ships in Lite)."
+    },
     {
       "feature": "claims-template",
       "creationOrder": 30,
@@ -89,7 +103,8 @@
         "whatsapp-safety",
         "group-mentions"
       ],
-      "note": "Confirmed 2026-10-28 on the ai-groups baseline (first creationOrder 19, renumbered when rebased on main after features 19-25 merged). Its mock does not have the later features; latestConfirmed stays group-mentions, and the next clone copies the edit/delete screens from docs/features/message-edit-delete/mock."
+      "note": "Confirmed 2026-10-28 on the ai-groups baseline (first creationOrder 19, renumbered when rebased on main after features 19-25 merged). Its mock does not have the later features; latestConfirmed stays group-mentions, and the next clone copies the edit/delete screens from docs/features/message-edit-delete/mock.",
+      "folderRemoved": "2026-11-04 (group-management: sixth feature folder); last on main at d16b815"
     },
     {
       "feature": "group-mentions",

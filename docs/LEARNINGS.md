@@ -1388,6 +1388,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   meaningful. A runner that replaces Vite's `resolve` with only an alias drops the `ezychat-source`
   condition and serves stale `dist/` packages (a new field never reached the page): spread the web
   config's `resolve`.
+  A mock stand-in route that later ships in the core (`POST /api/feedback`) stops the runner with
+  `FST_ERR_DUPLICATED_ROUTE`: start a clone once before editing it, and register stand-ins only when
+  `app.hasRoute(…)` is false.
 - An outgoing message's id is `local-<clientId>` until WhatsApp accepts it, then the WhatsApp id: an
   API or tool that returns it must say so, and tests must find the row by `client_id`.
 - A socket event that arrives while its list is still loading is lost: the load's older answer replaces the
