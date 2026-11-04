@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.76] - 2026-11-05
+
 ### Changed
 
 - **Faster when you open EzyChat from outside your office.** Over a slow connection (for example the shared link
