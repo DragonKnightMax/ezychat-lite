@@ -76,7 +76,8 @@ function setup({
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return { sent, fetchMock, user: userEvent.setup({ applyAccept: false }) };
+  // delay: null types without a timer between keys: the long texts below took over 5 s on a busy Windows runner.
+  return { sent, fetchMock, user: userEvent.setup({ applyAccept: false, delay: null }) };
 }
 
 async function openDialog(prefill?: Parameters<typeof openFeedback>[0]) {

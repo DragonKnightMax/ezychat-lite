@@ -655,6 +655,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   `reportOnFailure` so a timeout never hides the coverage numbers. A gate must fail closed: a filtered run
   (`--project`) wrote an empty report and the changed-lines check passed; it now refuses an empty report
   and a changed source file missing from it. Prove every gate with a run that must fail.
+- A web test near 2 s locally can pass 5 s on the busy `windows-latest` runner (`npm test` keeps Vitest's 5 s
+  limit). Dialog tests that `user.type` long texts: `userEvent.setup({ delay: null })` (same events, no timer
+  between keys); keep each web test well under 1 s locally.
 
 - `codex exec -i <image>` takes several values, so a prompt after it is read as a second image ("No prompt
   provided"): send the prompt on stdin (`codex exec -i icon.png < PROMPT.md`).
