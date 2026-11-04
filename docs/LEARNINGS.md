@@ -444,8 +444,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - Core packages pin sibling `@ezychat/*` deps to the exact version: after merging a version bump from
   `main`, run `npm run version:sync` before `npm install --package-lock-only`, or npm looks the old
   version up on the registry (404). Different npm versions flip dozens of `"peer": true` lines in the
-  lockfile at each release: keep `main`'s lockfile and change only the `@ezychat/*` version strings
-  (check the rest is equal ignoring `peer` lines). Stop the owner test env Dev Build (and every process
+  lockfile at each release and can drop optional packages (`@napi-rs/canvas` for pdfjs): keep `main`'s
+  lockfile and change only the `@ezychat/*` version strings (`docs/release.md` step 1; about 22 lines). Stop the owner test env Dev Build (and every process
   running from `node_modules`) before `npm ci`: a locked `esbuild.exe` makes it fail with EPERM after it
   deleted half of `node_modules`.
 - After merging `main` (and before a release), check `CHANGELOG.md` `[Unreleased]` for duplicate
@@ -468,6 +468,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   wait on the run instead (`gh run list --branch <b> --limit 1`, then `gh run watch <id>`). In a background
   shell without a terminal `gh run watch` can also return at once: poll `gh run view <id> --json status`, or
   `gh pr checks <pr> --json bucket` until no `pending` is left (never parse the text table: names have spaces).
+  Filter with gh's own `--jq`: the owner's PC has no `jq`, and a watcher that pipes to it stays silent.
 - `gh pr checks --watch` and `gh run watch` can also return while a check is still pending or a job is
   still queued (seen with macOS CI and a queued self-hosted job), and right after `gh run rerun --failed`
   `gh run watch` still sees the old failed attempt and exits at once: read the final status after the wait,

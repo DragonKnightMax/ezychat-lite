@@ -12,8 +12,10 @@ change is important (owner rule). Merge only on the owner's explicit request, in
 
 On a branch `chore/release-<version>` from `main`:
 
-1. Bump the root `package.json` version, run `npm run version:sync`, then
-   `npm install --package-lock-only --ignore-scripts` (all workspaces and the lockfile agree).
+1. Bump the root `package.json` version and run `npm run version:sync`. In `package-lock.json` keep `main`'s
+   file and change only the workspace versions and the `@ezychat/*` pins from the old to the new version
+   (about 22 lines). Do not run `npm install --package-lock-only`: another npm version rewrites `peer` flags
+   and can drop optional packages (it removed `@napi-rs/canvas` once).
 2. In `CHANGELOG.md`, add `## [<version>] - <date>` under `## [Unreleased]` so the unreleased entries move
    into it. **Write it in plain language for users**: this section becomes the GitHub release notes and the
    "What's new" text of the in-app update dialog (`scripts/release-notes.mjs`). A tag without a section

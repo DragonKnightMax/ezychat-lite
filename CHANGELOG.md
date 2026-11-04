@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.73] - 2026-11-04
+
 ### Added
 
 - **Record claims, invoices and more into Google Sheets.** In Google Sheets settings, each tab of the spreadsheet is
