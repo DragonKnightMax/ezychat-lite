@@ -245,6 +245,76 @@ describe('Composer Fix English: grammar', () => {
     expect(screen.getByTestId('fix-english-fix-all').textContent).toContain('Fix 1');
   });
 
+  it('never offers the same insertion again after it was applied (no double full stop)', async () => {
+    // The model answers each check on its own: here it adds a full stop every time.
+    vi.mocked(fetchGrammar).mockImplementation(async (_jid, text) => {
+      const at = text.indexOf('email');
+      const original = text.slice(at).trimEnd();
+      return {
+        status: 'checked',
+        issues: [{ start: at, end: at + original.length, original, replacement: `${original}.` }],
+      };
+    });
+    const { box, user } = setup();
+    fireEvent.change(box, { target: { value: 'Please check your email' } });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    await waitFor(() => expect(marked()).toEqual(['email']));
+    await user.click(screen.getByTestId('fix-english-fix-all'));
+    expect(box.value).toBe('Please check your email.');
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(fetchGrammar).toHaveBeenLastCalledWith(
+      JID,
+      'Please check your email.',
+      expect.any(AbortSignal),
+    );
+    await settle();
+    expect(marked()).toEqual([]);
+    expect(screen.queryByTestId('fix-english-fix-all')).toBeNull();
+    expect(box.value).toBe('Please check your email.');
+
+    // Undo brings the draft back, and with it the fix.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(box.value).toBe('Please check your email');
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    await waitFor(() => expect(marked()).toEqual(['email']));
+  });
+
+  it('shows one mark when two fixes meet on one word, and applies it once', async () => {
+    vi.mocked(fetchGrammar).mockResolvedValue({
+      status: 'checked',
+      issues: [
+        { start: 13, end: 18, original: 'email', replacement: 'your email' },
+        { start: 13, end: 18, original: 'email', replacement: 'email.' },
+      ],
+    });
+    const { box, user } = setup();
+    fireEvent.change(box, { target: { value: 'Please check email' } });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    await waitFor(() => expect(marked()).toEqual(['email']));
+    const fixAll = screen.getByTestId('fix-english-fix-all');
+    expect(fixAll.textContent).toContain('Fix 1');
+    await user.click(fixAll);
+    expect(box.value).toBe('Please check your email');
+  });
+
+  it('ignores an answer for text that is no longer in the box', async () => {
+    let answer: (value: Awaited<ReturnType<typeof fetchGrammar>>) => void = () => undefined;
+    vi.mocked(fetchGrammar).mockImplementation(() => new Promise((resolve) => (answer = resolve)));
+    const { box } = setup();
+    fireEvent.change(box, { target: { value: 'Your order have been ready. ' } });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(fetchGrammar).toHaveBeenCalledTimes(1);
+    fireEvent.change(box, { target: { value: 'Your order has been ready. ' } });
+    await act(async () =>
+      answer({
+        status: 'checked',
+        issues: [{ start: 11, end: 15, original: 'have', replacement: 'has' }],
+      }),
+    );
+    expect(marked()).toEqual([]);
+    expect(screen.queryByTestId('fix-english-fix-all')).toBeNull();
+  });
+
   it('shows "No mistakes" when both checks find nothing', async () => {
     const { box } = setup();
     fireEvent.change(box, { target: { value: 'Your order is ready. ' } });

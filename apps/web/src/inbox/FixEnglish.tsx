@@ -70,6 +70,61 @@ export function applyFixes(text: string, issues: readonly FixIssue[], pick?: str
   return next;
 }
 
+/**
+ * What a fix adds when it only inserts text ("email" → "email." adds "."; "email" → "your email"
+ * adds "your "), else ''.
+ */
+export function insertedText(original: string, replacement: string): string {
+  if (replacement.length <= original.length) return '';
+  let head = 0;
+  while (head < original.length && original[head] === replacement[head]) head++;
+  let tail = 0;
+  while (
+    tail < original.length - head &&
+    original[original.length - 1 - tail] === replacement[replacement.length - 1 - tail]
+  )
+    tail++;
+  return head + tail === original.length ? replacement.slice(head, replacement.length - tail) : '';
+}
+
+/** A fix applied in this draft: where its text now stands, and what it inserted. */
+interface AppliedFix {
+  start: number;
+  end: number;
+  inserted: string;
+}
+
+/**
+ * The grammar marks of one answer: in order, never two on the same text (the first wins), and
+ * never the same insertion again where this draft already got it ("email." + "." → "email..").
+ */
+export function grammarMarks(
+  issues: readonly { start: number; end: number; original: string; replacement: string }[],
+  applied: readonly AppliedFix[],
+): FixIssue[] {
+  const out: FixIssue[] = [];
+  for (const i of [...issues].sort((a, b) => a.start - b.start || a.end - b.end)) {
+    const last = out.at(-1);
+    if (last && i.start < last.end) continue;
+    const inserted = insertedText(i.original, i.replacement);
+    if (
+      inserted &&
+      applied.some((f) => f.inserted === inserted && i.start <= f.end && i.end >= f.start)
+    )
+      continue;
+    out.push({
+      id: `g${i.start}:${i.end}:${i.original}`,
+      kind: 'grammar',
+      start: i.start,
+      end: i.end,
+      original: i.original,
+      suggestions: [i.replacement],
+      replacement: i.replacement,
+    });
+  }
+  return out;
+}
+
 /** The speller, once Fix English is on and something was typed (null until it has loaded). */
 function useSpeller(load: boolean): Speller | null {
   const [speller, setSpeller] = useState<Speller | null>(null);
@@ -137,11 +192,19 @@ export function useFixEnglish(
   const [grammar, setGrammar] = useState<FixIssue[]>([]);
   const [grammarStatus, setGrammarStatus] = useState<GrammarStatus>('idle');
   const previous = useRef(text);
+  // Fixes applied in this draft, on the positions of `applied.current.text`.
+  const applied = useRef<{ text: string; fixes: AppliedFix[] }>({ text, fixes: [] });
   useLayoutEffect(() => {
     // Read the old text now: the updater runs later, after `previous` already holds the new text.
     const before = previous.current;
     previous.current = text;
     setGrammar((current) => shiftIssues(current, before, text));
+    const done = applied.current;
+    if (done.text !== text)
+      applied.current = {
+        text,
+        fixes: done.text === before && text.trim() ? shiftIssues(done.fixes, before, text) : [],
+      };
   }, [text]);
   useEffect(() => {
     if (!grammarOn || !text.trim()) {
@@ -156,20 +219,10 @@ export function useFixEnglish(
       setGrammarStatus('checking');
       fetchGrammar(jid!, text, cancel.signal)
         .then((result) => {
-          if (cancel.signal.aborted) return;
-          setGrammar(
-            result.status === 'checked'
-              ? result.issues.map((i) => ({
-                  id: `g${i.start}:${i.original}`,
-                  kind: 'grammar' as const,
-                  start: i.start,
-                  end: i.end,
-                  original: i.original,
-                  suggestions: [i.replacement],
-                  replacement: i.replacement,
-                }))
-              : [],
-          );
+          // An answer counts only for the exact text it was asked for: its positions are that text's.
+          if (cancel.signal.aborted || previous.current !== text) return;
+          const done = applied.current.text === text ? applied.current.fixes : [];
+          setGrammar(result.status === 'checked' ? grammarMarks(result.issues, done) : []);
           setGrammarStatus(result.status === 'checked' ? 'done' : 'skipped');
         })
         .catch(() => {
@@ -214,6 +267,25 @@ export function useFixEnglish(
     issues,
     fixable: issues.filter((i) => i.replacement != null),
     grammarStatus,
+    /**
+     * The text with these fixes applied (`pick` for a choice in the card), remembered for this
+     * draft so a later check never offers the same insertion at the same place again.
+     */
+    apply(current: string, list: readonly FixIssue[], pick?: string): string {
+      const next = applyFixes(current, list, pick);
+      const done = applied.current.text === current ? applied.current.fixes : [];
+      const fixes = shiftIssues(done, current, next);
+      let offset = 0;
+      for (const issue of [...list].sort((a, b) => a.start - b.start)) {
+        const fix = pick ?? issue.replacement;
+        if (fix == null || current.slice(issue.start, issue.end) !== issue.original) continue;
+        const start = issue.start + offset;
+        fixes.push({ start, end: start + fix.length, inserted: insertedText(issue.original, fix) });
+        offset += fix.length - issue.original.length;
+      }
+      applied.current = { text: next, fixes };
+      return next;
+    },
     ignore(issue: FixIssue) {
       setIgnored((current) => new Set(current).add(keyOf(issue)));
     },

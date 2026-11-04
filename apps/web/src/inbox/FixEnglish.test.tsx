@@ -5,6 +5,8 @@ import {
   FixEnglishButton,
   FixEnglishCard,
   applyFixes,
+  grammarMarks,
+  insertedText,
   shiftIssues,
   type FixIssue,
 } from './FixEnglish';
@@ -48,6 +50,42 @@ describe('applyFixes', () => {
     expect(
       applyFixes('teh cat', [issue({ start: 0, end: 3, original: 'teh', replacement: null })]),
     ).toBe('teh cat');
+  });
+});
+
+describe('insertedText', () => {
+  it('names what a fix only inserts, and nothing for any other change', () => {
+    expect(insertedText('email', 'email.')).toBe('.');
+    expect(insertedText('email', 'your email')).toBe('your ');
+    expect(insertedText('we', '. We')).toBe('');
+    expect(insertedText('have', 'has')).toBe('');
+    expect(insertedText('the ', '')).toBe('');
+  });
+});
+
+describe('grammarMarks', () => {
+  const g = (start: number, original: string, replacement: string) => ({
+    start,
+    end: start + original.length,
+    original,
+    replacement,
+  });
+  it('keeps one mark per piece of text, in order, with an id per range', () => {
+    const marks = grammarMarks(
+      [g(13, 'email', 'email.'), g(13, 'email', 'your email'), g(0, 'pls', 'Please')],
+      [],
+    );
+    expect(marks.map((m) => [m.id, m.replacement])).toEqual([
+      ['g0:3:pls', 'Please'],
+      ['g13:18:email', 'email.'],
+    ]);
+  });
+  it('never offers again an insertion this draft already got at that place', () => {
+    const applied = [{ start: 13, end: 19, inserted: '.' }];
+    expect(grammarMarks([g(13, 'email.', 'email..')], applied)).toEqual([]);
+    // A different change there, or the same insertion elsewhere, is still offered.
+    expect(grammarMarks([g(13, 'email.', 'emails.')], applied)).toHaveLength(1);
+    expect(grammarMarks([g(30, 'soon', 'soon.')], applied)).toHaveLength(1);
   });
 });
 

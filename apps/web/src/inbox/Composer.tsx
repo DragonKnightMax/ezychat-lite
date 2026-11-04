@@ -54,7 +54,6 @@ import {
   FixEnglishButton,
   FixEnglishCard,
   FixEnglishMarks,
-  applyFixes,
   useFixEnglish,
   type FixIssue,
 } from './FixEnglish';
@@ -300,7 +299,7 @@ export function Composer({
   function pickFix(issue: FixIssue, replacement: string) {
     pendingCaret.current = issue.start + replacement.length;
     setCard(null);
-    setText(applyFixes(text, [issue], replacement));
+    setText(fix.apply(text, [issue], replacement));
   }
 
   function addWord(issue: FixIssue) {
@@ -311,7 +310,7 @@ export function Composer({
   function fixAll() {
     const count = fix.fixable.length;
     if (!count) return;
-    const next = applyFixes(text, fix.fixable);
+    const next = fix.apply(text, fix.fixable);
     pendingCaret.current = next.length;
     setCard(null);
     setFixUndo({ before: text, after: next, count });

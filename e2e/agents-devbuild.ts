@@ -9,7 +9,8 @@
 // Partner connectors (start it with the env lines of `node e2e/partner-mcp/cli.mjs`): STOCK, INVOICE and
 // QUOTE call the partner tools (see mockDecision); check: e2e/devbuild-partner-check.mjs.
 // Reply suggestions: drafts from the best-matching business-context sentence (LEAK copies internalKnowledge).
-// Fix English: grammar fixes from a fixed list of slips (have/has, ship/shipped, you/your, a/an, i, capitals).
+// Fix English: grammar fixes from a fixed list of slips (have/has, ship/shipped, you/your, a/an, i, capitals),
+// and a full stop after a final "email" every time (even after one), like a model that re-adds a fix.
 // Hand-off rules: consultation, CHECKIN, RESOLVE and HUMAN (see mockDecision); check: e2e/devbuild-handoff-check.mjs.
 // Group agents (--max-agents 2): in a group that reads every message, a message with "Policy no:" and
 // "Amount:" calls add_sheet_row on the tab Claims and repeats what it said; a claim without an amount
@@ -242,6 +243,10 @@ function mockDraft(prompt: AiRewritePrompt, signal: AbortSignal): unknown {
         .replace(/\bbeen ship\b/gi, 'been shipped')
         .replace(/\b(check|confirm) you (email|order|address)\b/gi, '$1 your $2')
         .replace(/\ba (update|order|email|invoice)\b/gi, 'an $1')
+        // Like a real model, it checks every draft afresh: "check email" gets "your" and a full
+        // stop, and a draft ending in "email." gets one more (the double append Fix English drops).
+        .replace(/\bcheck email\b/gi, 'check your email')
+        .replace(/(\bemail)(\.*)\s*$/i, '$1$2.')
         .replace(/\bi\b/g, 'I')
         .replace(
           /(^|[.!?]\s+)([a-z])/g,

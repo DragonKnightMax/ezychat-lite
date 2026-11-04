@@ -61,6 +61,23 @@ check(
   ) && !pairs.some((p) => p.includes('RM')),
   'mock model fixes reach the marks; the price is never touched',
 );
+// Owner report 2026-11-04: a fix offered again after it was applied, adding the text twice.
+const twice = await api('POST', `/chats/${enc(jid)}/ai/fix-grammar`, { text: 'pls check email' });
+const twicePairs = (twice.json?.issues ?? []).map((i) => `${i.original}>${i.replacement}`);
+check(
+  twicePairs.filter((p) => p.startsWith('email>')).length === 1 &&
+    twicePairs.includes('email>your email.'),
+  'two changes on one word give one mark',
+  twicePairs.join(', '),
+);
+const fixed = await api('POST', `/chats/${enc(jid)}/ai/fix-grammar`, {
+  text: 'Pls check your email.',
+});
+check(
+  fixed.json?.status === 'checked' && fixed.json.issues.length === 0,
+  'the applied full stop is not offered again',
+  (fixed.json?.issues ?? []).map((i) => `${i.original}>${i.replacement}`).join(', '),
+);
 const malay = await api('POST', `/chats/${enc(jid)}/ai/fix-grammar`, {
   text: 'Boleh, saya check dulu ya',
 });

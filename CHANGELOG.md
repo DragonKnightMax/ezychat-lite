@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Fix English no longer suggests the same fix again or adds the text twice.** After you apply a grammar fix
+  (for example a full stop), the next check no longer offers it again, and a word that needs two changes ("check
+  email" → "check your email.") gets one suggestion instead of two that added the word twice.
+
 ## [0.1.74] - 2026-11-04
 
 ### Added

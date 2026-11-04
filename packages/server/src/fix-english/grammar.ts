@@ -87,6 +87,61 @@ const textOf = (tokens: Token[], from: number, to: number) =>
     .map((t) => t.text)
     .join('');
 
+/**
+ * The changed runs, each widened to a word: an insertion takes in the next word ("check email" →
+ * "check your email" marks "email"), or the word before at the end ("update" → "update."). Runs that
+ * then meet or overlap become one run, so one word never carries two marks: two marks on one word
+ * are applied one after the other and add the inserted text twice ("your email" and "email." →
+ * "your email email."). An insertion never reaches across another change: the tokens it takes in
+ * must be unchanged, else it joins that change.
+ */
+function markRanges(a: Token[], b: Token[]): Hunk[] {
+  const list = hunks(a, b);
+  const out: Hunk[] = [];
+  for (const [k, hunk] of list.entries()) {
+    const widened =
+      hunk.aFrom === hunk.aTo ? widenInsertion(a, hunk, list[k + 1], out.at(-1)) : { ...hunk };
+    if (!widened) continue;
+    mergeInto(out, widened);
+  }
+  return out;
+}
+
+/**
+ * An insertion widened to the next word (when only spaces lie between), else to the word before;
+ * null when there is no word to attach it to. It joins the following or previous change instead of
+ * reaching across it.
+ */
+function widenInsertion(
+  a: Token[],
+  hunk: Hunk,
+  following: Hunk | undefined,
+  previous: Hunk | undefined,
+): Hunk | null {
+  const next = a.findIndex((t, index) => index >= hunk.aTo && isWord(t.text));
+  if (next >= 0 && a.slice(hunk.aTo, next).every((t) => isSpace(t.text))) {
+    // The next word is changed too: one change from the insertion to the end of that one.
+    if (following && following.aFrom <= next)
+      return { ...hunk, aTo: following.aTo, bTo: following.bTo };
+    return { ...hunk, aTo: next + 1, bTo: hunk.bTo + next + 1 - hunk.aTo };
+  }
+  let before = hunk.aFrom - 1;
+  while (before >= 0 && !isWord(a[before]!.text)) before--;
+  if (before < 0) return null;
+  if (previous && previous.aTo > before)
+    return { ...hunk, aFrom: previous.aFrom, bFrom: previous.bFrom };
+  return { ...hunk, aFrom: before, bFrom: hunk.bFrom - (hunk.aFrom - before) };
+}
+
+/** Adds a run, joining it to the last one when they overlap. */
+function mergeInto(out: Hunk[], hunk: Hunk) {
+  const previous = out.at(-1);
+  if (previous && previous.aTo > hunk.aFrom) {
+    previous.aTo = Math.max(previous.aTo, hunk.aTo);
+    previous.bTo = Math.max(previous.bTo, hunk.bTo);
+  } else out.push(hunk);
+}
+
 /** A number, link, email address or @mention in a change: never touched. */
 const PROTECTED = /[\p{N}@/]|https?:|www\./iu;
 /** Links, email addresses and @mentions in the original text (whole tokens): no change may touch them. */
@@ -98,6 +153,35 @@ function protectedSpans(text: string): Array<[number, number]> {
       spans.push([m.index, m.index + m[0].length]);
   }
   return spans;
+}
+/**
+ * A pure insertion whose new text already stands on either side of where it goes ("email!" + "!" →
+ * "email!!", "email." + "." → "email..", "the" + "the " → "the the"): applying it would add that
+ * text a second time. The model checks every draft afresh, so it may offer a fix again right after
+ * it was applied.
+ */
+function insertsWhatIsThere(
+  text: string,
+  start: number,
+  end: number,
+  original: string,
+  replacement: string,
+): boolean {
+  if (replacement.length <= original.length) return false;
+  let at: number;
+  let added: string;
+  if (original && replacement.startsWith(original)) {
+    at = end;
+    added = replacement.slice(original.length);
+  } else if (replacement.endsWith(original)) {
+    at = start;
+    added = replacement.slice(0, replacement.length - original.length);
+  } else return false;
+  added = added.trim();
+  return (
+    !!added &&
+    (text.slice(0, at).trimEnd().endsWith(added) || text.slice(at).trimStart().startsWith(added))
+  );
 }
 const isSpaceChar = (c: string | undefined) => c !== undefined && c.trim() === '';
 
@@ -116,23 +200,7 @@ export function grammarIssues(text: string, corrected: string): GrammarIssue[] {
   const spans = protectedSpans(text);
   const issues: GrammarIssue[] = [];
   let changedWords = 0;
-  for (const hunk of hunks(a, b)) {
-    let { aFrom, aTo, bFrom, bTo } = hunk;
-    // An insertion has no original text to mark: take in the next word (or the one before).
-    if (aFrom === aTo) {
-      const next = a.findIndex((t, index) => index >= aTo && isWord(t.text));
-      if (next >= 0 && a.slice(aTo, next).every((t) => isSpace(t.text))) {
-        bTo += next + 1 - aTo;
-        aTo = next + 1;
-      } else {
-        let before = aFrom - 1;
-        while (before >= 0 && !isWord(a[before]!.text)) before--;
-        if (before < 0) continue;
-        bFrom -= aFrom - before;
-        aFrom = before;
-      }
-    }
-    if (bFrom < 0) continue;
+  for (const { aFrom, aTo, bFrom, bTo } of markRanges(a, b)) {
     let original = textOf(a, aFrom, aTo);
     let replacement = textOf(b, bFrom, bTo);
     let start = a[aFrom]!.start;
@@ -157,8 +225,10 @@ export function grammarIssues(text: string, corrected: string): GrammarIssue[] {
     const end = start + original.length;
     if (spans.some(([from, to]) => start < to && Math.max(end, start + 1) > from)) continue;
     const words = (s: string) => s.match(/\p{L}+/gu)?.length ?? 0;
-    if (words(original) > CHANGE_WORDS_MAX || words(replacement) > CHANGE_WORDS_MAX) continue;
+    // A long change still counts towards "the model rewrote the message".
     changedWords += Math.max(words(original), 1);
+    if (words(original) > CHANGE_WORDS_MAX || words(replacement) > CHANGE_WORDS_MAX) continue;
+    if (insertsWhatIsThere(text, start, end, original, replacement)) continue;
     issues.push({ start, end, original, replacement });
   }
   const totalWords = a.filter((t) => isWord(t.text)).length;

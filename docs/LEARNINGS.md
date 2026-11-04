@@ -214,7 +214,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   next `creationOrder`, and prune the next-oldest folder. Resolving them file by file with `--ours/--theirs` puts some
   files in the wrong folder.
 - In a cloud shell, `pkill -f <pattern>` / `kill $(pgrep -f …)` also matches the shell's own command line and kills
-  the tool call (exit 144): keep the server's PID from `$!` in a file and kill that.
+  the tool call (exit 144): keep the server's PID from `$!` in a file and kill that. The `[a]gents` bracket trick
+  does not help when the same tool call also starts or names that program.
 - A rebase conflict in an append-only log (`docs/release-review/*.md`, `docs/dev-build-checks.md`): take
   `main`'s file and insert only the lines the PR itself added (`git show <commit> -- <file>`), in date order.
   Never merge by line text (`main` realigned the table, so old rows came back twice), and never run
@@ -1555,6 +1556,12 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
   runs later, after the code that updates the ref. Shifting marks with `ref.current` inside the updater kept stale
   grammar marks in "Fix N". A popover anchored to a word near the screen edge is `fixed` and measured after render,
   then moved left to fit (an `absolute` card inside a narrow composer ran off a 360 px screen).
+- A diff turned into fix marks must never give two marks on one range: merge changes that meet or overlap, and
+  never widen an insertion across another change (only over unchanged tokens). Two marks on "email" ("your email",
+  "email.") applied one after the other added text twice. Test it as a property: applying every mark gives the
+  corrected text, and the fixed text gets no new mark. On the client, tie an AI answer to the exact text it was
+  asked for and remember applied fixes per draft: the model answers each check afresh and may re-add the same
+  insertion ("email." → "email..").
 - OAuth sign-in from a page (ChatGPT, Google Calendar) opens `about:blank` synchronously in the click,
   then sets its URL, and keeps a visible "Open the sign-in page" link for a blocked window.
 - Marks drawn in a `pointer-events-none` layer over the composer (grey completion, Fix English underlines) are
