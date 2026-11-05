@@ -799,6 +799,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   registers it (real email code, real trial record). To show new core code, stop only that server, rerun
   `use-local-core.mjs` + `build:web` + `bundle:server`, and restart on the SAME data folder: the trial,
   sessions and test agents stay, so nobody registers again.
+- On macOS a full menu bar (notch) hides tray icons: every tray-only action (Status & Service, updates) is also
+  in the Dock menu (`app.dock.setMenu`, `tray.ts`). macOS adds Quit there itself.
 - Changed-lines coverage counts an untested entry `main()`: put new start-up logic in an exported function
   with injectable I/O (`startArgs` in `server-host.cts`) so `main()` gains one call line, and leave
   unrelated log text alone (each touched line counts).
