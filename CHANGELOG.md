@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A Mac running EzyChat no longer falls asleep on its own.** While EzyChat answers chats, the Mac stays
+  awake, so customers and AI replies are not left waiting. The screen can still turn off, and closing the lid
+  still puts the Mac to sleep.
 - **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
   second of saving the new password could show the password page again.
 - **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with

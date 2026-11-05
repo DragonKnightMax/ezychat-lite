@@ -255,6 +255,7 @@ into AGENTS.md.
 - The Stop hook commits on every stop while subagents write: snapshot commits during parallel work carry `[skip ci]` so CI and its failure notices don't fire on half-written code; SonarCloud still runs on them, so read its issue list only on the integrated head.
 
 ## Git, GitHub and CI
+
 - Parallel feature PRs that add a migration must agree on numbers up front: `migrate.test.ts` rejects a gap or duplicate, so the PR that merges second renumbers, stays red on that test until the first lands, then merges `main` and extends the lite-import "older Lite" drop list with the first PR's tables. Two mocks cloned from one baseline merge as a two-way rename (AU/UA/DD for every file): restore each folder from its own branch, then apply the five-folder retention.
 
 - A PR whose CI never starts (no workflow run for the branch) usually has a merge conflict (`mergeable_state: dirty`):
@@ -367,6 +368,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   Never start a root helper with `nohup` on macOS: under the admin prompt (`@vscode/sudo-prompt`, no console)
   it prints "can't detach from console" and exits without running the command, so every Mac update stopped
   after the password (no `state.json`). Background with `&` and full redirection; the helper ignores `HUP`.
+  A Mac that sleeps drops WhatsApp and every AI reply waits (lost sales): the server holds
+  `caffeinate -i -w <pid>` (`keep-awake.ts`), which ends by itself when the server exits, even after a crash.
   Log it as a `real:` Dev Build row. Combine the critical updates into one PR so one smoke covers them.
   A critical `server-host` change gets the same packaged run, with the server started through the packaged
   `app.asar.unpacked/dist/server-host.cjs`. Run `prettier --write docs/dev-build-checks.md` after a new row:
@@ -1446,6 +1449,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - A provider mode whose request format is undocumented for a content type (ChatGPT backend and PDFs) gets a text fallback, never a guessed part type.
 
 ## Desktop and web UI
+
 - The persisted query cache (`api/query-persist.ts`) saves with a delay, so a reload can restore state from before the last mutation: never persist state a route guard acts on in a transitional form (e.g. `mustChangePassword`), and when an e2e step reloads right after a mutation and lands on an old page, suspect the restored copy first.
 
 - Every round trip counts over a slow tunnel (~0.7 s each): the live connection reloads every query when it joins,

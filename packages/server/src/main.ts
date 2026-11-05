@@ -13,6 +13,7 @@ import { SettingsStore } from './db/settings.js';
 import { migrateExtension } from './db/extension-migrate.js';
 import { validateEdition, validateExtensions, type ServerExtension } from './extensions.js';
 import { acquireLock } from './lock.js';
+import { startKeepAwake } from './keep-awake.js';
 import { createLogger } from './logger.js';
 import { InboxConnections, defaultAdapterFactory } from './inboxes/connections.js';
 import { PRIMARY_INBOX_ID } from './inboxes/keys.js';
@@ -150,6 +151,7 @@ export async function startServer(
   const lock = acquireLock(cfg.dataDir);
   const logger = await createLogger({ dataDir: cfg.dataDir });
   const log = logger.log;
+  const awake = startKeepAwake({ mode: cfg.mode, log });
 
   const onUncaught = (err: unknown) => {
     // e.g. undici "TypeError: terminated" (read ECONNRESET) escaping a Baileys media stream:
@@ -255,6 +257,7 @@ export async function startServer(
       } catch {
         // ignore
       }
+      awake.stop();
       lock.release();
       removeErrorHandlers();
       process.off('SIGINT', onSignal);
