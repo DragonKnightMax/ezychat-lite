@@ -43,6 +43,27 @@ export class SqlError extends Error {
 
 export type SqlRecord = Record<string, unknown>;
 
+/** A document body SQL Account accepts: customer code, date and at least one complete line. */
+export function completeDocument(body: SqlRecord): boolean {
+  const lines = body.sdsdocdetail;
+  return (
+    typeof body.code === 'string' &&
+    body.code !== '' &&
+    typeof body.docdate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(body.docdate) &&
+    Array.isArray(lines) &&
+    lines.length > 0 &&
+    lines.every(
+      (l) =>
+        !!l &&
+        typeof l === 'object' &&
+        typeof (l as SqlRecord).itemcode === 'string' &&
+        typeof (l as SqlRecord).qty === 'string' &&
+        typeof (l as SqlRecord).unitprice === 'string',
+    )
+  );
+}
+
 const isRecord = (v: unknown): v is SqlRecord =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -194,8 +215,13 @@ export class SqlClient {
     return answer.data.find(isRecord) ?? null;
   }
 
-  /** `POST /<object>`: the answer (a record, `{data:[…]}` or plain text) as parsed. */
+  /**
+   * `POST /<object>`: the answer (a record, `{data:[…]}` or plain text) as parsed. An empty or
+   * partial body crashes SQL Account's service (S4 "Known issues"), so a body without a customer
+   * code, a date and at least one detail line is never sent.
+   */
   create(object: string, body: SqlRecord, signal?: AbortSignal): Promise<unknown> {
+    if (!completeDocument(body)) return Promise.reject(new SqlError('unexpected'));
     return this.request('POST', `/${rfc3986(object)}`, {}, body, signal);
   }
 

@@ -191,9 +191,11 @@ describe('SQL Account client against the fake API', () => {
     expect(items.map((i) => i.code)).toEqual(['KP-L', 'KP-R']);
     expect(await client.one('customer', '300-F0001')).toMatchObject({ code: '300-F0001' });
     expect(await client.one('customer', 'NOPE')).toBeNull();
-    const created = (await client.create('salesquotation', { code: '300-F0001' })) as {
-      dockey: number;
-    };
+    const created = (await client.create('salesquotation', {
+      code: '300-F0001',
+      docdate: '2026-11-05',
+      sdsdocdetail: [{ itemcode: 'KP-L', qty: '1.00', unitprice: '6.50' }],
+    })) as { dockey: number };
     expect(created.dockey).toBeGreaterThan(0);
   });
 
@@ -240,7 +242,13 @@ describe('SQL Account client against the fake API', () => {
     await expect(noData.check()).rejects.toMatchObject({ kind: 'old_version' });
     await expect(noData.one('customer', 'X')).rejects.toMatchObject({ kind: 'old_version' });
     const empty = new SqlClient(conn, { fetch: async () => new Response('', { status: 200 }) });
-    expect(await empty.create('salesquotation', {})).toBeNull();
+    expect(
+      await empty.create('salesquotation', {
+        code: 'C',
+        docdate: '2026-11-05',
+        sdsdocdetail: [{ itemcode: 'A', qty: '1.00', unitprice: '1.00' }],
+      }),
+    ).toBeNull();
   });
 
   it('keeps to 30 requests a minute per install', async () => {
@@ -314,6 +322,38 @@ describe('SQL Account client against the fake API', () => {
         })
       ).status,
     ).toBe(500);
+  });
+});
+
+describe('SQL Account never posts an empty or partial body', () => {
+  it('refuses without a request', async () => {
+    const fake = new FakeSqlAccount();
+    const client = new SqlClient(conn, { fetch: fake.fetch });
+    for (const body of [
+      {},
+      { code: '300-F0001' },
+      {
+        code: '300-F0001',
+        docdate: '5/11/2026',
+        sdsdocdetail: [{ itemcode: 'A', qty: '1', unitprice: '1' }],
+      },
+      { code: '300-F0001', docdate: '2026-11-05', sdsdocdetail: [] },
+      {
+        code: '',
+        docdate: '2026-11-05',
+        sdsdocdetail: [{ itemcode: 'A', qty: '1', unitprice: '1' }],
+      },
+      {
+        code: '300-F0001',
+        docdate: '2026-11-05',
+        sdsdocdetail: [{ itemcode: 'A', qty: 1, unitprice: '1' }],
+      },
+      { code: '300-F0001', docdate: '2026-11-05', sdsdocdetail: [null] },
+    ])
+      await expect(client.create('salesquotation', body)).rejects.toMatchObject({
+        kind: 'unexpected',
+      });
+    expect(fake.requests).toHaveLength(0);
   });
 });
 

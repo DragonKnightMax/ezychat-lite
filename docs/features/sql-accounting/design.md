@@ -283,6 +283,29 @@ The owner confirmed the design as proposed and asked for the questions to be res
   in v1; Try it has no customer).
 - **Q10:** no test company: the connector ships as **beta** and is "untested against a real SQL Account API".
 
+## More evidence (main session, 2026-11-05)
+
+- **Host (Q2), official:** eStream's own screenshots `static/img/integration/sql-account-api/setup-configuration/4.png`
+  (Access Key `13fcdacdc0429dc2f8fa47dddf97c393.sql.my/SALES` = `<32 hex>.sql.my/<SQL user>`) and `postman-2.png`
+  (Postman variables `host https://<32 hex>.sql.my`, `api_ver v1.0`, `region ap-southeast-5`, `service sqlaccount`, empty
+  `session_token`); SQL Account's Test Connection and the first Postman step are `GET Agent`. So the connect form has
+  Access key + Secret key only and the host comes from the key.
+- **Shared host, third party (not eStream):** `techmanstudies-ai/excel-sync` `sql_api_sync/Get_Sales_Invoice.py` calls
+  `https://api.sql.my/salesinvoice` with the same keys (AWS4Auth `ap-southeast-5` / `sqlaccount`), pages with
+  `?offset=N&limit=50` and reads `{"data":[…]}` with lower-case fields (`docdate`). Both host shapes are accepted (exact
+  shapes only); EzyChat calls the per-company host from the key.
+- **Customer phones, third party:** `JJasXS/eQuotation` (`api/services/customer_payload.py`) uses `phone1`, `phone2`,
+  `mobile`, `email`, `attention` on the customer branch, marked "TODO confirm against official docs" there. The phone
+  index reads any phone/mobile/tel field, also on nested branch rows, so it covers this shape; the customer list is
+  pageable (Q4).
+- **Independent reference** `sqlacccountingapi.com/docs` (S4, owner-shared): customer, sales invoice and customer payment
+  fields as recorded above; no paid/outstanding field; "posting an empty JSON body crashes the backend". The client
+  therefore never sends a document without a customer code, a `YYYY-MM-DD` date and at least one complete line
+  (`completeDocument`, tested).
+- **v2 option (not built):** unpaid ≈ invoice `docamt` − Σ customer-payment allocations (`sdsdocdetail[].fromdocno` = the
+  invoice, `fromdoctype` "SI") − credit notes and contra. Enable only after checking against a real SQL Account
+  (Postman collection or a test company); until then balance questions are handed over.
+
 ## Implementation notes (differences from the proposal)
 
 - Links are keyed by chat (`sql_account_links.chat_jid`, moved by `chats/merge.ts`), not by profile id.
