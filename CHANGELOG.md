@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer grows without limit.
 - **Open logs works for the Mac background service.** It asks for your password and opens a copy of the
   service logs.
+- **Turning the Mac background service off or on again no longer fails halfway.** EzyChat now waits until
+  the old service has fully stopped before it moves your data or starts the new one. Before, this could
+  fail with "Input/output error".
 - **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
   second of saving the new password could show the password page again.
 - **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with

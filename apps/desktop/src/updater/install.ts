@@ -690,6 +690,8 @@ export function buildMacInstallScript(plan: InstallPlan): string {
       `  local restored=1`,
       `  if [ "$runtime_replaced" = 1 ]; then`,
       `    launchctl bootout system/${MAC_LABEL} >/dev/null 2>&1`,
+      // bootout returns before launchd unloads the job; the bootstrap in start_service would fail (error 5)
+      `    n=0; while launchctl print system/${MAC_LABEL} >/dev/null 2>&1 && [ "$n" -lt 120 ]; do n=$((n + 1)); sleep 0.5; done`,
       `    if [ -d "$backup_runtime" ] && [ ! -L "$runtime" ]; then rm -rf "$runtime"; mv "$backup_runtime" "$runtime" || restored=0; else restored=0; fi`,
       `    cp "$stage/old-service.plist" "$plist"; chown root:wheel "$plist"; chmod -N "$plist"; chmod 644 "$plist"`,
       `  fi`,

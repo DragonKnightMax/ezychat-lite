@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   launchdPlist,
+  macControlScript,
   macInstallScript,
   macCopyLogsScript,
   macUninstallScript,
@@ -226,5 +227,46 @@ describe('macCopyLogsScript', () => {
   });
   it('never writes as root into a folder the user could have prepared', () => {
     expect(s).not.toMatch(/\$TMPDIR|\/Users\//);
+  });
+});
+
+// launchctl bootout returns while the job is still shutting down: an immediate bootstrap then fails
+// with "5: Input/output error", and the server may still write its data folder.
+describe('waits until launchd has unloaded the service', () => {
+  const wait =
+    'while launchctl print system/org.ossmalaysia.wateaminbox.server >/dev/null 2>&1; do';
+  const data = '/Library/Application Support/wa-team-inbox';
+  it('install stops an old service before it moves data or replaces the runtime copy', () => {
+    const s = macInstallScript({
+      ...opts,
+      dataDir: data,
+      moveFrom: '/Users/me/data',
+      exists: null,
+      runtime: { from: '/Applications/EzyChat Lite.app', to: `${data}-runtime/EzyChat Lite.app` },
+    });
+    const w = s.indexOf(wait);
+    expect(w).toBeGreaterThan(s.indexOf('launchctl bootout'));
+    expect(w).toBeLessThan(s.indexOf(`mkdir -p '${data}'`));
+    expect(w).toBeLessThan(s.indexOf('ditto --noacl'));
+    expect(w).toBeLessThan(s.indexOf('launchctl bootstrap'));
+  });
+  it('uninstall waits before it removes the runtime and moves the data back', () => {
+    const s = macUninstallScript({
+      label: opts.label,
+      dataDir: data,
+      moveTo: '/Users/me/data',
+      owner: 'me',
+      runtimeDir: `${data}-runtime`,
+    });
+    const w = s.indexOf(wait);
+    expect(w).toBeGreaterThan(s.indexOf('launchctl bootout'));
+    expect(w).toBeLessThan(s.indexOf(`rm -rf '${data}-runtime'`));
+    expect(w).toBeLessThan(s.indexOf("chown -R 'me'"));
+  });
+  it('stop returns only once the service is gone, and gives up with an error after a minute', () => {
+    const s = macControlScript({ label: opts.label, action: 'stop' });
+    expect(s).toContain(wait);
+    expect(s).toContain('-ge 120');
+    expect(s).toMatch(/did not stop[^\n]*>&2; exit 5/);
   });
 });

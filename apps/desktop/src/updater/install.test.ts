@@ -223,6 +223,14 @@ describe('macOS update helper safety', () => {
     expect(script).toContain('Set :ProgramArguments:0');
     expect(script).toContain('start_service "$version"');
     expect(script).toContain('cp "$stage/old-service.plist" "$plist"');
+    // rollback: bootout returns before launchd has unloaded the job; bootstrap would fail with error 5
+    const rollback = script.slice(script.indexOf('recover() {'));
+    expect(rollback.indexOf('while launchctl print system/')).toBeGreaterThan(
+      rollback.indexOf('launchctl bootout'),
+    );
+    expect(rollback.indexOf('while launchctl print system/')).toBeLessThan(
+      rollback.indexOf('rm -rf "$runtime"'),
+    );
     expect(script).toContain('start_service "$original_version"');
     expect(script.indexOf('rm -rf "$backup_main" "$backup_runtime"')).toBeGreaterThan(
       script.indexOf('start_service "$version"'),

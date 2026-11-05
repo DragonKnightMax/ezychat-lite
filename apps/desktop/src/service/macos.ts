@@ -122,12 +122,26 @@ function runtimeCopyLines(r: { from: string; to: string }): string[] {
   ];
 }
 
+/**
+ * Stops the job and waits until launchd has unloaded it. `launchctl bootout` returns while the server is
+ * still shutting down: a bootstrap right after fails with "5: Input/output error", and the server may
+ * still be writing the data folder that is about to move. Gives up after a minute.
+ */
+export function macStopAndWait(label: string): string[] {
+  return [
+    `launchctl bootout system/${label} 2>/dev/null || true`,
+    `n=0; while launchctl print system/${label} >/dev/null 2>&1; do n=$((n + 1)); if [ "$n" -ge 120 ]; then echo 'The background service did not stop within a minute.' >&2; exit 5; fi; sleep 0.5; done`,
+  ];
+}
+
 /** sh script (run as root): move data, lock down data dir, write plist, bootstrap the daemon. */
 export function macInstallScript(o: MacInstallOptions): string {
   const plist = plistPath(o.label);
   return [
     '#!/bin/bash',
     'set -euo pipefail',
+    // An old job may still run from the data folder and the runtime copy that are replaced below.
+    ...macStopAndWait(o.label),
     ...dataMoveCommands('darwin', o.moveFrom, o.dataDir, o.exists === undefined ? null : o.exists),
     `mkdir -p ${shQuote(o.dataDir)} ${shQuote(o.logDir)}`,
     `chown -R root:wheel ${shQuote(o.dataDir)}`,
@@ -138,7 +152,6 @@ export function macInstallScript(o: MacInstallOptions): string {
     'WATI_PLIST_EOF',
     `chown root:wheel ${shQuote(plist)}`,
     `chmod 644 ${shQuote(plist)}`,
-    `launchctl bootout system/${o.label} 2>/dev/null || true`,
     `launchctl bootstrap system ${shQuote(plist)}`,
     `echo 'Service installed and started.'`,
     '',
@@ -167,7 +180,7 @@ export function macUninstallScript(o: MacUninstallOptions): string {
     `assert_no_link_up() { local p="$1"; while [ "$p" != "/" ] && [ -n "$p" ]; do if [ -L "$p" ]; then echo "Unexpected link: $p" >&2; exit 3; fi; p=$(dirname "$p"); done; }`,
     `assert_no_link_up ${shQuote(o.moveTo)}`,
     `assert_no_link_up ${shQuote(o.dataDir)}`,
-    `launchctl bootout system/${o.label} 2>/dev/null || true`,
+    ...macStopAndWait(o.label),
     `rm -f ${shQuote(plist)}`,
     ...(o.runtimeDir ? [`rm -rf ${shQuote(o.runtimeDir)}`] : []),
     `assert_no_link_up ${shQuote(o.moveTo)}`,
@@ -211,7 +224,7 @@ export function macControlScript(o: { label: string; action: 'start' | 'stop' })
           `  launchctl bootstrap system ${shQuote(plist)}`,
           'fi',
         ]
-      : [`launchctl bootout system/${o.label} 2>/dev/null || true`];
+      : macStopAndWait(o.label);
   return ['#!/bin/bash', 'set -euo pipefail', ...body, ''].join('\n');
 }
 

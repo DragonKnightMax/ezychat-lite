@@ -377,6 +377,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   launchd has no restart limit: use `KeepAlive {SuccessfulExit false}` and exit 0 for errors a restart
   cannot fix. A platform-level `files:` in electron-builder.yml replaces the top-level list (the 32 MB
   `server.cjs.map` came back), it does not add to it.
+  `launchctl bootout` returns while the job still shuts down: a `bootstrap` right after fails with
+  "5: Input/output error" (reproduced with a user job), and data moved then is still open. Follow every bootout
+  with a `launchctl print` wait loop (`macStopAndWait`) before bootstrap, data moves or runtime removal.
   Log it as a `real:` Dev Build row. Combine the critical updates into one PR so one smoke covers them.
   A critical `server-host` change gets the same packaged run, with the server started through the packaged
   `app.asar.unpacked/dist/server-host.cjs`. Run `prettier --write docs/dev-build-checks.md` after a new row:
