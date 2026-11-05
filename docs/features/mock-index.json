@@ -16,6 +16,20 @@
   },
   "proposals": [
     {
+      "feature": "sql-accounting",
+      "creationOrder": 34,
+      "createdAt": "2026-11-05",
+      "design": "docs/features/sql-accounting/design.md",
+      "mock": "docs/features/sql-accounting/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "group-management",
+      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
+      "confirmedAt": "2026-11-05",
+      "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
+      "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md.",
+      "note": "Built in parallel with google-drive from the same group-management baseline; the next clone should start from the latestConfirmed (google-drive) and copy in this folder's SQL Account files (src/admin/SqlAccountPage.tsx, src/mock/sqlAccount.ts, sql-account.ts, sql-account-shots.mjs and the changed shared files listed in design.md)."
+    },
+    {
       "feature": "google-drive",
       "creationOrder": 33,
       "createdAt": "2026-11-05",
@@ -81,7 +95,12 @@
       "coverage": "Standalone preview of the new screens (members, Claims agent page, Google Sheets tab access, group chat with claim/PDF/photo/missing/chit-chat/Word simulation, the sheet, Activity), desktop 1280 / mobile 360, light/dark; the cumulative full-app clone is still owed.",
       "note": "Several AI agents per WhatsApp number (Enterprise limit), group agent + listen mode, Google Sheets tab access per agent (Off / Read / Add rows).",
       "confirmedAt": "2026-11-03",
-      "confirmation": "Owner wrote 2026-11-03 \"look good, implement it until it done with test, than create PR and merge\" after the preview screenshots (incl. Refresh). Confirmed on the standalone preview; no full-app clone."
+      "confirmation": "Owner wrote 2026-11-03 \"look good, implement it until it done with test, than create PR and merge\" after the preview screenshots (incl. Refresh). Confirmed on the standalone preview; no full-app clone.",
+      "archived": {
+        "folderRemovedAt": "2026-11-05",
+        "lastRevision": "b5eaf97b087e7bba641b9c3a5560545f538febe9",
+        "reason": "retention: sixth feature folder (sql-accounting merged beside google-drive)"
+      }
     },
     {
       "feature": "in-app-feedback",

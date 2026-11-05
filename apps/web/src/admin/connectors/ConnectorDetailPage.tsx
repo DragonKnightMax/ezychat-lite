@@ -19,7 +19,9 @@ import type {
   ConnectorEntry,
   DriveActivity,
   GoogleCalendarState,
+  GoogleDriveState,
   SheetsActivity,
+  SqlAccountState,
 } from '@ezychat/shared';
 import {
   useCalendarActivity,
@@ -30,6 +32,7 @@ import {
   useGoogleSheets,
   useSheetsActivity,
 } from '../../api/connectors';
+import { useSqlAccount } from '../../api/sql-account';
 import { encodeJid } from '../../lib/jid';
 import { EmptyState } from '@/components/app';
 import { UpgradeButton } from '@/components/app/UpgradeEnterprise';
@@ -57,6 +60,7 @@ import { GoogleCalendarAccountCard } from './GoogleCalendarAccountCard';
 import { GoogleDriveAccountCard } from './GoogleDriveAccountCard';
 import { GoogleSheetsAccountCard } from './GoogleSheetsAccountCard';
 import { SheetsSettingsCard } from './SheetsSettingsCard';
+import { SqlAccountTabs } from './SqlAccountPage';
 import { ListConnectorPage } from './PartnerConnectorPage';
 
 const TABS = ['overview', 'settings', 'activity', 'bookings'] as const;
@@ -64,8 +68,10 @@ type Tab = (typeof TABS)[number];
 /** Google Sheets and Google Drive have no Bookings tab. */
 const SHEETS_TABS = ['overview', 'settings', 'activity'] as const;
 
-/** The built-in Google connectors' own pages (each with its tabs). */
-const GOOGLE_TABS: Partial<
+type ConnectorState = GoogleCalendarState | GoogleDriveState | SqlAccountState;
+
+/** The built-in connectors' own pages (each with its tabs). */
+const BUILTIN_TABS: Partial<
   Record<
     string,
     (props: Readonly<{ c: CatalogConnector; entry: ConnectorEntry | null }>) => React.ReactNode
@@ -74,6 +80,7 @@ const GOOGLE_TABS: Partial<
   'google-calendar': (props) => <GoogleCalendarTabs {...props} />,
   'google-sheets': (props) => <GoogleSheetsTabs {...props} />,
   'google-drive': (props) => <GoogleDriveTabs {...props} />,
+  'sql-account': ({ entry }) => <SqlAccountTabs entry={entry} />,
 };
 const isTab = (value: string | null, tabs: readonly Tab[] = TABS): value is Tab =>
   (tabs as readonly string[]).includes(value ?? '');
@@ -81,7 +88,8 @@ const isTab = (value: string | null, tabs: readonly Tab[] = TABS): value is Tab 
 /**
  * `/admin/connectors/:id`: one page per connector. The app's own connectors come first: Google
  * Calendar has Overview (what it does, the Google account, your data), Settings (per AI agent),
- * Activity and Bookings tabs (`?tab=`, `&agent=`); Google Sheets and Google Drive the same without Bookings; the custom connector needs Enterprise. Every
+ * Activity and Bookings tabs (`?tab=`, `&agent=`); Google Sheets and Google Drive the same without Bookings;
+ * SQL Account has Overview, Connection, Settings, Customers and Activity; the custom connector needs Enterprise. Every
  * other page is built from the connector's entry in the connector list. A connector an extension
  * provides opens the extension's page.
  */
@@ -97,14 +105,16 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
   const links = useConnectorLinks();
   const google = useGoogleCalendar(c.id === 'google-calendar');
   const sheets = useGoogleSheets(c.id === 'google-sheets');
+  const sql = useSqlAccount(c.id === 'sql-account');
   const drive = useGoogleDrive(c.id === 'google-drive');
   // The connector list may mark the app's own connector Beta and add a notice (e.g. Google review).
   const entry = useBuiltinEntry(c.id);
   const link = links[c.id];
   if (link) return <Navigate to={link} replace />;
-  const states: Partial<Record<string, { state: GoogleCalendarState } | undefined>> = {
+  const states: Partial<Record<string, { state: ConnectorState } | undefined>> = {
     'google-sheets': sheets.data,
     'google-drive': drive.data,
+    'sql-account': sql.data,
   };
   const status = connectorStatus(c, (states[c.id] ?? google.data)?.state, undefined);
   const name = t(`connectors.items.${c.id}.name`);
@@ -127,7 +137,7 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
         </div>
       </div>
 
-      {GOOGLE_TABS[c.id]?.({ c, entry }) ?? (
+      {BUILTIN_TABS[c.id]?.({ c, entry }) ?? (
         <div className="flex flex-col gap-4">
           {status === 'enterprise' && (
             <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -146,6 +156,7 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
   );
 }
 
+/** The tabs of a built-in connector, or null for any other connector page. */
 function GoogleCalendarTabs({
   c,
   entry,

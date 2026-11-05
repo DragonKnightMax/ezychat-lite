@@ -199,6 +199,28 @@
       "step2": "Ketik nama di atas.",
       "step3": "Ketik Laporkan, kemudian Laporkan sekali lagi."
     },
+    "sqlApiService": {
+      "title": "Apakah perkhidmatan API (API Link)?",
+      "body": "Program kecil SQL Account pada pelayan SQL anda yang membolehkan aplikasi lain, seperti {{product}}, membaca dan menambah rekod dengan selamat.",
+      "step1": "Pada skrin log masuk SQL Account, klik ⚙.",
+      "step2": "Klik kanan pangkalan data syarikat → Configure API Service… → Install, kemudian Start.",
+      "step3": "Minta pengurus router anda memajukan port 443 (TCP) ke pelayan SQL Account.",
+      "step4": "Klik Test Connection dalam SQL Account: ia mesti menunjukkan OK.",
+      "action": "Panduan persediaan SQL Account"
+    },
+    "sqlKeys": {
+      "title": "Di mana saya dapat kunci?",
+      "body": "SQL Account membuat kunci akses dan kunci rahsia untuk seorang pengguna. Pengguna itu kemudian hanya digunakan untuk API.",
+      "step1": "Dalam SQL Account: Tools → Maintain User → New, namakan \"APIUser\".",
+      "step2": "Pilih pengguna baharu → More → API Secret Key.",
+      "step3": "Klik Generate API Secret Key.",
+      "step4": "Salin kedua-dua kunci sekarang (kunci rahsia ditunjukkan sekali sahaja) dan tampal di sini.",
+      "action": "Panduan kunci SQL Account"
+    },
+    "sqlCustomerCode": {
+      "title": "Apakah kod pelanggan?",
+      "body": "Kod pelanggan dalam SQL Account, contohnya 300-F0001. Apabila dipautkan pada chat, AI hanya menunjukkan rekod pelanggan itu sendiri."
+    },
     "usageStats": {
       "title": "Apakah statistik penggunaan tanpa nama?",
       "body": "EzyChat mengira langkah persediaan, seperti WhatsApp dipautkan atau AI dihidupkan, untuk menambah baik aplikasi. Bukan siapa anda atau apa yang anda tulis.",

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **SQL Account connector (beta).** Your AI agent can now answer from SQL Account (eStream): stock and selling
+  prices for everyone, and each customer's own invoices, quotations, sales orders and delivery orders, and (once you
+  turn it on) what they still owe, said exactly as recorded in your accounts. It works
+  only when your SQL Account has the API module (API Link, a paid add-on from your SQL dealer). Connect it in
+  Admin → Connectors → SQL Account with the access key and secret key from SQL Account. For each AI agent you
+  choose, per kind of record, Off, Read or Read + create (create is offered only for quotations, after the
+  customer confirms). A customer only ever sees their own records: EzyChat matches a chat to a SQL Account
+  customer by a link your team sets or by a WhatsApp number exactly one customer has, and otherwise hands the
+  chat to your team. The AI never changes or deletes anything in SQL Account. Not yet tried against a real SQL
+  Account.
 - **Google Drive connector (Beta).** Admin → Connectors → Google Drive: sign in with Google and choose a folder for each
   AI agent. With **Save files** on, the agent saves photos and documents people send in a chat into that folder (named
   by date and time, never a file WhatsApp Safety locked, up to 25 MB). With **Read files**, it answers from the Drive
@@ -17,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
+  second of saving the new password could show the password page again.
 - **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with
   "could not update" and kept the old version. The installer helper now starts after you approve.
 

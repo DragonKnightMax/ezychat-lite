@@ -199,6 +199,28 @@
       "step2": "Tap the name at the top.",
       "step3": "Tap Report, then Report again."
     },
+    "sqlApiService": {
+      "title": "What is the API service (API Link)?",
+      "body": "A small SQL Account program on your SQL server that lets other apps, like {{product}}, read and add records safely.",
+      "step1": "On the SQL Account log-on screen, click ⚙.",
+      "step2": "Right-click your company database → Configure API Service… → Install, then Start.",
+      "step3": "Ask whoever manages your router to forward port 443 (TCP) to the SQL Account server.",
+      "step4": "Click Test Connection in SQL Account: it must show OK.",
+      "action": "SQL Account setup guide"
+    },
+    "sqlKeys": {
+      "title": "Where do I get the keys?",
+      "body": "SQL Account makes an access key and a secret key for one user. That user then works only for the API.",
+      "step1": "In SQL Account: Tools → Maintain User → New, name it \"APIUser\".",
+      "step2": "Select the new user → More → API Secret Key.",
+      "step3": "Click Generate API Secret Key.",
+      "step4": "Copy both keys now (the secret key is shown only once) and paste them here.",
+      "action": "SQL Account key guide"
+    },
+    "sqlCustomerCode": {
+      "title": "What is the customer code?",
+      "body": "The customer's code in SQL Account, for example 300-F0001. Linked to a chat, it lets the AI show that customer only their own records."
+    },
     "usageStats": {
       "title": "What are anonymous usage stats?",
       "body": "EzyChat counts setup steps, like WhatsApp linked or AI turned on, to improve the app. Never who you are or what you write.",

@@ -24,6 +24,9 @@ export const TIP_TOPICS = [
   'lockedFiles',
   'driveFiles',
   'reportNumber',
+  'sqlApiService',
+  'sqlKeys',
+  'sqlCustomerCode',
   'usageStats',
 ] as const;
 export type TipTopic = (typeof TIP_TOPICS)[number];
@@ -66,6 +69,15 @@ export const TIPS: Readonly<Record<TipTopic, TipShape>> = {
   lockedFiles: { steps: 0 },
   driveFiles: { steps: 0 },
   reportNumber: { steps: 3 },
+  sqlApiService: {
+    steps: 4,
+    action: 'https://docs.sql.com.my/sqlacc/integration/sql-account-api/on-premise-setup',
+  },
+  sqlKeys: {
+    steps: 4,
+    action: 'https://docs.sql.com.my/sqlacc/integration/sql-account-api/setup-configuration',
+  },
+  sqlCustomerCode: { steps: 0 },
   usageStats: { steps: 3 },
 };
 

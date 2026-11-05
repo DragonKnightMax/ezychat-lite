@@ -199,6 +199,28 @@
       "step2": "点按顶部的名字。",
       "step3": "点「举报」，再点一次「举报」。"
     },
+    "sqlApiService": {
+      "title": "什么是 API 服务（API Link）？",
+      "body": "SQL Account 在您的 SQL 服务器上运行的小程序，让 {{product}} 等其他应用安全地读取和新增记录。",
+      "step1": "在 SQL Account 登录界面点击 ⚙。",
+      "step2": "右键点击公司数据库 → Configure API Service… → Install，然后 Start。",
+      "step3": "请管理路由器的人把 443 端口（TCP）转发到 SQL Account 服务器。",
+      "step4": "在 SQL Account 点击 Test Connection：必须显示 OK。",
+      "action": "SQL Account 设置指南"
+    },
+    "sqlKeys": {
+      "title": "在哪里获取密钥？",
+      "body": "SQL Account 为一个用户生成访问密钥和秘密密钥。此后该用户只用于 API。",
+      "step1": "在 SQL Account：Tools → Maintain User → New，命名为 \"APIUser\"。",
+      "step2": "选中新用户 → More → API Secret Key。",
+      "step3": "点击 Generate API Secret Key。",
+      "step4": "立即复制两个密钥（秘密密钥只显示一次），粘贴到这里。",
+      "action": "SQL Account 密钥指南"
+    },
+    "sqlCustomerCode": {
+      "title": "什么是客户代码？",
+      "body": "客户在 SQL Account 中的代码，例如 300-F0001。关联到聊天后，AI 只向该客户显示其本人的记录。"
+    },
     "usageStats": {
       "title": "什么是匿名使用统计？",
       "body": "EzyChat 只统计设置步骤（例如已连接 WhatsApp、已开启 AI）来改进应用，从不发送你是谁或你写了什么。",

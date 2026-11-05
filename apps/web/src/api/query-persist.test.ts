@@ -150,6 +150,63 @@ describe('save and restore', () => {
   });
 });
 
+describe('a user who must change the password', () => {
+  const user = (mustChangePassword: boolean) => ({
+    id: 7,
+    displayName: 'User 7',
+    mustChangePassword,
+  });
+
+  it('is never saved, so a reload right after the change cannot bring the old state back', () => {
+    vi.useFakeTimers();
+    const storage = memoryStorage();
+    const qc = new QueryClient();
+    const stop = startQueryPersistence(qc, { storage, buster: BUSTER, clearCaches: () => {} });
+    qc.setQueryData(qk.me, user(true));
+    qc.setQueryData(qk.inboxes, { inboxes: [{ id: 1 }] });
+    vi.advanceTimersByTime(SAVE_DELAY_MS);
+    expect(storage.getItem('ezy.queries.7')).toBeNull();
+
+    // The password is changed and the page reloads before the next save: nothing is restored, so
+    // the app asks the server instead of sending the user back to /change-password.
+    qc.setQueryData(qk.me, user(false));
+    const reloaded = new QueryClient();
+    restorePersistedQueries(reloaded, { storage, buster: BUSTER });
+    expect(reloaded.getQueryData(qk.me)).toBeUndefined();
+
+    // Once saved, the next open shows the user at once again.
+    vi.advanceTimersByTime(SAVE_DELAY_MS);
+    stop();
+    const next = new QueryClient();
+    restorePersistedQueries(next, { storage, buster: BUSTER });
+    expect(next.getQueryData(qk.me)).toEqual(user(false));
+  });
+
+  it('removes an earlier copy at once, and ignores a saved copy that still says so', () => {
+    vi.useFakeTimers();
+    const storage = memoryStorage();
+    const qc = new QueryClient();
+    const stop = startQueryPersistence(qc, { storage, buster: BUSTER, clearCaches: () => {} });
+    qc.setQueryData(qk.me, user(false));
+    vi.advanceTimersByTime(SAVE_DELAY_MS);
+    const earlier = storage.getItem('ezy.queries.7')!;
+    expect(earlier).toBeTruthy();
+    qc.setQueryData(qk.me, user(true));
+    expect(storage.getItem('ezy.queries.7')).toBeNull();
+    stop();
+
+    // A copy written by an older build, before this rule.
+    storage.setItem(
+      'ezy.queries.7',
+      earlier.replace('"mustChangePassword":false', '"mustChangePassword":true'),
+    );
+    const next = new QueryClient();
+    restorePersistedQueries(next, { storage, buster: BUSTER });
+    expect(next.getQueryData(qk.me)).toBeUndefined();
+    expect(storage.getItem('ezy.queries.7')).toBeNull();
+  });
+});
+
 describe('sign-out and user switch', () => {
   it('removes the saved copy when the user signs out, and a pending save does not bring it back', () => {
     vi.useFakeTimers();

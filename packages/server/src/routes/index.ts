@@ -35,6 +35,7 @@ import askEzy from './ask-ezy.js';
 import fixEnglish from './fix-english.js';
 import connectors from './connectors.js';
 import connectorGoogleSheets from './connector-google-sheets.js';
+import connectorSqlAccount from './connector-sql-account.js';
 import connectorGoogleDrive from './connector-google-drive.js';
 import connectorList from './connector-list.js';
 import connectorMcp from './connector-mcp.js';
@@ -78,6 +79,7 @@ export const routeModules: RouteModule[] = [
   fixEnglish,
   connectors,
   connectorGoogleSheets,
+  connectorSqlAccount,
   connectorGoogleDrive,
   connectorList,
   connectorMcp,

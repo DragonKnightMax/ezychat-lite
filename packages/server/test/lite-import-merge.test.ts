@@ -760,6 +760,10 @@ describe('mergeLiteInbox refusals and rollback', () => {
     db.exec(
       'DROP TABLE drive_agent_settings; DROP TABLE drive_saved_files; DROP TABLE drive_folders; DROP TABLE drive_activity;',
     );
+    // and 035 (SQL Account connector)
+    db.exec(
+      'DROP TABLE sql_account_agent_settings; DROP TABLE sql_account_links; DROP TABLE sql_account_seen_items; DROP TABLE sql_account_quotes; DROP TABLE sql_account_activity;',
+    );
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

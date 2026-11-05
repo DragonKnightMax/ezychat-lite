@@ -1614,6 +1614,12 @@
         "privacy": "{{product}} 只能打开您在 Google 自己的窗口中选择的文件夹和文件，以及它自己保存的文件。您 Drive 中的其他内容保持私密。",
         "privacy2": "AI 只保存客户在该聊天中发送的文件，绝不保存其他聊天的文件，也绝不保存被 WhatsApp 安全锁定的文件。",
         "privacy3": "活动只记录谁和何时。文件内容和名称保留在您的 Drive 中。"
+      },
+      "sql-account": {
+        "name": "SQL Account",
+        "short": "从 SQL Account 获取库存、价格，以及客户本人的发票和订单。",
+        "long": "您的 AI 客服根据 SQL Account 回答：所有人可查库存和价格，每位客户只能查自己的发票和订单。",
+        "privacy": "{{product}} 只把一次查询所需的内容（商品名称、客户代码、单据号码）发送给 SQL Account，绝不发送聊天内容。"
       }
     },
     "gc": {
@@ -2061,6 +2067,218 @@
         "unavailable": "{{agent}} 没有保存 {{customer}} 发送的文件：无法下载"
       },
       "inGroup": "{{line}}（{{group}}）"
+    },
+    "sql": {
+      "tabs": {
+        "overview": "概览",
+        "connection": "连接",
+        "settings": "设置",
+        "customers": "客户",
+        "activity": "活动"
+      },
+      "settings": {
+        "notConnected": "请先连接 SQL Account。您现在就可以选择设置，连接后 AI 才会使用。"
+      },
+      "req": {
+        "title": "仅适用于已开启 SQL Account API 服务（API Link）的公司",
+        "body": "{{product}} 通过 SQL Account 的 API 服务与其通信。需要 SQL Account 的 API 模块（向您的 SQL 经销商购买的付费附加模块）。没有它，此连接器无法使用，{{product}} 也绝不会直接读取您的 SQL Account 文件。",
+        "version": "SQL Account 5.2025.1038.875 或更新版本。",
+        "service": "API 服务已在您的 SQL Account 服务器上安装并运行。",
+        "port": "路由器的 443 端口已转发到该服务器（需要网络供应商提供的固定公网 IP）。",
+        "user": "为 {{product}} 单独建立的 SQL Account 用户，以及它的访问密钥和秘密密钥。",
+        "dealer": "不确定？请咨询您的 SQL Account 经销商。",
+        "cloud": "SQL Cloud：请向经销商确认是否提供 API 模块。"
+      },
+      "about": "您的 AI 客服根据 SQL Account 回答：所有人可查库存和价格，每位客户只能查自己的发票和订单。",
+      "can": {
+        "stock": "查询商品是否有货及售价。",
+        "account": "告诉客户其本人的发票；如您开启，还可告诉客户尚欠金额。",
+        "documents": "告诉客户其本人报价单、销售订单或送货单的状态。",
+        "quotation": "客户确认后可建立报价单（默认关闭，需您开启）。"
+      },
+      "ownOnly": "客户只能看到自己的记录。如果 {{product}} 无法确定是哪位 SQL Account 客户在发消息，AI 会把聊天转交给您的团队。",
+      "privacy1": "{{product}} 只把一次查询所需的内容（商品名称、客户代码、单据号码）发送给 SQL Account，绝不发送聊天内容。",
+      "privacy2": "密钥加密保存在这台电脑上。日志只记录执行了哪项查询、是否成功和耗时，绝不记录金额、姓名或单据内容。",
+      "state": {
+        "no_dns": {
+          "title": "API 服务尚未设置",
+          "body": "SQL Account 没有对应此密钥的 API 服务。请在 SQL Account 开启 API 服务（Configure API Service）后再试。"
+        },
+        "unreachable": {
+          "title": "无法连接您的 SQL 服务器",
+          "body": "API 服务未运行、SQL Account 服务器已关机，或 443 端口未转发到该服务器。请在 SQL Account 中用 Test Connection 检查。"
+        },
+        "private_ip": {
+          "title": "无法连接您的 SQL 服务器",
+          "body": "该地址指向内部网络。{{product}} 只通过互联网、经由 API 服务连接 SQL Account。"
+        },
+        "bad_keys": {
+          "title": "密钥不被接受",
+          "body": "SQL Account 不接受此访问密钥或秘密密钥。请在 SQL Account（Maintain User → API Secret Key）生成新密钥后重新连接。"
+        },
+        "old_version": {
+          "title": "SQL Account 版本太旧或未开启 API",
+          "body": "需要 SQL Account 5.2025.1038.875 或更新版本并开启 API 服务。请联系经销商更新。"
+        },
+        "unexpected": {
+          "title": "无法使用 SQL Account 的回应",
+          "body": "SQL Account 的回应方式 {{product}} 无法使用。请稍后再试或咨询经销商。"
+        }
+      },
+      "conn": {
+        "connect": "连接 SQL Account",
+        "connected": "已连接 SQL Account",
+        "title": "连接",
+        "hint": "粘贴您在 SQL Account 生成的访问密钥和秘密密钥。",
+        "accessKey": "访问密钥",
+        "accessHint": "格式如 13fc…c393.sql.my/APIUSER。",
+        "keyFormat": "这不是 SQL Account 访问密钥。它以 .sql.my/ 加用户名结尾。",
+        "secretKey": "秘密密钥",
+        "host": "地址：",
+        "hostFromKey": "根据访问密钥自动填写",
+        "testing": "测试中…",
+        "connectTest": "测试并连接",
+        "okTitle": "已连接",
+        "okBody": "SQL Account 已响应。您的 AI 客服会按您在设置中选择的权限使用它。",
+        "checked": "上次检查",
+        "test": "测试连接",
+        "disconnect": "断开连接",
+        "disconnectTitle": "断开 SQL Account？",
+        "disconnectBody": "密钥会从这台电脑删除，AI 不再使用 SQL Account。SQL Account 中的资料不会改变。",
+        "testOk": "SQL Account 已响应。"
+      },
+      "access": {
+        "title": "{{agent}} 可以使用的内容",
+        "hint": "按记录类型选择。读取：AI 可以查询；读取 + 新建：AI 还可以新增一条。",
+        "own": "仅限客户本人",
+        "everyone": "所有客户",
+        "off": "关闭",
+        "read": "读取",
+        "create": "读取 + 新建",
+        "never": "AI 绝不会修改或删除 SQL Account 中的任何内容。未列在这里的记录绝不会被使用。",
+        "showPrice": "显示售价",
+        "stockShown": "库存显示为",
+        "inStock": "有货 / 缺货",
+        "quantity": "准确数量",
+        "save": "保存",
+        "discard": "放弃",
+        "saved": "已保存"
+      },
+      "obj": {
+        "stockitem": {
+          "name": "库存商品",
+          "sees": "代码、描述、售价、是否有货。绝不显示成本价。"
+        },
+        "customer": {
+          "name": "客户资料",
+          "sees": "客户代码、公司名称、信用期限和尚欠总额。绝不显示信用额度。"
+        },
+        "customerinvoice": {
+          "name": "客户发票（欠款）",
+          "sees": "号码、日期、到期日、总额、已付和尚欠金额。AI 按 SQL Account 记录的金额原样说明。"
+        },
+        "salesinvoice": {
+          "name": "销售发票",
+          "sees": "近期发票的号码、日期和总额。"
+        },
+        "salesquotation": {
+          "name": "报价单",
+          "sees": "号码、日期、总额、商品。"
+        },
+        "salesorder": {
+          "name": "销售订单",
+          "sees": "号码、日期、总额、状态。"
+        },
+        "deliveryorder": {
+          "name": "送货单",
+          "sees": "号码、日期、状态。"
+        },
+        "customerpayment": {
+          "name": "客户付款",
+          "sees": "号码、日期、金额、已付发票。"
+        }
+      },
+      "guard": {
+        "title": "AI 建立报价单之前",
+        "confirm": "先列出商品、数量、价格和总额，等客户在新消息中确认。",
+        "items": "商品只来自该聊天中的库存查询；数量只来自客户写的内容。",
+        "price": "价格一律来自 SQL Account，绝不由 AI 决定。",
+        "limit": "每个聊天每天最多 2 张报价单，此 AI 客服每天最多 20 张。",
+        "never": "试用中不会、群组中不会，也绝不会建立发票、订单或付款。"
+      },
+      "match": {
+        "title": "这位客户在 SQL Account 中是谁？",
+        "hint": "AI 显示发票或订单之前，{{product}} 必须知道是哪位 SQL Account 客户在发消息。依次检查：",
+        "rule1": "您的团队为此聊天关联的客户代码。",
+        "rule2": "WhatsApp 号码——仅当恰好一位 SQL Account 客户使用此号码时。",
+        "rule3": "否则视为未匹配：AI 把聊天转交给您的团队。",
+        "byPhone": "按电话号码匹配",
+        "never": "{{product}} 绝不按姓名匹配，也绝不使用客户自己输入的客户代码。",
+        "unavailable": "您的 SQL Account 不向 {{product}} 提供电话号码：请手动关联客户。",
+        "building": "正在从 SQL Account 读取电话号码……读到客户后即可匹配聊天。"
+      },
+      "cust": {
+        "title": "客户",
+        "hint": "每个聊天及其匹配的 SQL Account 客户。",
+        "linked": "已关联",
+        "phone": "按电话匹配",
+        "several": "多位客户",
+        "none": "未匹配",
+        "severalHint": "多位 SQL Account 客户使用此号码。请关联其中一位。",
+        "noneHint": "没有 SQL Account 客户使用此号码。关联后 AI 才能回答发票和订单问题。",
+        "empty": "还没有聊天。",
+        "link": "关联",
+        "change": "更改",
+        "unlink": "取消关联",
+        "linkTitle": "将 {{name}} 关联到 SQL Account 客户",
+        "linkHint": "按客户代码或公司名称搜索。{{product}} 会确认该代码在 SQL Account 中存在。",
+        "search": "客户代码或公司",
+        "pick": "关联",
+        "noDebtor": "找不到 SQL Account 客户。",
+        "linkedToast": "已关联到 {{code}}",
+        "unknownCode": "SQL Account 中没有这个客户代码。",
+        "notConnected": "请先连接 SQL Account，才能搜索其客户。",
+        "searching": "搜索中…",
+        "unlinked": "已取消关联"
+      },
+      "act": {
+        "hint": "AI 使用 SQL Account 做了什么。这里绝不保存金额和单据内容。",
+        "stock": "{{agent}} 查询了库存：",
+        "account": "{{agent}} 查询了发票：",
+        "document": "{{agent}} 查询了单据：",
+        "payments": "{{agent}} 查询了付款：",
+        "quotation": "{{agent}} 建立了报价单：",
+        "dockey": "SQL Account ID {{dockey}}",
+        "result": {
+          "done": "完成",
+          "refused": "不允许",
+          "failed": "失败"
+        },
+        "reason": {
+          "no_customer": "未匹配客户，已转交团队",
+          "unreachable": "无法连接 SQL 服务器",
+          "not_own": "不是该客户的单据",
+          "several": "多位 SQL Account 客户使用此号码，已转交团队",
+          "object_off": "此 AI 客服已关闭此项",
+          "item_not_looked_up": "商品未在此聊天中查询过",
+          "qty_not_from_customer": "数量不是客户写的",
+          "no_price": "商品在 SQL Account 中没有价格",
+          "no_draft": "未先向客户展示报价单",
+          "draft_expired": "展示的报价单已过期",
+          "limit_chat": "已达此聊天的每日上限",
+          "limit_agent": "已达此 AI 客服的每日上限",
+          "not_confirmed": "客户尚未确认",
+          "no_dns": "API 服务尚未设置",
+          "private_ip": "地址位于内部网络",
+          "bad_keys": "密钥不被接受",
+          "old_version": "SQL Account 版本太旧或未开启 API",
+          "unexpected": "{{product}} 无法使用的回应",
+          "other": "出现问题"
+        },
+        "noChat": "一个聊天",
+        "someone": "AI 客服"
+      },
+      "agentCard": "已开启 {{on}}/{{total}} 类记录"
     }
   },
   "reports": {

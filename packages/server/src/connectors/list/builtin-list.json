@@ -377,59 +377,31 @@
     "id": "sql-account",
     "schemaVersion": 1,
     "minAppVersion": "0.0.0",
-    "kind": "coming_soon",
+    "kind": "builtin",
     "editions": ["lite", "enterprise"],
+    "builtinId": "sql-account",
     "name": "SQL Account",
     "summary": {
-      "en": "Stock, prices and customer balances from SQL Account.",
-      "ms": "Stok, harga dan baki pelanggan daripada SQL Account.",
-      "zh-CN": "来自 SQL Account 的库存、价格和客户余额。"
+      "en": "Stock, prices and each customer's own invoices and orders from SQL Account.",
+      "ms": "Stok, harga serta invois dan pesanan milik setiap pelanggan daripada SQL Account.",
+      "zh-CN": "来自 SQL Account 的库存、价格，以及每位客户本人的发票和订单。"
     },
     "description": {
-      "en": "The AI checks stock and prices in SQL Account and tells customers their outstanding balance.",
-      "ms": "AI menyemak stok dan harga dalam SQL Account dan memberitahu pelanggan baki tertunggak mereka.",
-      "zh-CN": "AI 在 SQL Account 中查询库存和价格，并告诉客户未付余额。"
+      "en": "Needs SQL Account's API module (API Link). Connect with the access key and secret key from SQL Account, then choose for each AI agent and each kind of record: Off, Read or Read + create. Customers only ever see their own records.",
+      "ms": "Memerlukan modul API SQL Account (API Link). Sambung dengan kunci akses dan kunci rahsia daripada SQL Account, kemudian pilih bagi setiap ejen AI dan setiap jenis rekod: Tutup, Baca atau Baca + cipta. Pelanggan hanya melihat rekod mereka sendiri.",
+      "zh-CN": "需要 SQL Account 的 API 模块（API Link）。使用 SQL Account 生成的访问密钥和秘密密钥连接，然后为每个 AI 客服和每种记录选择：关闭、读取或读取 + 新建。客户只能看到自己的记录。"
     },
     "category": "accounting",
     "privacy": {
-      "en": "EzyChat sends SQL Account only what a look-up or action needs in one chat, and never the chat text.",
-      "ms": "EzyChat hanya menghantar kepada SQL Account apa yang diperlukan oleh satu semakan atau tindakan dalam satu sembang, dan tidak pernah teks sembang.",
-      "zh-CN": "EzyChat 只向 SQL Account 发送一次聊天中查询或操作所需的内容，从不发送聊天内容。"
+      "en": "EzyChat sends SQL Account only what one look-up needs (an item name, a customer code, a document number), never the chat text. The keys are stored encrypted on this computer. The AI never changes or deletes anything in SQL Account.",
+      "ms": "EzyChat hanya menghantar kepada SQL Account apa yang diperlukan untuk satu semakan (nama barang, kod pelanggan, nombor dokumen), tidak pernah teks sembang. Kunci disimpan secara tersulit di komputer ini. AI tidak pernah mengubah atau memadam apa-apa dalam SQL Account.",
+      "zh-CN": "EzyChat 只把一次查询所需的内容（商品名称、客户代码、单据号码）发送给 SQL Account，绝不发送聊天内容。密钥加密保存在这台电脑上。AI 绝不会修改或删除 SQL Account 中的任何内容。"
     },
-    "tools": [
-      {
-        "name": "stock",
-        "title": {
-          "en": "Stock and price",
-          "ms": "Stok dan harga",
-          "zh-CN": "库存和价格"
-        },
-        "description": {
-          "en": "Looks up an item's stock and selling price.",
-          "ms": "Mencari stok dan harga jualan sesuatu item.",
-          "zh-CN": "查询商品的库存和售价。"
-        },
-        "access": "read"
-      },
-      {
-        "name": "outstanding",
-        "title": {
-          "en": "Outstanding balance",
-          "ms": "Baki tertunggak",
-          "zh-CN": "未付余额"
-        },
-        "description": {
-          "en": "Checks what a customer still owes.",
-          "ms": "Menyemak jumlah yang masih terhutang oleh pelanggan.",
-          "zh-CN": "查询客户尚欠的金额。"
-        },
-        "access": "read"
-      }
-    ],
-    "vote": {
-      "en": "Hi EzyChat team, please add the SQL Account connector. We would use it for:",
-      "ms": "Hai pasukan EzyChat, sila tambah penyambung SQL Account. Kami akan menggunakannya untuk:",
-      "zh-CN": "您好 EzyChat 团队，请添加 SQL Account 连接器。我们会用它来："
+    "stage": "beta",
+    "notice": {
+      "en": "New. Needs SQL Account's API module, a paid add-on from your SQL Account dealer. Using SQL Cloud? Ask your dealer whether the API module is available.",
+      "ms": "Baharu. Memerlukan modul API SQL Account, tambahan berbayar daripada pengedar SQL Account anda. Menggunakan SQL Cloud? Tanya pengedar anda sama ada modul API tersedia.",
+      "zh-CN": "新功能。需要 SQL Account 的 API 模块（向 SQL Account 经销商购买的付费附加模块）。使用 SQL Cloud？请询问经销商是否提供 API 模块。"
     }
   },
   {
