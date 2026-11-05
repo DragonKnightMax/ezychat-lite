@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.77] - 2026-11-05
+
 ### Added
 
 - **Anonymous usage stats (you can turn them off).** EzyChat now counts a few setup steps (installed, admin
