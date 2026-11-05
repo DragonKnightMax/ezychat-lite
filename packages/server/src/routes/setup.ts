@@ -25,6 +25,7 @@ export default async function setupRoutes(app: FastifyInstance, ctx: AppContext)
     const token = auth.createSession(user.id, { ip, userAgent: String(req.headers['user-agent'] ?? '') });
     setSessionCookie(reply, token, isHttps(req));
     audit(ctx.db, { userId: user.id, action: 'setup.admin', ip, meta: { username: user.username } });
+    void ctx.services.usage?.check();
     return user;
   });
 }

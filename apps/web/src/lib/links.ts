@@ -42,7 +42,7 @@ export interface AppLinks {
 
 /**
  * The EzyChat Enterprise section of the website. The campaign tag lets the website count upgrade
- * visits from the app; the app itself sends nothing (no tracking in Lite).
+ * visits from the app. The app's only usage data is the anonymous usage stats (server `usage/`).
  */
 export const ENTERPRISE_UPGRADE_URL =
   'https://ezychat.ai/?utm_source=ezychat-lite&utm_medium=app&utm_campaign=upgrade#enterprise';

@@ -286,10 +286,20 @@ dropped). `feedback/portal.ts` posts to `https://license.anchorsprint.app/v1/fee
 through, 403 `product_closed` → 503 `feedback_closed`, anything else → 502 `feedback_unreachable`. Lite sends
 `EZC-LITE` + a random `installRef` (setting `feedback_install_ref`); an edition answers `ServerExtension.feedbackAuth`
 (`product`, `installId`, `secret`, `company?`, `portalOrigin?` https or loopback http), else a non-Lite edition answers
-503 `feedback_unavailable`. Logs: type, area, file count and sizes, ms, reference only. No tracking: nothing leaves the
+503 `feedback_unavailable`. Logs: type, area, file count and sizes, ms, reference only. Nothing of a report leaves the
 computer until Send. Web: `components/app/FeedbackDialog.tsx` (`openFeedback`, `FeedbackHost` in `create-app.tsx`;
 account menu, Admin Help & feedback, About, error panel); the desktop window's "Screenshot of this window" is
 `window.watiCapture` (`apps/desktop/src/capture-ipc.ts`, inbox IPC guards, PNG of the asking window only).
+
+**Usage stats** (design `docs/superpowers/specs/2026-11-04-usage-stats-design.md`). `usage/service.ts` (`ctx.services.usage`) is the only
+sender: at start, on bus events (`inbox:status`, `ai:connection-changed`, `message:status`, `access:opened`), after the
+first-admin setup and hourly it reads the app's own state for the milestones `app_installed`, `admin_created`,
+`wa_linked`, `ai_connected`, `ai_agent_on`, `first_message_sent` (each once, remembered in `usage_sent`) and
+`app_active` (once a day), and posts each as a shared `UsageEvent` to `https://license.anchorsprint.app/v1/usage`
+(10 s, `redirect: 'error'`, no retry on a 4xx). Product from the edition (`lite` → `EZC-LITE`, `enterprise` →
+`EZC-ENT`, else nothing). Never sends with `--fake-wa`, in dev (except `EZYCHAT_USAGE_ENDPOINT` with `--mode dev
+--fake-wa`), while the access gate is closed or the switch is off (`usage_stats`, `PATCH /api/settings`
+{usageStats}, audit `usage_stats.update` before/after). Logs event names, status and counts only.
 
 **Events.** `wa-bridge` maps adapter events into services (ingest, status acks, chat/contact upserts).
 Services emit on the typed in-process `Bus` (`bus.ts`); `realtime/socket.ts` fans out to Socket.IO
@@ -773,9 +783,14 @@ Conventional Commits; LF line endings; Prettier formatting; add user-visible cha
 Stage the files a change names (`git add <paths>`), never `git add -A` / `git add .`: a branch cut before an
 ignore rule landed still tracks local test data.
 After repository setup, `main` is protected: use feature branches and reviewable pull requests.
-**No tracking in Lite** (owner rule): the open-source app never sends usage data or analytics. Measure
-the funnel outside the app (website analytics, GitHub download counts, the Enterprise download server,
-the licence portal); app links to our website may carry campaign tags (`utm_*`) only.
+**Anonymous usage stats only** (owner rule, 2026-11-04; replaces "No tracking in Lite"): the app's only usage data
+is `packages/server/src/usage/` (design `docs/superpowers/specs/2026-11-04-usage-stats-design.md`): a fixed set of setup milestones
+(shared `UsageEvent`: random `usage_install_id`, product, version, OS, mode, event name; nothing else), sent
+server-side only to our licence portal relay (`/v1/usage`), which forwards to GA4. The GA keys live only in the
+portal, never in the app. On by default; admins switch it off (`usage_stats`, Settings → General and the setup
+wizard). Never names, numbers, chats, messages, emails, IPs or keys; no analytics script in the web app (CSP
+unchanged); a new field or event is an owner decision plus a portal contract change. Website links may carry
+campaign tags (`utm_*`).
 **GitHub issues are for external reports only** (owner rule): never open an issue for our own work;
 track own follow-ups in `docs/backlog.md` (bugs and next steps), a feature's `design.md`, PR descriptions or workbooks. Treat each issue as an
 external report: verify it in the code, then reply (confirm with the fix PR, or ask for the missing

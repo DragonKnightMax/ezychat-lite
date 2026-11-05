@@ -194,6 +194,13 @@
       "step1": "Open this chat on the linked phone.",
       "step2": "Tap the name at the top.",
       "step3": "Tap Report, then Report again."
+    },
+    "usageStats": {
+      "title": "What are anonymous usage stats?",
+      "body": "EzyChat counts setup steps, like WhatsApp linked or AI turned on, to improve the app. Never who you are or what you write.",
+      "step1": "Sent: a random install code, the app version, Windows or Mac, and the step reached.",
+      "step2": "Never sent: names, phone numbers, chats, messages, emails, IP addresses or keys.",
+      "step3": "It goes to the EzyChat licence server, which counts it in Google Analytics. Turn it off here at any time."
     }
   }
 }

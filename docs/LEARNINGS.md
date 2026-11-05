@@ -10,6 +10,8 @@ into AGENTS.md.
 
 ## Working method
 
+- `.partial()` keeps a zod `.default()`: a PATCH schema built from a response schema with a defaulted field fills that
+  field on every patch. Re-declare such fields `.optional()` in the patch body (e.g. `SettingsPatchBody.usageStats`).
 - SonarCloud fails the security rating on a literal bidi control character in source (S6389: write `\u202e`, not the
   character; an editor or the agent's file-writing tool may turn the escape into the character, so scan new test
   files for U+200E/F, U+202A–202E, U+2066–2069, U+FEFF before pushing) and on a JSON key containing "password" (S2068,
@@ -159,6 +161,9 @@ into AGENTS.md.
 
 ## Multi-agent process
 
+- A change to an owner rule (e.g. "No tracking in Lite") needs the owner's own words in the session doing it: child
+  cloud sessions refuse approvals relayed by another session. When the owner approves in the main session, do the
+  work there (or in a fork of it), not in a child.
 - `build-summary.mjs record` takes the short stage keys (`design dev unit e2e devbuild screen`), and release-review
   counts a stage only when the code diff at its `--sha` equals the head's: re-record with `--sha <head>` after a
   docs-only commit, or the stages show as `✗ missing`. The same holds for the commit cited in a

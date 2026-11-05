@@ -529,6 +529,11 @@
       "businessTitle_one": "{{count}} word from your Business context is never marked",
       "businessTitle_other": "{{count}} words from your Business context are never marked",
       "businessHint": "They change with your Business context. Shown: the words the dictionary does not know."
+    },
+    "usageStats": {
+      "title": "Privacy",
+      "label": "Share anonymous usage stats",
+      "hint": "Helps us see where new users get stuck. No names, numbers or messages."
     }
   },
   "resolveAll": {

@@ -527,6 +527,11 @@
       "businessTitle_one": "{{count}} perkataan daripada Konteks perniagaan anda tidak pernah ditanda",
       "businessTitle_other": "{{count}} perkataan daripada Konteks perniagaan anda tidak pernah ditanda",
       "businessHint": "Ia berubah mengikut Konteks perniagaan anda. Dipaparkan: perkataan yang tiada dalam kamus."
+    },
+    "usageStats": {
+      "title": "Privasi",
+      "label": "Kongsi statistik penggunaan tanpa nama",
+      "hint": "Membantu kami melihat di mana pengguna baharu tersekat. Tiada nama, nombor atau mesej."
     }
   },
   "resolveAll": {

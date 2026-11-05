@@ -268,7 +268,10 @@ export const CloudflareCreateBody = z.object({
 });
 export type CloudflareCreateBody = z.infer<typeof CloudflareCreateBody>;
 
-export const SettingsPatchBody = SettingsSchema.omit({ hasTunnelToken: true }).partial();
+// usageStats is re-declared without its default: a patch that leaves it out must not switch it on.
+export const SettingsPatchBody = SettingsSchema.omit({ hasTunnelToken: true })
+  .partial()
+  .extend({ usageStats: z.boolean().optional() });
 export type SettingsPatchBody = z.infer<typeof SettingsPatchBody>;
 
 export const PushSubscribeBody = z.object({

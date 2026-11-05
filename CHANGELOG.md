@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Anonymous usage stats (you can turn them off).** EzyChat now counts a few setup steps (installed, admin
+  created, WhatsApp linked, AI connected, AI agent on, first message sent) and whether the app was used that day, so
+  we can see where new users get stuck. Only a random install code, the app version, Windows or Mac and the step are
+  sent, to the EzyChat licence server; never names, numbers, chats, messages, emails or keys. Admins switch it off in
+  Settings → General → Privacy or on the last step of the setup wizard.
+
 ## [0.1.76] - 2026-11-05
 
 ### Changed

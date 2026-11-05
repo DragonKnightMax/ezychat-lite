@@ -64,3 +64,7 @@ initializers.push(initConnectorMcp);
 // Send feedback: forwards reports to the licence portal only when a user presses Send.
 import { initFeedback } from './feedback/service.js';
 initializers.push(initFeedback);
+
+// Anonymous usage stats (on by default, admin switch): the only module that sends usage data.
+import { initUsage } from './usage/service.js';
+initializers.push(initUsage);

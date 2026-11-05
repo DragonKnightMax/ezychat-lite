@@ -213,6 +213,8 @@ export const SettingsSchema = z.object({
   historyDays: z.number().int().min(0).max(365),
   namedTunnelHostname: z.string().nullable(),
   hasTunnelToken: z.boolean(),
+  /** Share anonymous usage stats (setting `usage_stats`, missing = on; docs/superpowers/specs/2026-11-04-usage-stats-design.md). */
+  usageStats: z.boolean().default(true),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 

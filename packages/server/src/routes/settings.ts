@@ -8,6 +8,7 @@ import type { AppContext } from '../context.js';
 import { audit } from '../db/audit.js';
 import { clientIp } from '../http/client-ip.js';
 import { parse } from '../http/errors.js';
+import { setUsageStats } from '../usage/service.js';
 
 function settingsService(ctx: AppContext): SettingsService {
   return (ctx.services.admin ??= createSettingsService(ctx));
@@ -21,6 +22,11 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
 
   app.patch('/settings', async (req) => {
     const body = parse(SettingsPatchBody, req.body ?? {});
+    // The usage stats switch has its own audit row (before/after); turning it on sends at once.
+    if (body.usageStats !== undefined) {
+      setUsageStats(ctx, body.usageStats, { userId: req.user?.id ?? null, ip: clientIp(req) });
+      if (body.usageStats) void ctx.services.usage?.check();
+    }
     const result = settingsService(ctx).patch(body);
     audit(ctx.db, {
       userId: req.user?.id ?? null,

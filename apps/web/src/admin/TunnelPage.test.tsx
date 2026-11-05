@@ -33,6 +33,7 @@ beforeEach(() => {
     historyDays: 3,
     namedTunnelHostname: null,
     hasTunnelToken: false,
+    usageStats: true,
   };
   hooks.start.mockReset();
   hooks.stop.mockReset();

@@ -30,6 +30,7 @@ import { CustomerEnrichmentSection } from './CustomerEnrichmentSection';
 import { IntegrationsSection } from './IntegrationsSection';
 import { ExtensionBoundary, useExtensionTranslation, useWebExtensions } from '../extensions';
 import { InfoTip } from '@/components/app/InfoTip';
+import { UsageStatsCard } from './UsageStatsSwitch';
 
 const TABS = ['general', 'ai', 'integrations', 'device', 'maintenance'] as const;
 type SettingsTab = (typeof TABS)[number];
@@ -289,6 +290,8 @@ export function SettingsPage() {
               </Button>
             </SaveBar>
           </form>
+
+          <UsageStatsCard />
         </TabsContent>
 
         <TabsContent value="ai" className="flex flex-col gap-6">
