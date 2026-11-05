@@ -240,8 +240,12 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
     };
     next.names.delete('');
     index = next;
-    for (const code of next.names.keys()) {
-      if (run !== generation) return;
+    const codes = [...next.names.keys()];
+    // One customer at a time, paced: a sequential chain on purpose (never parallel requests).
+    const readFrom = async (i: number): Promise<boolean> => {
+      if (run !== generation) return false;
+      if (i >= codes.length) return true;
+      const code = codes[i]!;
       const detail = await c.one('customer', code);
       for (const phone of detail ? recordPhones(detail) : []) {
         const set = next.byPhone.get(phone) ?? new Set<string>();
@@ -249,7 +253,9 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
         next.byPhone.set(phone, set);
       }
       await sleep(INDEX_GAP_MS);
-    }
+      return readFrom(i + 1);
+    };
+    if (!(await readFrom(0))) return;
     next.complete = true;
     log.info(
       { event: 'sql_account_index', customers: next.names.size, phones: next.byPhone.size },
