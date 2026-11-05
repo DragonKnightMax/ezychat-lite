@@ -5,17 +5,18 @@ import {
   CreditCard,
   Plug,
   Puzzle,
+  Receipt,
   ShoppingBag,
   Table2,
   type LucideIcon,
 } from 'lucide-react';
-import type { ConnectorEntry, GoogleCalendarState } from '@ezychat/shared';
+import type { ConnectorEntry, GoogleCalendarState, SqlAccountState } from '@ezychat/shared';
 
 /**
  * Admin → Connectors: what the app itself provides next to the connector list (design
  * docs/features/connector-list/design.md). The list (server, `GET /api/connectors/list`) gives
  * every partner and coming-soon connector; the app keeps only its own features here: the built-in
- * Google Calendar and Google Sheets (their pages and tabs live in the app) and the custom MCP connector (Enterprise,
+ * Google Calendar, Google Sheets and SQL Account (their pages and tabs live in the app) and the custom MCP connector (Enterprise,
  * linked by its web extension through `connectorLinks`). Texts are catalog keys under
  * `connectors.items.<id>` and `connectors.tools.<tool>` (admin namespace).
  */
@@ -58,7 +59,12 @@ export const CATEGORY_ICON: Record<ConnectorCategory, LucideIcon> = {
 /** What the AI may do with the built-in Google Calendar and Google Sheets. */
 export type ConnectorTool = 'checkFree' | 'book' | 'readRows' | 'addLead';
 
-export const CONNECTOR_IDS = ['google-calendar', 'google-sheets', 'custom-mcp'] as const;
+export const CONNECTOR_IDS = [
+  'google-calendar',
+  'google-sheets',
+  'sql-account',
+  'custom-mcp',
+] as const;
 export type ConnectorId = (typeof CONNECTOR_IDS)[number];
 
 export interface CatalogConnector {
@@ -92,6 +98,8 @@ export const CONNECTORS: readonly CatalogConnector[] = [
       { key: 'addLead', access: 'write' },
     ],
   },
+  // Its page lists what the AI may do per SQL Account object (SqlAccountPage), not tool rows.
+  { id: 'sql-account', icon: Receipt, category: 'accounting', edition: 'core', tools: [] },
   { id: 'custom-mcp', icon: Plug, category: 'custom', edition: 'enterprise', tools: [] },
 ];
 
@@ -114,14 +122,22 @@ export type ConnectorStatus =
   | 'needsUpdate'
   | 'delisted';
 
-/** `google`: the sign-in state of this connector (Google Calendar's or Google Sheets'). */
+/**
+ * `state`: the connection state of this connector (Google Calendar's or Google Sheets' sign-in, or
+ * SQL Account's connection).
+ */
 export function connectorStatus(
   c: CatalogConnector,
-  google: GoogleCalendarState | undefined,
+  state: GoogleCalendarState | SqlAccountState | undefined,
   extensionLink: string | undefined,
 ): ConnectorStatus {
   if (extensionLink) return 'linked';
   if (c.edition === 'enterprise') return 'enterprise';
+  if (c.id === 'sql-account') {
+    if (state === 'connected') return 'connected';
+    return state === undefined || state === 'disconnected' ? 'notConnected' : 'attention';
+  }
+  const google = state;
   if (c.id === 'google-calendar' || c.id === 'google-sheets') {
     if (google === 'connected') return 'connected';
     if (google === 'expired' || google === 'unavailable') return 'attention';

@@ -23,6 +23,9 @@ export const TIP_TOPICS = [
   'autoBlock',
   'lockedFiles',
   'reportNumber',
+  'sqlApiService',
+  'sqlKeys',
+  'sqlCustomerCode',
 ] as const;
 export type TipTopic = (typeof TIP_TOPICS)[number];
 
@@ -63,6 +66,15 @@ export const TIPS: Readonly<Record<TipTopic, TipShape>> = {
   autoBlock: { steps: 0 },
   lockedFiles: { steps: 0 },
   reportNumber: { steps: 3 },
+  sqlApiService: {
+    steps: 4,
+    action: 'https://docs.sql.com.my/sqlacc/integration/sql-account-api/on-premise-setup',
+  },
+  sqlKeys: {
+    steps: 4,
+    action: 'https://docs.sql.com.my/sqlacc/integration/sql-account-api/setup-configuration',
+  },
+  sqlCustomerCode: { steps: 0 },
 };
 
 const GUIDE_PREFIX: Partial<Record<string, string>> = { ms: '/ms', 'zh-CN': '/zh' };

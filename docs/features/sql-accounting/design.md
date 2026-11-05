@@ -1,6 +1,6 @@
 # SQL Account connector (SQL Accounting by eStream Software)
 
-Status: **proposal, waiting for the owner's confirmation** (see Open questions and Confirmation). Branch
+Status: **confirmed by the owner 2026-11-05** (see Confirmation); built on this branch (beta, untested against a real SQL Account API). Branch
 `feat/sql-accounting-connector` from `main` `4d07b20` (0.1.76). Mock: [mock/index.html](mock/index.html) (run it with
 `run.ts`, see [mock/README.md](mock/README.md)).
 
@@ -259,6 +259,43 @@ Retention: adding this folder makes six; the oldest, **in-app-feedback** (creati
 - **Q10** Need a real test company (sandbox key from eStream support or a client's test database) before release: the
   build will be "untested against a real SQL Account API".
 
+## Answers to the open questions (owner 2026-11-05: "3. Yes, can u research it")
+
+The owner confirmed the design as proposed and asked for the questions to be researched instead of answered:
+
+- **Q1 Licence:** treated as a **paid add-on**. Reseller listing "SQL API" at RM 1,000 per company per year, unlimited
+  users, plus SST (`sql.agile.my/shop/sql-api/`, read 2026-11-05; `sql-accounting.software/product/sql-api/` lists the
+  product without a readable price). No official eStream price page is readable. The page says "needs SQL Account's API
+  module (a paid add-on from your SQL dealer)".
+- **Q2 Host:** as proposed: `https://<id>.sql.my` from the access key; only that form or `api.sql.my` is accepted.
+- **Q3 Outstanding amount:** no field is confirmed in any public source (`docamt` exists, an unpaid amount does not).
+  v1 shows each invoice's number, date and total only; `sql_my_account` says it has no balance and tells the AI to
+  hand over for "how much do I owe". **Open item:** confirm the field with the Postman collection a real SQL Account
+  downloads (setup-configuration.md "Download Postman Collection").
+- **Q4 Phone match:** eStream's docs keep a customer's mobile on Maintain Customer (`docs/miscellaneous/whatsapp-share.md`:
+  "Insert Mobile on Maintain Customer") and branch details in `AR_CustomerBranch`
+  (`docs/usage/tool/fast-report/guide.md`). The API's field names are not documented, so the server reads any field
+  named phone/mobile/tel in the customer list (also nested branch rows). When the list carries none, the page says
+  "Your SQL Account does not send phone numbers to EzyChat: link customers by hand" (`phoneMatch: unavailable`).
+- **Q5 SQL Cloud:** not confirmed anywhere; the page says "SQL Cloud: ask your dealer whether the API module is
+  available" and claims no support.
+- **Q6–Q9, Q11:** as proposed (per-agent access only, no install-wide ceiling; create only for quotations; Customers tab
+  in v1; Try it has no customer).
+- **Q10:** no test company: the connector ships as **beta** and is "untested against a real SQL Account API".
+
+## Implementation notes (differences from the proposal)
+
+- Links are keyed by chat (`sql_account_links.chat_jid`, moved by `chats/merge.ts`), not by profile id.
+- Quotation create is two tools: `sql_quotation_preview` (items only from a `sql_check_stock` result in this chat in the
+  last 24 h, quantities the customer wrote as numbers, prices read again from SQL Account; stores a draft) and
+  `sql_create_quotation` {draftId} (needs an AI reply after the draft and a newer customer message, each message used
+  once, 2 per chat and 20 per agent a day, never in a group or Try it).
+- Document numbers are sent upper case together with the customer code (`/<type>?docno=&code=`); the `/*?` single
+  form is not used.
+- SigV4 is our own (no dependency), pinned by AWS's official `get-vanilla` test vectors; the header form is used.
+- Lite → Enterprise import merges agent settings, links and activity; drafts and seen items are skipped (expire in a day).
+
 ## Confirmation
 
-_Not yet confirmed._
+Owner (Jazz) in the main session, 2026-11-05 ~10:15 UTC, relayed verbatim by session_01J4pmGkCf1Mvdepudm8WQAd:
+"3. Yes,can u research it", read as: design and mock confirmed as proposed, open questions researched (above).

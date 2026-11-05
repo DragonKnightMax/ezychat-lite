@@ -728,6 +728,10 @@ describe('mergeLiteInbox refusals and rollback', () => {
       'ALTER TABLE ai_group_chats DROP COLUMN listen; ALTER TABLE ai_group_chats DROP COLUMN agent_id;',
     );
     db.exec('DROP TABLE avatars;'); // and 033 (profile photos)
+    // and 034 (SQL Account connector)
+    db.exec(
+      'DROP TABLE sql_account_agent_settings; DROP TABLE sql_account_links; DROP TABLE sql_account_seen_items; DROP TABLE sql_account_quotes; DROP TABLE sql_account_activity;',
+    );
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

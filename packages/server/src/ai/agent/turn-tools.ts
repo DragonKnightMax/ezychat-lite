@@ -7,6 +7,7 @@ import {
 } from '../../connectors/google-calendar/tools.js';
 import type { SheetRecordContext } from '../../connectors/google-sheets/record.js';
 import { sheetsAgentTools, sheetsLookupsAvailable } from '../../connectors/google-sheets/tools.js';
+import { sqlAgentTools, sqlLookupsAvailable } from '../../connectors/sql-account/tools.js';
 import {
   mcpConnectorAgentTools,
   mcpConnectorLookupsAvailable,
@@ -31,6 +32,7 @@ export function agentLookupsAvailable(
   return (
     calendarLookupsAvailable(ctx, agentId) ||
     sheetsLookupsAvailable(ctx, agentId) ||
+    sqlLookupsAvailable(ctx, agentId) ||
     mcpConnectorLookupsAvailable(ctx, agentId) ||
     extensionLookupsAvailable(ctx, agent, agentId ?? undefined)
   );
@@ -58,16 +60,37 @@ export async function agentTurnTools(
   const calendar = calendarAgentTools(ctx, log, input, options);
   if (options.lookupsOnly) delete calendar.tools[BOOK_APPOINTMENT];
   const sheets = await sheetsAgentTools(ctx, log, input, options);
+  const sql = await sqlAgentTools(ctx, log, input, options);
   const listed = await mcpConnectorAgentTools(ctx, log, input, options);
   const extension = await extensionAgentTools(ctx, log, input, options);
   return {
-    tools: { ...extension.tools, ...listed.tools, ...sheets.tools, ...calendar.tools },
-    failed: () => calendar.failed() || sheets.failed() || listed.failed() || extension.failed(),
-    used: () => [...calendar.used(), ...sheets.used(), ...listed.used(), ...extension.used()],
-    calls: () => [...calendar.calls(), ...sheets.calls(), ...listed.calls(), ...extension.calls()],
+    tools: {
+      ...extension.tools,
+      ...listed.tools,
+      ...sql.tools,
+      ...sheets.tools,
+      ...calendar.tools,
+    },
+    failed: () =>
+      calendar.failed() || sheets.failed() || sql.failed() || listed.failed() || extension.failed(),
+    used: () => [
+      ...calendar.used(),
+      ...sheets.used(),
+      ...sql.used(),
+      ...listed.used(),
+      ...extension.used(),
+    ],
+    calls: () => [
+      ...calendar.calls(),
+      ...sheets.calls(),
+      ...sql.calls(),
+      ...listed.calls(),
+      ...extension.calls(),
+    ],
     dispose: async () => {
       await calendar.dispose();
       await sheets.dispose();
+      await sql.dispose();
       await listed.dispose();
       await extension.dispose();
     },

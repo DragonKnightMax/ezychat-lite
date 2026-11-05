@@ -1588,6 +1588,12 @@
         "long": "Your AI agent offers free times from your Google Calendar and, if you allow it, books the time the customer confirms. Sign in with Google: no link to paste.",
         "privacy": "{{product}} reads busy times of the calendar you choose and writes only the events it books: title, and the customer’s name, phone and email. No chat text goes to Google. The sign-in is stored encrypted on this computer."
       },
+      "sql-account": {
+        "name": "SQL Account",
+        "short": "Stock, prices and your customers' own invoices and orders from SQL Account.",
+        "long": "Your AI agent answers from SQL Account: stock and prices for everyone, and each customer's own invoices and orders.",
+        "privacy": "{{product}} sends SQL Account only what one look-up needs (an item name, a customer code, a document number), never the chat text."
+      },
       "custom-mcp": {
         "name": "Custom connector (MCP)",
         "short": "Connect any system that offers an MCP server.",
@@ -1963,6 +1969,213 @@
       "row_added": "{{agent}} added a row to {{tab}} for {{customer}}",
       "row_addedGroup": "{{agent}} added a row to {{tab}} for {{customer}} in {{group}}",
       "looked_upTab": "{{agent}} looked up {{tab}} for {{customer}}"
+    },
+    "sql": {
+      "tabs": {
+        "overview": "Overview",
+        "connection": "Connection",
+        "settings": "Settings",
+        "customers": "Customers",
+        "activity": "Activity"
+      },
+      "settings": {
+        "notConnected": "Connect SQL Account first. You can choose the settings now; the AI uses them once it is connected."
+      },
+      "req": {
+        "title": "Works only with SQL Account's API service (API Link)",
+        "body": "{{product}} talks to SQL Account through its API service. It needs SQL Account's API module (a paid add-on from your SQL dealer). Without it, this connector cannot work, and {{product}} never reads your SQL Account files directly.",
+        "version": "SQL Account 5.2025.1038.875 or newer.",
+        "service": "The API service installed and running on your SQL Account server.",
+        "port": "Port 443 on your router forwarded to that server (a fixed public IP from your internet provider).",
+        "user": "A separate SQL Account user for {{product}}, with its access key and secret key.",
+        "dealer": "Not sure? Ask your SQL Account dealer.",
+        "cloud": "SQL Cloud: ask your dealer whether the API module is available."
+      },
+      "about": "Your AI agent answers from SQL Account: stock and prices for everyone, and each customer's own invoices and orders.",
+      "can": {
+        "stock": "Checks if an item is in stock and its selling price.",
+        "account": "Tells a customer their own invoices and whether each is paid.",
+        "documents": "Tells a customer the status of their own quotation, sales order or delivery order.",
+        "quotation": "Can prepare a quotation after the customer confirms it (off until you turn it on)."
+      },
+      "ownOnly": "A customer only ever sees their own records. If {{product}} cannot tell which SQL Account customer is writing, the AI hands the chat to your team.",
+      "privacy1": "{{product}} sends SQL Account only what one look-up needs (an item name, a customer code, a document number), never the chat text.",
+      "privacy2": "The keys stay encrypted on this computer. Logs keep only which look-up ran, whether it worked and how long it took, never amounts, names or documents.",
+      "state": {
+        "no_dns": {
+          "title": "API service not set up",
+          "body": "SQL Account has no API service for this key. Turn on the API service in SQL Account (Configure API Service), then try again."
+        },
+        "unreachable": {
+          "title": "Can't reach your SQL server",
+          "body": "The API service is not running, the SQL Account server is off, or port 443 is not forwarded to it. Check in SQL Account with Test Connection."
+        },
+        "private_ip": {
+          "title": "Can't reach your SQL server",
+          "body": "The address points to a private network. {{product}} connects to SQL Account only over the internet, through the API service."
+        },
+        "bad_keys": {
+          "title": "Keys not accepted",
+          "body": "SQL Account did not accept the access key or secret key. Generate new keys in SQL Account (Maintain User → API Secret Key) and connect again."
+        },
+        "old_version": {
+          "title": "SQL Account too old or API not enabled",
+          "body": "This needs SQL Account 5.2025.1038.875 or newer with the API service. Ask your dealer to update it."
+        },
+        "unexpected": {
+          "title": "Can't use SQL Account's answer",
+          "body": "SQL Account answered in a way {{product}} cannot use. Try again later or ask your dealer."
+        }
+      },
+      "conn": {
+        "connect": "Connect SQL Account",
+        "connected": "SQL Account connected",
+        "title": "Connection",
+        "hint": "Paste the access key and secret key you made in SQL Account.",
+        "accessKey": "Access key",
+        "accessHint": "Looks like 13fc…c393.sql.my/APIUSER.",
+        "keyFormat": "This is not a SQL Account access key. It ends with .sql.my/ and the user name.",
+        "secretKey": "Secret key",
+        "host": "Address:",
+        "hostFromKey": "filled in from the access key",
+        "testing": "Testing…",
+        "connectTest": "Test and connect",
+        "okTitle": "Connected",
+        "okBody": "SQL Account answered. Your AI agents can use it with the access you choose in Settings.",
+        "checked": "Last checked",
+        "test": "Test connection",
+        "disconnect": "Disconnect",
+        "disconnectTitle": "Disconnect SQL Account?",
+        "disconnectBody": "The keys are deleted from this computer and the AI stops using SQL Account. Nothing changes in SQL Account.",
+        "testOk": "SQL Account answered."
+      },
+      "access": {
+        "title": "What {{agent}} may use",
+        "hint": "Choose for each kind of record. Read lets the AI look it up; Read + create also lets it add one.",
+        "own": "Customer's own only",
+        "everyone": "All customers",
+        "off": "Off",
+        "read": "Read",
+        "create": "Read + create",
+        "never": "The AI never changes or deletes anything in SQL Account. Records not listed here are never used.",
+        "showPrice": "Show selling price",
+        "stockShown": "Stock shown as",
+        "inStock": "In stock / out of stock",
+        "quantity": "Exact quantity",
+        "save": "Save",
+        "discard": "Discard",
+        "saved": "Saved"
+      },
+      "obj": {
+        "stockitem": {
+          "name": "Stock items",
+          "sees": "Code, description, selling price, in stock. Never cost price."
+        },
+        "customer": {
+          "name": "Customer details",
+          "sees": "Customer code, company name, credit term. Never credit limit."
+        },
+        "salesinvoice": {
+          "name": "Sales invoices",
+          "sees": "Number, date, due date, total, paid or not."
+        },
+        "salesquotation": {
+          "name": "Quotations",
+          "sees": "Number, date, total, items."
+        },
+        "salesorder": {
+          "name": "Sales orders",
+          "sees": "Number, date, total, status."
+        },
+        "deliveryorder": {
+          "name": "Delivery orders",
+          "sees": "Number, date, status."
+        },
+        "customerpayment": {
+          "name": "Customer payments",
+          "sees": "Number, date, amount, invoices paid."
+        }
+      },
+      "guard": {
+        "title": "Before the AI creates a quotation",
+        "confirm": "It shows the items, quantities, prices and total, and waits for the customer to confirm in a new message.",
+        "items": "Items come only from a stock look-up in that chat; quantities only from what the customer wrote.",
+        "price": "Prices always come from SQL Account, never from the AI.",
+        "limit": "At most 2 quotations per chat a day and 20 a day for this agent.",
+        "never": "Never in Try it, never in groups, and never an invoice, order or payment."
+      },
+      "match": {
+        "title": "Who is this customer in SQL Account?",
+        "hint": "Before the AI shows invoices or orders, {{product}} must know which SQL Account customer is writing. It checks, in order:",
+        "rule1": "The customer code your team linked to this chat.",
+        "rule2": "The WhatsApp number, if exactly one SQL Account customer has it.",
+        "rule3": "Otherwise no match: the AI hands the chat to your team.",
+        "byPhone": "Match by phone number",
+        "never": "{{product}} never matches by name and never uses a customer code the customer types.",
+        "unavailable": "Your SQL Account does not send phone numbers to {{product}}: link customers by hand."
+      },
+      "cust": {
+        "title": "Customers",
+        "hint": "Each chat and the SQL Account customer it is matched to.",
+        "linked": "Linked",
+        "phone": "Matched by phone",
+        "several": "Several customers",
+        "none": "Not matched",
+        "severalHint": "More than one SQL Account customer has this number. Link one.",
+        "noneHint": "No SQL Account customer has this number. Link one to answer about invoices and orders.",
+        "empty": "No chats yet.",
+        "link": "Link",
+        "change": "Change",
+        "unlink": "Unlink",
+        "linkTitle": "Link {{name}} to a SQL Account customer",
+        "linkHint": "Search by customer code or company name. {{product}} checks the code exists in SQL Account.",
+        "search": "Customer code or company",
+        "pick": "Link",
+        "noDebtor": "No SQL Account customer found.",
+        "linkedToast": "Linked to {{code}}",
+        "unknownCode": "SQL Account has no customer with this code.",
+        "notConnected": "Connect SQL Account first to search its customers.",
+        "searching": "Searching…",
+        "unlinked": "Link removed"
+      },
+      "act": {
+        "hint": "What the AI did with SQL Account. Amounts and documents are never kept here.",
+        "stock": "{{agent}} checked stock for",
+        "account": "{{agent}} checked the invoices of",
+        "document": "{{agent}} checked a document for",
+        "payments": "{{agent}} checked payments of",
+        "quotation": "{{agent}} created a quotation for",
+        "dockey": "SQL Account ID {{dockey}}",
+        "result": {
+          "done": "Done",
+          "refused": "Not allowed",
+          "failed": "Failed"
+        },
+        "reason": {
+          "no_customer": "no matched customer, handed to the team",
+          "unreachable": "SQL server not reachable",
+          "not_own": "not this customer's document",
+          "several": "several SQL Account customers have this number, handed to the team",
+          "object_off": "switched off for this agent",
+          "item_not_looked_up": "an item that was not looked up in this chat",
+          "qty_not_from_customer": "a quantity the customer did not write",
+          "no_price": "an item without a price in SQL Account",
+          "no_draft": "no quotation was shown to the customer first",
+          "draft_expired": "the quotation shown was too old",
+          "limit_chat": "daily limit for this chat reached",
+          "limit_agent": "daily limit for this agent reached",
+          "not_confirmed": "the customer had not confirmed",
+          "no_dns": "API service not set up",
+          "private_ip": "address on a private network",
+          "bad_keys": "keys not accepted",
+          "old_version": "SQL Account too old or API not enabled",
+          "unexpected": "an answer {{product}} cannot use",
+          "other": "something went wrong"
+        },
+        "noChat": "a chat",
+        "someone": "AI agent"
+      },
+      "agentCard": "{{on}} of {{total}} kinds of records on"
     }
   },
   "reports": {

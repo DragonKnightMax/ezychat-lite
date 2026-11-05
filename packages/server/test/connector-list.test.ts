@@ -124,7 +124,14 @@ describe('connector list', () => {
     expect(entries.filter((e) => e.stage === 'beta').map((e) => e.id)).toEqual([
       'google-calendar',
       'google-sheets',
+      'sql-account',
     ]);
+    // SQL Account (built in, beta: untested against a real SQL Account API yet).
+    expect(entries.find((e) => e.id === 'sql-account')).toMatchObject({
+      kind: 'builtin',
+      builtinId: 'sql-account',
+      category: 'accounting',
+    });
   });
 
   it('downloads, checks and saves a good list with its icons', async () => {

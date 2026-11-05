@@ -1579,6 +1579,12 @@
         "long": "Ejen AI anda menawarkan masa lapang daripada Google Calendar anda dan, jika anda benarkan, menempah masa yang disahkan oleh pelanggan. Log masuk dengan Google: tiada pautan untuk ditampal.",
         "privacy": "{{product}} membaca masa sibuk kalendar yang anda pilih dan hanya menulis acara yang ditempahnya: tajuk, serta nama, nombor telefon dan e-mel pelanggan. Tiada teks sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini."
       },
+      "sql-account": {
+        "name": "SQL Account",
+        "short": "Stok, harga serta invois dan pesanan milik pelanggan anda daripada SQL Account.",
+        "long": "Ejen AI anda menjawab daripada SQL Account: stok dan harga untuk semua orang, serta invois dan pesanan milik setiap pelanggan.",
+        "privacy": "{{product}} menghantar kepada SQL Account hanya apa yang diperlukan untuk satu semakan (nama barang, kod pelanggan, nombor dokumen), tidak pernah teks chat."
+      },
       "custom-mcp": {
         "name": "Penyambung tersuai (MCP)",
         "short": "Sambungkan mana-mana sistem yang menawarkan pelayan MCP.",
@@ -1947,6 +1953,213 @@
       "row_added": "{{agent}} menambah baris ke {{tab}} untuk {{customer}}",
       "row_addedGroup": "{{agent}} menambah baris ke {{tab}} untuk {{customer}} dalam {{group}}",
       "looked_upTab": "{{agent}} menyemak {{tab}} untuk {{customer}}"
+    },
+    "sql": {
+      "tabs": {
+        "overview": "Gambaran",
+        "connection": "Sambungan",
+        "settings": "Tetapan",
+        "customers": "Pelanggan",
+        "activity": "Aktiviti"
+      },
+      "settings": {
+        "notConnected": "Sambungkan SQL Account dahulu. Anda boleh pilih tetapan sekarang; AI menggunakannya selepas disambungkan."
+      },
+      "req": {
+        "title": "Hanya berfungsi dengan perkhidmatan API SQL Account (API Link)",
+        "body": "{{product}} berhubung dengan SQL Account melalui perkhidmatan API. Ia memerlukan modul API SQL Account (tambahan berbayar daripada pengedar SQL anda). Tanpanya, penyambung ini tidak boleh berfungsi, dan {{product}} tidak pernah membaca fail SQL Account anda secara terus.",
+        "version": "SQL Account 5.2025.1038.875 atau lebih baharu.",
+        "service": "Perkhidmatan API dipasang dan berjalan pada pelayan SQL Account anda.",
+        "port": "Port 443 pada router dimajukan ke pelayan itu (IP awam tetap daripada penyedia internet anda).",
+        "user": "Pengguna SQL Account berasingan untuk {{product}}, dengan kunci akses dan kunci rahsianya.",
+        "dealer": "Tidak pasti? Tanya pengedar SQL Account anda.",
+        "cloud": "SQL Cloud: tanya pengedar anda sama ada modul API tersedia."
+      },
+      "about": "Ejen AI anda menjawab daripada SQL Account: stok dan harga untuk semua orang, serta invois dan pesanan milik setiap pelanggan.",
+      "can": {
+        "stock": "Menyemak sama ada barang ada stok dan harga jualannya.",
+        "account": "Memberitahu pelanggan invois mereka sendiri dan sama ada setiap satu sudah dibayar.",
+        "documents": "Memberitahu pelanggan status sebut harga, pesanan jualan atau pesanan penghantaran mereka sendiri.",
+        "quotation": "Boleh menyediakan sebut harga selepas pelanggan mengesahkannya (tutup sehingga anda menghidupkannya)."
+      },
+      "ownOnly": "Pelanggan hanya melihat rekod mereka sendiri. Jika {{product}} tidak dapat pastikan pelanggan SQL Account mana yang menulis, AI menyerahkan chat kepada pasukan anda.",
+      "privacy1": "{{product}} menghantar kepada SQL Account hanya apa yang diperlukan untuk satu semakan (nama barang, kod pelanggan, nombor dokumen), tidak pernah teks chat.",
+      "privacy2": "Kunci disimpan secara tersulit pada komputer ini. Log hanya menyimpan semakan mana yang dijalankan, sama ada berjaya dan berapa lama, tidak pernah jumlah, nama atau dokumen.",
+      "state": {
+        "no_dns": {
+          "title": "Perkhidmatan API belum disediakan",
+          "body": "SQL Account tiada perkhidmatan API untuk kunci ini. Hidupkan perkhidmatan API dalam SQL Account (Configure API Service), kemudian cuba lagi."
+        },
+        "unreachable": {
+          "title": "Tidak dapat mencapai pelayan SQL",
+          "body": "Perkhidmatan API tidak berjalan, pelayan SQL Account dimatikan, atau port 443 tidak dimajukan kepadanya. Semak dalam SQL Account dengan Test Connection."
+        },
+        "private_ip": {
+          "title": "Tidak dapat mencapai pelayan SQL",
+          "body": "Alamat ini menghala ke rangkaian peribadi. {{product}} hanya berhubung dengan SQL Account melalui internet, menerusi perkhidmatan API."
+        },
+        "bad_keys": {
+          "title": "Kunci tidak diterima",
+          "body": "SQL Account tidak menerima kunci akses atau kunci rahsia. Jana kunci baharu dalam SQL Account (Maintain User → API Secret Key) dan sambung semula."
+        },
+        "old_version": {
+          "title": "SQL Account terlalu lama atau API tidak dihidupkan",
+          "body": "Ini memerlukan SQL Account 5.2025.1038.875 atau lebih baharu dengan perkhidmatan API. Minta pengedar anda mengemas kininya."
+        },
+        "unexpected": {
+          "title": "Jawapan SQL Account tidak boleh digunakan",
+          "body": "SQL Account menjawab dengan cara yang {{product}} tidak boleh gunakan. Cuba lagi nanti atau tanya pengedar anda."
+        }
+      },
+      "conn": {
+        "connect": "Sambung SQL Account",
+        "connected": "SQL Account disambungkan",
+        "title": "Sambungan",
+        "hint": "Tampal kunci akses dan kunci rahsia yang anda buat dalam SQL Account.",
+        "accessKey": "Kunci akses",
+        "accessHint": "Seperti 13fc…c393.sql.my/APIUSER.",
+        "keyFormat": "Ini bukan kunci akses SQL Account. Ia berakhir dengan .sql.my/ dan nama pengguna.",
+        "secretKey": "Kunci rahsia",
+        "host": "Alamat:",
+        "hostFromKey": "diisi daripada kunci akses",
+        "testing": "Menguji…",
+        "connectTest": "Uji dan sambung",
+        "okTitle": "Disambungkan",
+        "okBody": "SQL Account menjawab. Ejen AI anda boleh menggunakannya mengikut akses yang anda pilih dalam Tetapan.",
+        "checked": "Semakan terakhir",
+        "test": "Uji sambungan",
+        "disconnect": "Putuskan",
+        "disconnectTitle": "Putuskan SQL Account?",
+        "disconnectBody": "Kunci dipadam daripada komputer ini dan AI berhenti menggunakan SQL Account. Tiada apa yang berubah dalam SQL Account.",
+        "testOk": "SQL Account menjawab."
+      },
+      "access": {
+        "title": "Apa yang boleh digunakan oleh {{agent}}",
+        "hint": "Pilih bagi setiap jenis rekod. Baca membenarkan AI menyemaknya; Baca + cipta juga membenarkan AI menambah satu.",
+        "own": "Milik pelanggan sahaja",
+        "everyone": "Semua pelanggan",
+        "off": "Tutup",
+        "read": "Baca",
+        "create": "Baca + cipta",
+        "never": "AI tidak pernah mengubah atau memadam apa-apa dalam SQL Account. Rekod yang tiada di sini tidak pernah digunakan.",
+        "showPrice": "Tunjukkan harga jualan",
+        "stockShown": "Stok ditunjukkan sebagai",
+        "inStock": "Ada stok / habis stok",
+        "quantity": "Kuantiti tepat",
+        "save": "Simpan",
+        "discard": "Buang",
+        "saved": "Disimpan"
+      },
+      "obj": {
+        "stockitem": {
+          "name": "Barang stok",
+          "sees": "Kod, keterangan, harga jualan, ada stok. Tidak pernah harga kos."
+        },
+        "customer": {
+          "name": "Butiran pelanggan",
+          "sees": "Kod pelanggan, nama syarikat, terma kredit. Tidak pernah had kredit."
+        },
+        "salesinvoice": {
+          "name": "Invois jualan",
+          "sees": "Nombor, tarikh, tarikh akhir, jumlah, sudah dibayar atau belum."
+        },
+        "salesquotation": {
+          "name": "Sebut harga",
+          "sees": "Nombor, tarikh, jumlah, barang."
+        },
+        "salesorder": {
+          "name": "Pesanan jualan",
+          "sees": "Nombor, tarikh, jumlah, status."
+        },
+        "deliveryorder": {
+          "name": "Pesanan penghantaran",
+          "sees": "Nombor, tarikh, status."
+        },
+        "customerpayment": {
+          "name": "Bayaran pelanggan",
+          "sees": "Nombor, tarikh, amaun, invois yang dibayar."
+        }
+      },
+      "guard": {
+        "title": "Sebelum AI mencipta sebut harga",
+        "confirm": "Ia menunjukkan barang, kuantiti, harga dan jumlah, dan menunggu pelanggan mengesahkan dalam mesej baharu.",
+        "items": "Barang hanya daripada semakan stok dalam chat itu; kuantiti hanya daripada apa yang ditulis pelanggan.",
+        "price": "Harga sentiasa daripada SQL Account, tidak pernah daripada AI.",
+        "limit": "Paling banyak 2 sebut harga setiap chat sehari dan 20 sehari untuk ejen ini.",
+        "never": "Tidak pernah dalam Cuba, tidak pernah dalam kumpulan, dan tidak pernah invois, pesanan atau bayaran."
+      },
+      "match": {
+        "title": "Siapakah pelanggan ini dalam SQL Account?",
+        "hint": "Sebelum AI menunjukkan invois atau pesanan, {{product}} mesti tahu pelanggan SQL Account mana yang menulis. Ia menyemak mengikut urutan:",
+        "rule1": "Kod pelanggan yang dipautkan oleh pasukan anda pada chat ini.",
+        "rule2": "Nombor WhatsApp, jika tepat seorang pelanggan SQL Account memilikinya.",
+        "rule3": "Jika tidak, tiada padanan: AI menyerahkan chat kepada pasukan anda.",
+        "byPhone": "Padankan dengan nombor telefon",
+        "never": "{{product}} tidak pernah memadankan dengan nama dan tidak pernah menggunakan kod pelanggan yang ditaip oleh pelanggan.",
+        "unavailable": "SQL Account anda tidak menghantar nombor telefon kepada {{product}}: pautkan pelanggan secara manual."
+      },
+      "cust": {
+        "title": "Pelanggan",
+        "hint": "Setiap chat dan pelanggan SQL Account yang dipadankan.",
+        "linked": "Dipautkan",
+        "phone": "Padan melalui telefon",
+        "several": "Beberapa pelanggan",
+        "none": "Tiada padanan",
+        "severalHint": "Lebih daripada seorang pelanggan SQL Account mempunyai nombor ini. Pautkan satu.",
+        "noneHint": "Tiada pelanggan SQL Account dengan nombor ini. Pautkan satu untuk menjawab tentang invois dan pesanan.",
+        "empty": "Belum ada chat.",
+        "link": "Pautkan",
+        "change": "Tukar",
+        "unlink": "Nyahpaut",
+        "linkTitle": "Pautkan {{name}} kepada pelanggan SQL Account",
+        "linkHint": "Cari mengikut kod pelanggan atau nama syarikat. {{product}} menyemak kod itu wujud dalam SQL Account.",
+        "search": "Kod pelanggan atau syarikat",
+        "pick": "Pautkan",
+        "noDebtor": "Tiada pelanggan SQL Account dijumpai.",
+        "linkedToast": "Dipautkan kepada {{code}}",
+        "unknownCode": "SQL Account tiada pelanggan dengan kod ini.",
+        "notConnected": "Sambungkan SQL Account dahulu untuk mencari pelanggannya.",
+        "searching": "Mencari…",
+        "unlinked": "Pautan dibuang"
+      },
+      "act": {
+        "hint": "Apa yang AI lakukan dengan SQL Account. Amaun dan dokumen tidak pernah disimpan di sini.",
+        "stock": "{{agent}} menyemak stok untuk",
+        "account": "{{agent}} menyemak invois",
+        "document": "{{agent}} menyemak dokumen untuk",
+        "payments": "{{agent}} menyemak bayaran",
+        "quotation": "{{agent}} mencipta sebut harga untuk",
+        "dockey": "ID SQL Account {{dockey}}",
+        "result": {
+          "done": "Selesai",
+          "refused": "Tidak dibenarkan",
+          "failed": "Gagal"
+        },
+        "reason": {
+          "no_customer": "tiada pelanggan dipadankan, diserahkan kepada pasukan",
+          "unreachable": "pelayan SQL tidak dapat dicapai",
+          "not_own": "bukan dokumen pelanggan ini",
+          "several": "beberapa pelanggan SQL Account mempunyai nombor ini, diserahkan kepada pasukan",
+          "object_off": "ditutup untuk ejen ini",
+          "item_not_looked_up": "barang yang tidak disemak dalam chat ini",
+          "qty_not_from_customer": "kuantiti yang tidak ditulis oleh pelanggan",
+          "no_price": "barang tanpa harga dalam SQL Account",
+          "no_draft": "sebut harga tidak ditunjukkan kepada pelanggan dahulu",
+          "draft_expired": "sebut harga yang ditunjukkan sudah terlalu lama",
+          "limit_chat": "had harian untuk chat ini dicapai",
+          "limit_agent": "had harian untuk ejen ini dicapai",
+          "not_confirmed": "pelanggan belum mengesahkan",
+          "no_dns": "perkhidmatan API belum disediakan",
+          "private_ip": "alamat pada rangkaian peribadi",
+          "bad_keys": "kunci tidak diterima",
+          "old_version": "SQL Account terlalu lama atau API tidak dihidupkan",
+          "unexpected": "jawapan yang {{product}} tidak boleh gunakan",
+          "other": "berlaku masalah"
+        },
+        "noChat": "satu chat",
+        "someone": "Ejen AI"
+      },
+      "agentCard": "{{on}} daripada {{total}} jenis rekod dihidupkan"
     }
   },
   "reports": {

@@ -15,6 +15,7 @@ import { connectorText } from '@ezychat/shared';
 import { errorMessage } from '../../api/client';
 import { useConnectorGallery, useRefreshConnectorList } from '../../api/connector-list';
 import { useGoogleCalendar, useGoogleSheets } from '../../api/connectors';
+import { useSqlAccount } from '../../api/sql-account';
 import { Banner, EmptyState, PageHeader } from '@/components/app';
 import { SearchField } from '@/components/app/SearchField';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,8 @@ interface GalleryRow {
 
 /**
  * Admin → Connectors: a gallery of connectors from the connector list the server keeps (refreshed
- * when the page opens), plus the app's own built-in Google Calendar and the custom MCP connector.
+ * when the page opens), plus the app's own built-in connectors (Google Calendar, Google Sheets, SQL
+ * Account) and the custom MCP connector.
  * Each card opens the connector's own page (details, settings, activity), or the page an extension
  * provides. Connected ones come first; search and a category filter narrow the list.
  */
@@ -66,6 +68,7 @@ export function ConnectorsGalleryPage() {
   const { t, i18n } = useTranslation('admin');
   const google = useGoogleCalendar();
   const sheets = useGoogleSheets();
+  const sql = useSqlAccount();
   const list = useConnectorGallery();
   const refresh = useRefreshConnectorList();
   const links = useConnectorLinks();
@@ -93,7 +96,11 @@ export function ConnectorsGalleryPage() {
       icon: c,
       status: connectorStatus(
         c,
-        c.id === 'google-sheets' ? sheets.data?.state : google.data?.state,
+        c.id === 'google-sheets'
+          ? sheets.data?.state
+          : c.id === 'sql-account'
+            ? sql.data?.state
+            : google.data?.state,
         links[c.id],
       ),
       beta:
@@ -103,9 +110,9 @@ export function ConnectorsGalleryPage() {
         ) ?? false,
     };
   };
-  const all: GalleryRow[] = [app('google-calendar'), app('google-sheets')];
+  const all: GalleryRow[] = [app('google-calendar'), app('google-sheets'), app('sql-account')];
   for (const g of list.data?.connectors ?? []) {
-    // Built-in connectors are the app's own (Google Calendar and Google Sheets show once, with
+    // Built-in connectors are the app's own (Google Calendar, Google Sheets and SQL Account show once, with
     // their live state and pages); a built-in this app does not know is skipped.
     if (g.entry.kind === 'builtin') continue;
     if (g.delisted && !isLinked(g.connection)) continue;

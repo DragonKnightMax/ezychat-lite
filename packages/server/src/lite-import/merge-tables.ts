@@ -49,6 +49,15 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   safety_items: { merged: true },
   safety_downloads: { merged: true },
   safety_numbers: { merged: true },
+  sql_account_agent_settings: { merged: true },
+  sql_account_links: { merged: true },
+  sql_account_activity: { merged: true },
+  sql_account_quotes: {
+    skip: 'quotation drafts expire within a day; created quotations stay in SQL Account and Activity',
+  },
+  sql_account_seen_items: {
+    skip: 'a one-day guard of looked-up items: looked up again after import',
+  },
   settings: {
     skip: "install-wide settings stay the target's; only per-agent keys (ai_phrases_state:<id>) are copied",
   },
@@ -381,6 +390,17 @@ export function mergeTables(input: MergeInput): MergeOutcome {
         if (agentId !== null) addSheets({ ...s, agent_id: agentId });
       }
     }
+    // SQL Account: per-agent object access and chat links (the keys stay the target's setting).
+    const addSql = inserter(target, 'sql_account_agent_settings', { verb: 'INSERT OR IGNORE' });
+    for (const s of rows(lite, 'SELECT * FROM sql_account_agent_settings')) {
+      const agentId = maps.agent(s.agent_id);
+      if (agentId !== null) addSql({ ...s, agent_id: agentId });
+    }
+    const addLink = inserter(target, 'sql_account_links', { verb: 'INSERT OR IGNORE' });
+    for (const l of rows(lite, 'SELECT * FROM sql_account_links')) {
+      const chat = maps.chat(l.chat_jid as string);
+      if (chat) addLink({ ...l, chat_jid: chat, linked_by: maps.user(l.linked_by) });
+    }
   });
 
   // ── Shared tables: contacts, aliases, Safety numbers (target wins, empty fields filled) ─────
@@ -548,6 +568,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     byChatAndAgent('connector_activity', false);
     byChatAndAgent('connector_calls', false);
     byChatAndAgent('connector_values', false);
+    byChatAndAgent('sql_account_activity', false);
   });
 
   // ── WhatsApp Safety findings ─────────────────────────────────────────────────────────────

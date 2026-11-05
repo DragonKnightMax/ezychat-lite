@@ -35,6 +35,11 @@ into AGENTS.md.
   screen and state), not only a folder path: the owner confirms what they saw, and record the confirmation
   in `design.md` only after that reply.
 
+- Hand-written request signing (SigV4 and the like) is tested against the vendor's published test vectors, not only
+  against our own fake: a fake built from the same code agrees with any bug. Keep the signer's optional headers
+  switchable so the official vectors can run unchanged.
+- `npx prettier --write packages/server/test/*.test.ts` rewrites unrelated files that were not formatted on `main`:
+  run Prettier on the files you changed by name, then check `git status` for files you did not mean to touch.
 - Research a vendor API from the vendor's own docs source when its site refuses automated readers (403): eStream's
   `github.com/eStreamSoftware/docs-sqlacc` (Docusaurus source + screenshots) gave the SQL Account API host, SigV4
   region/service and paging that `sql.com.my` and the wiki would not serve. Mark third-party API references as

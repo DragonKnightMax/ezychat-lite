@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plug } from 'lucide-react';
+import { SQL_OBJECTS, sqlAccessOf } from '@ezychat/shared';
 import { useConnectorGallery, useConnectorsAgentSettings } from '../../api/connector-list';
 import {
   useBookingSettings,
@@ -8,6 +9,7 @@ import {
   useGoogleSheets,
   useSheetsSettings,
 } from '../../api/connectors';
+import { useSqlAccount, useSqlAgentSettings } from '../../api/sql-account';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { findConnector } from './catalog';
@@ -52,6 +54,14 @@ export function AgentConnectorsCard({
         ]
           .filter(Boolean)
           .join(' · ');
+  const sql = useSqlAccount();
+  const sqlState = sql.data?.state;
+  const sqlLinked = sqlState !== undefined && sqlState !== 'disconnected';
+  const sqlSettings = useSqlAgentSettings(agentId, sqlLinked).data;
+  const sqlOn = sqlSettings
+    ? SQL_OBJECTS.filter((o) => sqlAccessOf(sqlSettings, o.id) !== 'off').length
+    : null;
+  const sqlConnector = findConnector('sql-account')!;
   const gallery = useConnectorGallery();
   const partners = (gallery.data?.connectors ?? []).filter(
     (c) => c.entry.kind === 'mcp' && isLinked(c.connection),
@@ -111,6 +121,29 @@ export function AgentConnectorsCard({
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           </Link>
         )}
+        {sqlLinked && (
+          <Link
+            to={`/admin/connectors/sql-account?tab=settings&agent=${agentId}`}
+            className={ROW}
+            data-testid="agent-connector-sql-account"
+          >
+            <ConnectorIcon c={sqlConnector} />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex flex-wrap items-center gap-2 font-medium">
+                {t('connectors.items.sql-account.name')}
+                {sqlState !== 'connected' && <ConnectorStatusBadge status="attention" />}
+              </span>
+              {sqlOn !== null && (
+                <span className="text-sm text-muted-foreground">
+                  {sqlOn === 0
+                    ? t('connectors.agentCard.off')
+                    : t('connectors.sql.agentCard', { on: sqlOn, total: SQL_OBJECTS.length })}
+                </span>
+              )}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
+        )}
         {partners.map((c, i) => {
           const tools = c.entry.tools ?? [];
           const saved = partnerSettings[i]?.data;
@@ -143,7 +176,7 @@ export function AgentConnectorsCard({
             </Link>
           );
         })}
-        {!connected && !sheetsLinked && partners.length === 0 && (
+        {!connected && !sheetsLinked && !sqlLinked && partners.length === 0 && (
           <p className="text-sm text-muted-foreground">{t('connectors.agentCard.none')}</p>
         )}
         <Button asChild variant="outline" size="touch" className="self-start">

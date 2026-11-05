@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **SQL Account connector (beta).** Your AI agent can now answer from SQL Account (eStream): stock and selling
+  prices for everyone, and each customer's own invoices, quotations, sales orders and delivery orders. It works
+  only when your SQL Account has the API module (API Link, a paid add-on from your SQL dealer). Connect it in
+  Admin → Connectors → SQL Account with the access key and secret key from SQL Account. For each AI agent you
+  choose, per kind of record, Off, Read or Read + create (create is offered only for quotations, after the
+  customer confirms). A customer only ever sees their own records: EzyChat matches a chat to a SQL Account
+  customer by a link your team sets or by a WhatsApp number exactly one customer has, and otherwise hands the
+  chat to your team. The AI never changes or deletes anything in SQL Account. Not yet tried against a real SQL
+  Account.
+
 ## [0.1.76] - 2026-11-05
 
 ### Changed
