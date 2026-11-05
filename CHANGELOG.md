@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
   second of saving the new password could show the password page again.
+- **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with
+  "could not update" and kept the old version. The installer helper now starts after you approve.
+
 - **An update blocked by antivirus software no longer breaks EzyChat on Windows.** When an antivirus program stopped
   the update installer, EzyChat could be left without its program files. Now it keeps the version you had, starts it
   again and says that the installer was blocked.

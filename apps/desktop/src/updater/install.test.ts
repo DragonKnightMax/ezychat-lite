@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, win32 } from 'node:path';
 import {
   buildInstallBrokerScript,
+  buildMacHelperBootstrap,
   buildMacInstallScript,
   buildWindowsInstallScript,
   launchBroker,
@@ -227,6 +228,16 @@ describe('macOS update helper safety', () => {
     );
     expect(script).not.toContain('moveFrom');
     expect(script).not.toContain('rm -rf "/Library/Application Support/wa-team-inbox"');
+  });
+  it('starts the root helper without nohup, which exits before running it under the admin prompt', () => {
+    // Root under the admin prompt has no console: macOS nohup prints "can't detach from console" and never
+    // starts install.sh, so no state.json appears and the app reports a failed update.
+    const bootstrap = buildMacHelperBootstrap(fixture('darwin'), 'ZWNobw==');
+    expect(bootstrap).not.toContain('nohup');
+    expect(bootstrap).toContain(
+      '/bin/bash "$stage/install.sh" > "$stage/helper.log" 2>&1 < /dev/null &',
+    );
+    expect(buildMacInstallScript(fixture('darwin'))).toContain("trap '' HUP");
   });
 });
 

@@ -591,7 +591,7 @@ function macStageGuards(plan: InstallPlan): string[] {
   ];
 }
 
-function buildMacHelperBootstrap(plan: InstallPlan, scriptBase64: string): string {
+export function buildMacHelperBootstrap(plan: InstallPlan, scriptBase64: string): string {
   return [
     'set -euo pipefail',
     'PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH',
@@ -600,7 +600,9 @@ function buildMacHelperBootstrap(plan: InstallPlan, scriptBase64: string): strin
     `mkdir "$stage"; chown root:wheel "$stage"; chmod -N "$stage"; chmod 755 "$stage"`,
     `printf '%s' ${shQuote(scriptBase64)} | /usr/bin/base64 --decode > "$stage/install.sh"`,
     `chmod 700 "$stage/install.sh"`,
-    `nohup /bin/bash "$stage/install.sh" > "$stage/helper.log" 2>&1 < /dev/null &`,
+    // No nohup: root under the admin prompt has no console, and macOS nohup then exits with "can't detach
+    // from console" without starting the helper. Nothing sends a hangup here; install.sh also ignores HUP.
+    `/bin/bash "$stage/install.sh" > "$stage/helper.log" 2>&1 < /dev/null &`,
   ].join('\n');
 }
 
@@ -621,6 +623,7 @@ export function buildMacInstallScript(plan: InstallPlan): string {
       '#!/bin/bash',
       'set -Eeuo pipefail',
       'umask 077',
+      "trap '' HUP",
       'PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH',
       ...macStageGuards(plan),
       `app=${shQuote(app)}`,
