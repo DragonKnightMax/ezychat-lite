@@ -6,8 +6,8 @@ Branch: `feat/sql-accounting-connector` · Every agent updates its stage with
 | Stage | Status | Detail | Updated |
 | --- | --- | --- | --- |
 | Design | done | Owner confirmed 2026-11-05 ("3. Yes,can u research it"); open questions researched and recorded in design.md | 2026-11-05 |
-| Dev | done | Core built-in connector: SigV4 client (AWS vectors), fake API, per-agent object access, own-records matching, quotation guards, routes, Lite-import merge; web page (5 tabs, en/ms/zh-CN) | 2026-11-05 |
-| Unit tests | pass | 48 server tests (97.5 % lines on connectors/sql-account), web SqlAccountPage tests + connectors suite 151 pass; typecheck and lint clean | 2026-11-05 |
+| Dev | done | Server (connectors/sql-account, migration 034, routes, fake API in the official collection's shapes), web page (5 tabs, 8 objects incl. Customer invoices (amount owed)), background phone index from branches, Lite-import merge | 2026-11-05 |
+| Unit tests | pass | Full suite 5005 passed (419 files); changed-lines coverage 97.2 % (1013/1042); SonarCloud gate passed, 0 new issues | 2026-11-05 |
 | E2E | todo | Main session runs the mock e2e round (owner rule: not in this session) | 2026-11-05 |
 | Dev Build | partial | Dev server with --fake-wa + fake SQL Account: connect (unreachable then ok), settings, customers (linked/phone/several/none), activity; untested against a real SQL Account API (no test company) | 2026-11-05 |
 | Screen review | partial | Real page at 1280/360, light/dark: matches the confirmed mock, 0 page errors, 0 overflow; full UI/UX review round left to the main session | 2026-11-05 |
@@ -20,3 +20,5 @@ Branch: `feat/sql-accounting-connector` · Every agent updates its stage with
 - 2026-11-05 Unit tests: pass — server 48 tests, web connectors suite 151 tests
 - 2026-11-05 Dev Build: partial — fake SQL Account only; untested against a real SQL Account API
 - 2026-11-05 Screen review: partial — screenshots of every tab at 1280/360 light/dark, no overflow
+- 2026-11-05 Dev: done — official Postman collection applied (api.sql.my, customerinvoice amount owed, phones on sdsbranch)
+- 2026-11-05 Unit tests: pass — full suite 5005, changed lines 97.2 %, Sonar clean
