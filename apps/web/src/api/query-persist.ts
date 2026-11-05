@@ -175,7 +175,10 @@ export function restorePersistedQueries(
     saved.buster === buster &&
     saved.userId === userId &&
     now - saved.savedAt <= PERSIST_MAX_AGE_MS &&
-    (me?.state.data as User | null | undefined)?.id === userId;
+    (me?.state.data as User | null | undefined)?.id === userId &&
+    // A user who still had to change the password is never shown from a copy: the guard would send
+    // a reload straight to /change-password before the server says it is done (`savable`).
+    !(me?.state.data as User).mustChangePassword;
   if (!valid) {
     remove(storage, key);
     return;
@@ -209,8 +212,9 @@ export function startQueryPersistence(
   const save = () => {
     timer = undefined;
     const me = qc.getQueryData<User | null>(ME_KEY);
-    if (me?.id === lastUser && lastUser !== null)
-      write(storage, SAVED_PREFIX + me.id, serialize(qc, me.id, buster, Date.now()));
+    if (me?.id !== lastUser || lastUser === null) return;
+    if (savable(me)) write(storage, SAVED_PREFIX + me.id, serialize(qc, me.id, buster, Date.now()));
+    else remove(storage, SAVED_PREFIX + me.id);
   };
   const onUser = (user: User | null) => {
     if (!user) {
@@ -222,6 +226,9 @@ export function startQueryPersistence(
       }
       return;
     }
+    // Never keep a copy that still says "change your password": saves wait up to SAVE_DELAY_MS, so
+    // a reload right after the change would restore it and send the user back to that page.
+    if (!savable(user)) remove(storage, SAVED_PREFIX + user.id);
     if (user.id === lastUser) {
       cleared = false;
       return;
@@ -248,6 +255,11 @@ export function startQueryPersistence(
     cancel();
     unsubscribe();
   };
+}
+
+/** A user who must still change the password is never saved (see `restorePersistedQueries`). */
+function savable(user: User): boolean {
+  return !user.mustChangePassword;
 }
 
 /** Removes every user's saved copy (sign-out). */
