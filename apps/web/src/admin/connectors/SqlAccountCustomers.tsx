@@ -20,12 +20,9 @@ import { ErrorState, ListSkeleton } from '../adminUi';
 
 function MatchBadge({ row }: Readonly<{ row: SqlCustomerRow }>) {
   const { t } = useTranslation('admin');
-  const variant =
-    row.kind === 'linked' || row.kind === 'phone'
-      ? 'default'
-      : row.kind === 'several'
-        ? 'outline'
-        : 'secondary';
+  let variant: 'default' | 'outline' | 'secondary' = 'secondary';
+  if (row.kind === 'linked' || row.kind === 'phone') variant = 'default';
+  else if (row.kind === 'several') variant = 'outline';
   return (
     <Badge
       variant={variant}
@@ -85,9 +82,11 @@ export function SqlCustomers() {
                 <span className="text-sm break-words text-muted-foreground">
                   {r.code
                     ? [r.code, r.sqlName].filter(Boolean).join(' · ')
-                    : r.kind === 'several'
-                      ? t('connectors.sql.cust.severalHint')
-                      : t('connectors.sql.cust.noneHint')}
+                    : t(
+                        r.kind === 'several'
+                          ? 'connectors.sql.cust.severalHint'
+                          : 'connectors.sql.cust.noneHint',
+                      )}
                 </span>
               </span>
               <span className="flex shrink-0 flex-wrap gap-2">
@@ -154,6 +153,40 @@ function LinkDialog({ row, onClose }: Readonly<{ row: SqlCustomerRow; onClose: (
     );
   };
   const unavailable = debtors.error instanceof ApiError && debtors.error.status === 503;
+  const results = () => {
+    if (debtors.isPending)
+      return <p className="text-sm text-muted-foreground">{t('connectors.sql.cust.searching')}</p>;
+    if (debtors.error)
+      return (
+        <p className="text-sm text-muted-foreground">
+          {unavailable ? t('connectors.sql.cust.notConnected') : errorMessage(debtors.error)}
+        </p>
+      );
+    return (
+      <ul className="flex flex-col divide-y rounded-lg border">
+        {debtors.data.map((d) => (
+          <li key={d.code} className="flex items-center justify-between gap-3 p-3">
+            <span className="flex min-w-0 flex-col">
+              <span className="font-mono text-sm break-all">{d.code}</span>
+              <span className="text-sm break-words text-muted-foreground">{d.name}</span>
+            </span>
+            <Button
+              size="touch"
+              className="shrink-0"
+              disabled={link.isPending}
+              aria-label={`${t('connectors.sql.cust.pick')} ${d.code}`}
+              onClick={() => pick(d.code)}
+            >
+              {t('connectors.sql.cust.pick')}
+            </Button>
+          </li>
+        ))}
+        {debtors.data.length === 0 && (
+          <li className="p-3 text-sm text-muted-foreground">{t('connectors.sql.cust.noDebtor')}</li>
+        )}
+      </ul>
+    );
+  };
   return (
     <ResponsiveDialog
       open
@@ -175,38 +208,7 @@ function LinkDialog({ row, onClose }: Readonly<{ row: SqlCustomerRow; onClose: (
             {error}
           </p>
         )}
-        {debtors.isPending ? (
-          <p className="text-sm text-muted-foreground">{t('connectors.sql.cust.searching')}</p>
-        ) : debtors.error ? (
-          <p className="text-sm text-muted-foreground">
-            {unavailable ? t('connectors.sql.cust.notConnected') : errorMessage(debtors.error)}
-          </p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-lg border">
-            {debtors.data.map((d) => (
-              <li key={d.code} className="flex items-center justify-between gap-3 p-3">
-                <span className="flex min-w-0 flex-col">
-                  <span className="font-mono text-sm break-all">{d.code}</span>
-                  <span className="text-sm break-words text-muted-foreground">{d.name}</span>
-                </span>
-                <Button
-                  size="touch"
-                  className="shrink-0"
-                  disabled={link.isPending}
-                  aria-label={`${t('connectors.sql.cust.pick')} ${d.code}`}
-                  onClick={() => pick(d.code)}
-                >
-                  {t('connectors.sql.cust.pick')}
-                </Button>
-              </li>
-            ))}
-            {debtors.data.length === 0 && (
-              <li className="p-3 text-sm text-muted-foreground">
-                {t('connectors.sql.cust.noDebtor')}
-              </li>
-            )}
-          </ul>
-        )}
+        {results()}
       </div>
     </ResponsiveDialog>
   );
@@ -254,12 +256,10 @@ export function SqlActivityList() {
         description={t('connectors.sql.act.hint')}
       />
     );
-  const reason = (r: SqlActivity) =>
-    r.reason
-      ? isKnownReason(r.reason)
-        ? t(`connectors.sql.act.reason.${r.reason}`)
-        : r.reason
-      : null;
+  const reason = (r: SqlActivity) => {
+    if (!r.reason) return null;
+    return isKnownReason(r.reason) ? t(`connectors.sql.act.reason.${r.reason}`) : r.reason;
+  };
   return (
     <Card className="gap-3">
       <CardHeader>

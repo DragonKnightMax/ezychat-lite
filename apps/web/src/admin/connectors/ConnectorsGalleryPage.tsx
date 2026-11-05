@@ -85,6 +85,11 @@ export function ConnectorsGalleryPage() {
     refreshNow();
   }, [refreshNow]);
 
+  const builtinState = (id: string) => {
+    if (id === 'google-sheets') return sheets.data?.state;
+    if (id === 'sql-account') return sql.data?.state;
+    return google.data?.state;
+  };
   const app = (id: (typeof CONNECTORS)[number]['id']): GalleryRow => {
     const c = CONNECTORS.find((x) => x.id === id)!;
     return {
@@ -94,15 +99,7 @@ export function ConnectorsGalleryPage() {
       short: t(`connectors.items.${c.id}.short`),
       category: c.category,
       icon: c,
-      status: connectorStatus(
-        c,
-        c.id === 'google-sheets'
-          ? sheets.data?.state
-          : c.id === 'sql-account'
-            ? sql.data?.state
-            : google.data?.state,
-        links[c.id],
-      ),
+      status: connectorStatus(c, builtinState(c.id), links[c.id]),
       beta:
         list.data?.connectors.some(
           (g) =>

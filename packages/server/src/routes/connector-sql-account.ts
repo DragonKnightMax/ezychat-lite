@@ -23,33 +23,40 @@ const unavailable = () =>
  * access key + secret key (saved only when SQL Account answered), test, per-agent object access,
  * chat → customer links and the activity list. Admins only; keys never leave the server.
  */
-export default async function connectorSqlAccountRoutes(app: FastifyInstance, ctx: AppContext) {
+export default function connectorSqlAccountRoutes(
+  app: FastifyInstance,
+  ctx: AppContext,
+): Promise<void> {
   const sql = getSqlAccount(ctx);
   const admin = { preHandler: requireAdmin(ctx) };
   const actor = (req: FastifyRequest) => ({ userId: req.user!.id, ip: clientIp(req) });
 
-  app.get('/connectors/sql-account', admin, async () => sql.status());
+  app.get('/connectors/sql-account', admin, () => Promise.resolve(sql.status()));
 
-  app.post('/connectors/sql-account/connect', admin, async (req) =>
+  app.post('/connectors/sql-account/connect', admin, (req) =>
     sql.connect(parse(SqlConnectBody, req.body ?? {}), actor(req)),
   );
 
-  app.post('/connectors/sql-account/test', admin, async () => sql.test());
+  app.post('/connectors/sql-account/test', admin, () => sql.test());
 
-  app.post('/connectors/sql-account/disconnect', admin, async (req) => sql.disconnect(actor(req)));
-
-  app.put('/connectors/sql-account/match', admin, async (req) =>
-    sql.setMatchByPhone(parse(SqlMatchBody, req.body ?? {}).matchByPhone, actor(req)),
+  app.post('/connectors/sql-account/disconnect', admin, (req) =>
+    Promise.resolve(sql.disconnect(actor(req))),
   );
 
-  app.get('/connectors/sql-account/agents/:agentId', admin, async (req) => {
+  app.put('/connectors/sql-account/match', admin, (req) =>
+    Promise.resolve(
+      sql.setMatchByPhone(parse(SqlMatchBody, req.body ?? {}).matchByPhone, actor(req)),
+    ),
+  );
+
+  app.get('/connectors/sql-account/agents/:agentId', admin, (req) => {
     const { agentId } = parse(AgentParams, req.params);
     const settings = sql.agentSettings(agentId);
     if (!settings) throw errors.notFound('AI agent');
-    return settings;
+    return Promise.resolve(settings);
   });
 
-  app.put('/connectors/sql-account/agents/:agentId', admin, async (req) => {
+  app.put('/connectors/sql-account/agents/:agentId', admin, (req) => {
     const { agentId } = parse(AgentParams, req.params);
     const saved = sql.saveAgentSettings(
       agentId,
@@ -57,10 +64,10 @@ export default async function connectorSqlAccountRoutes(app: FastifyInstance, ct
       actor(req),
     );
     if (!saved) throw errors.notFound('AI agent');
-    return saved;
+    return Promise.resolve(saved);
   });
 
-  app.get('/connectors/sql-account/customers', admin, async () => sql.customers());
+  app.get('/connectors/sql-account/customers', admin, () => sql.customers());
 
   app.get('/connectors/sql-account/debtors', admin, async (req) => {
     const { q } = parse(DebtorQuery, req.query ?? {});
@@ -87,16 +94,19 @@ export default async function connectorSqlAccountRoutes(app: FastifyInstance, ct
     return { ok: true };
   });
 
-  app.get('/connectors/sql-account/activity', admin, async () => sql.activity());
+  app.get('/connectors/sql-account/activity', admin, () => Promise.resolve(sql.activity()));
 
   // Fake SQL Account (--fake-wa only): what the fake API service answers next.
   const fake = sql.fake;
-  if (!fake) return;
-  app.post('/dev/fake-sql-account/scenario', admin, async (req) => {
+  if (!fake) return Promise.resolve();
+  app.post('/dev/fake-sql-account/scenario', admin, (req) => {
     const body = parse(FakeScenarioBody, req.body ?? {});
     fake.scenario = body.scenario;
     if (body.phonesInList !== undefined) fake.phonesInList = body.phonesInList;
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   });
-  app.get('/dev/fake-sql-account/quotations', admin, async () => fake.data.salesquotation ?? []);
+  app.get('/dev/fake-sql-account/quotations', admin, () =>
+    Promise.resolve(fake.data.salesquotation ?? []),
+  );
+  return Promise.resolve();
 }

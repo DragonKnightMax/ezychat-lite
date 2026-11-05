@@ -10,9 +10,10 @@ import type {
   ExtensionToolsTurn,
 } from '../../ai/agent/extension-tools.js';
 import type { AppContext } from '../../context.js';
+import type { DB } from '../../db/index.js';
 import { getChats } from '../../wa-bridge/index.js';
 import { customerMessageSince, lastAiReplyAt } from '../mcp/repo.js';
-import { SqlError, type SqlRecord } from './client.js';
+import { SqlError, sqlText, type SqlRecord } from './client.js';
 import {
   claimDraft,
   consentUsedForQuote,
@@ -24,6 +25,7 @@ import {
   rememberItems,
   releaseDraft,
   seenItem,
+  type QuoteDraft,
   type QuoteItem,
 } from './repo.js';
 import type { ChatMatch } from './service.js';
@@ -77,8 +79,7 @@ export function customerWroteNumber(qty: number, texts: readonly string[]): bool
   return texts.some((t) => (t.match(/\d+/g) ?? []).some((n) => Number(n) === qty));
 }
 
-const text = (v: unknown): string =>
-  typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '';
+const text = sqlText;
 
 /** True when a lookup source is on for this agent (the core counts it as a source of facts). */
 export function sqlLookupsAvailable(ctx: AppContext, agentId?: number | null): boolean {
@@ -98,13 +99,18 @@ function stockAnswer(row: SqlRecord, settings: SqlAgentSettings) {
     code: text(row.code),
     description: text(row.description),
     ...(settings.showPrice && text(row.refprice) ? { price: text(row.refprice) } : {}),
-    ...(qty === null
-      ? { stock: 'unknown' }
-      : settings.stockDetail === 'quantity'
-        ? { stock: qty }
-        : { stock: qty > 0 ? 'in stock' : 'out of stock' }),
+    stock: stockValue(qty, settings),
   };
 }
+
+function stockValue(qty: number | null, settings: SqlAgentSettings): string | number {
+  if (qty === null) return 'unknown';
+  if (settings.stockDetail === 'quantity') return qty;
+  return qty > 0 ? 'in stock' : 'out of stock';
+}
+
+/** Newest document first (`YYYY-MM-DD` dates sort as text). */
+const newestFirst = (a: SqlRecord, b: SqlRecord) => text(b.docdate).localeCompare(text(a.docdate));
 
 const docAnswer = (row: SqlRecord) => ({
   number: text(row.docno),
@@ -118,6 +124,74 @@ const own = (rows: SqlRecord[], code: string) => rows.filter((r) => text(r.code)
 
 const NO_CUSTOMER =
   'No SQL Account customer is linked to this chat. Do not ask for or use a customer code. Tell the person a team member will check, and hand the chat over.';
+
+const refused = (reason: string, output: string) => ({ output, refused: reason });
+
+/**
+ * The guards of a quotation create: same customer, draft not older than a day, shown by the AI
+ * and confirmed in a newer customer message (each message used once), the daily limits, then the
+ * claim of that message. Returns a refusal, or the consent message id.
+ */
+function checkQuote(
+  db: DB,
+  draft: QuoteDraft,
+  input: { customerCode: string | null; aiUserId: number | null; now: number },
+): { output: string; refused: string } | { consent: string } {
+  if (input.now - draft.createdAt > DAY)
+    return refused(
+      'draft_expired',
+      'Not created: the draft is older than a day. Prepare it again.',
+    );
+  if (input.customerCode !== draft.customerCode) return refused('no_customer', NO_CUSTOMER);
+  const shownAt = input.aiUserId === null ? null : lastAiReplyAt(db, draft.chatJid, input.aiUserId);
+  const consent =
+    shownAt !== null && shownAt >= draft.createdAt
+      ? customerMessageSince(db, draft.chatJid, shownAt)
+      : null;
+  if (!consent || consentUsedForQuote(db, draft.chatJid, consent))
+    return refused(
+      'not_confirmed',
+      'Not created: show the draft to the customer and wait for their confirmation in a new message.',
+    );
+  if (quotesSince(db, { chatJid: draft.chatJid }, input.now - DAY) >= QUOTES_PER_CHAT_DAY)
+    return refused(
+      'limit_chat',
+      'Not created: the daily limit for this chat is reached. Hand over.',
+    );
+  if (quotesSince(db, { agentId: draft.agentId }, input.now - DAY) >= QUOTES_PER_AGENT_DAY)
+    return refused('limit_agent', 'Not created: the daily limit is reached. Hand over.');
+  if (!claimDraft(db, draft.id, consent))
+    return refused('not_confirmed', 'Not created: this confirmation was already used.');
+  return { consent };
+}
+
+/** The full POST body SQL Account needs (never empty or partial: see client `completeDocument`). */
+function quotationBody(draft: QuoteDraft, today: string): SqlRecord {
+  return {
+    dockey: 0,
+    docno: '',
+    docdate: today,
+    code: draft.customerCode,
+    sdsdocdetail: draft.items.map((item, i) => ({
+      dtlkey: 0,
+      seq: i + 1,
+      itemcode: item.code,
+      qty: item.qty.toFixed(2),
+      ...(item.uom ? { uom: item.uom } : {}),
+      unitprice: item.unitPrice,
+    })),
+  };
+}
+
+/** The new quotation's internal id and number from SQL Account's answer (record or `{data:[…]}`). */
+export function createdRecord(answer: unknown): { dockey: number | null; docNo: string } {
+  let record: unknown = answer;
+  const data = (answer as { data?: unknown } | null)?.data;
+  if (Array.isArray(data)) record = data[0];
+  if (!record || typeof record !== 'object') return { dockey: null, docNo: '' };
+  const r = record as SqlRecord;
+  return { dockey: Number.isInteger(r.dockey) ? (r.dockey as number) : null, docNo: text(r.docno) };
+}
 
 /**
  * The SQL Account tools for one AI agent turn (design docs/features/sql-accounting/design.md):
@@ -260,7 +334,7 @@ export async function sqlAgentTools(
           );
           if (!rows.length)
             rows = await service.timed('stockitem', () =>
-              c.list('stockitem', { description: `*${query.replace(/\*/g, '')}*` }, input.signal),
+              c.list('stockitem', { description: `*${query.replaceAll('*', '')}*` }, input.signal),
             );
           const items = rows.slice(0, DOC_LIMIT).map((row) => stockAnswer(row, settings));
           if (chatJid)
@@ -311,10 +385,7 @@ export async function sqlAgentTools(
                 ),
                 code,
               );
-              out.invoices = rows
-                .sort((a, b) => text(b.docdate).localeCompare(text(a.docdate)))
-                .slice(0, DOC_LIMIT)
-                .map(docAnswer);
+              out.invoices = rows.toSorted(newestFirst).slice(0, DOC_LIMIT).map(docAnswer);
             }
             out.note =
               "Only this customer's own records. There is no unpaid balance here: never work one out; for what they still owe, hand over.";
@@ -344,14 +415,14 @@ export async function sqlAgentTools(
                 refused: 'object_off',
               };
             const c = service.client();
-            const rows = own(
+            const row = own(
               await service.timed(type, () =>
                 c.list(type, { docno: docNo.toUpperCase(), code }, input.signal),
               ),
               code,
-            ).filter((r) => text(r.docno).toLowerCase() === docNo.toLowerCase());
-            return rows[0]
-              ? { output: { found: true, type, ...docAnswer(rows[0]) } }
+            ).find((r) => text(r.docno).toLowerCase() === docNo.toLowerCase());
+            return row
+              ? { output: { found: true, type, ...docAnswer(row) } }
               : {
                   output: {
                     found: false,
@@ -382,7 +453,7 @@ export async function sqlAgentTools(
             return {
               output: {
                 payments: rows
-                  .sort((a, b) => text(b.docdate).localeCompare(text(a.docdate)))
+                  .toSorted(newestFirst)
                   .slice(0, DOC_LIMIT)
                   .map((r) => ({
                     number: text(r.docno),
@@ -480,9 +551,8 @@ export async function sqlAgentTools(
       execute: ({ draftId }) =>
         run(SQL_CREATE_QUOTATION, async () => {
           const draft = draftById(ctx.db, draftId);
-          const refuse = (reason: string, output: string) => ({ output, refused: reason });
-          if (!draft || draft.chatJid !== chatJid || draft.agentId !== agentId)
-            return refuse(
+          if (draft?.chatJid !== chatJid || draft.agentId !== agentId)
+            return refused(
               'no_draft',
               'Not created: no such draft in this chat. Prepare it with sql_quotation_preview.',
             );
@@ -491,80 +561,34 @@ export async function sqlAgentTools(
               output: `Already created (SQL Account ID ${draft.dockey ?? '?'}): nothing more to do.`,
               quiet: true,
             };
-          if (service.now() - draft.createdAt > DAY)
-            return refuse(
-              'draft_expired',
-              'Not created: the draft is older than a day. Prepare it again.',
-            );
           const m = await customer();
-          if (m.code !== draft.customerCode) return refuse('no_customer', NO_CUSTOMER);
-          const shownAt = agent ? lastAiReplyAt(ctx.db, chatJid, agent.userId) : null;
-          const consent =
-            shownAt !== null && shownAt >= draft.createdAt
-              ? customerMessageSince(ctx.db, chatJid, shownAt)
-              : null;
-          if (!consent || consentUsedForQuote(ctx.db, chatJid, consent))
-            return refuse(
-              'not_confirmed',
-              'Not created: show the draft to the customer and wait for their confirmation in a new message.',
-            );
-          const nowAt = service.now();
-          if (quotesSince(ctx.db, { chatJid }, nowAt - DAY) >= QUOTES_PER_CHAT_DAY)
-            return refuse(
-              'limit_chat',
-              'Not created: the daily limit for this chat is reached. Hand over.',
-            );
-          if (quotesSince(ctx.db, { agentId }, nowAt - DAY) >= QUOTES_PER_AGENT_DAY)
-            return refuse('limit_agent', 'Not created: the daily limit is reached. Hand over.');
-          if (!claimDraft(ctx.db, draft.id, consent))
-            return refuse('not_confirmed', 'Not created: this confirmation was already used.');
+          const check = checkQuote(ctx.db, draft, {
+            customerCode: m.code,
+            aiUserId: agent?.userId ?? null,
+            now: service.now(),
+          });
+          if ('refused' in check) return check;
           let answer: unknown;
           try {
             answer = await service.timed('salesquotation_create', () =>
-              service.client().create(
-                'salesquotation',
-                {
-                  dockey: 0,
-                  docno: '',
-                  docdate: service.today(),
-                  code: draft.customerCode,
-                  sdsdocdetail: draft.items.map((item, i) => ({
-                    dtlkey: 0,
-                    seq: i + 1,
-                    itemcode: item.code,
-                    qty: item.qty.toFixed(2),
-                    ...(item.uom ? { uom: item.uom } : {}),
-                    unitprice: item.unitPrice,
-                  })),
-                },
-                input.signal,
-              ),
+              service
+                .client()
+                .create('salesquotation', quotationBody(draft, service.today()), input.signal),
             );
           } catch (error) {
             releaseDraft(ctx.db, draft.id);
             throw error;
           }
-          const record = (
-            answer &&
-            typeof answer === 'object' &&
-            Array.isArray((answer as { data?: unknown }).data)
-              ? (answer as { data: unknown[] }).data[0]
-              : answer
-          ) as SqlRecord | null;
-          const dockey =
-            record && Number.isInteger(record.dockey) ? (record.dockey as number) : null;
-          const docNo = record ? text(record.docno) : '';
+          const { dockey, docNo } = createdRecord(answer);
           finishDraft(ctx.db, draft.id, dockey, service.now());
           if (agent)
             getChats(ctx).addAiToolUsed(chatJid, agent.userId, [
               { title: TITLES[SQL_CREATE_QUOTATION]!, sourceLabel: SOURCE_LABEL },
             ]);
-          return {
-            output: docNo
-              ? `Created quotation ${docNo} in SQL Account. Tell the customer the team will follow up.`
-              : 'Created the quotation in SQL Account. Tell the customer the team will follow up.',
-            ...(dockey !== null ? { dockey } : {}),
-          };
+          const output = docNo
+            ? `Created quotation ${docNo} in SQL Account. Tell the customer the team will follow up.`
+            : 'Created the quotation in SQL Account. Tell the customer the team will follow up.';
+          return dockey === null ? { output } : { output, dockey };
         }),
     });
   }

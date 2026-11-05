@@ -206,8 +206,8 @@ describe('SQL Account client against the fake API', () => {
       companyname: `Co ${i}`,
     }));
     const client = new SqlClient(conn, { fetch: fake.fetch });
-    expect((await client.list('customer', {}, undefined, 2)).length).toBe(100);
-    expect((await client.list('customer', {}, undefined, 5)).length).toBe(120);
+    expect(await client.list('customer', {}, undefined, 2)).toHaveLength(100);
+    expect(await client.list('customer', {}, undefined, 5)).toHaveLength(120);
   });
 
   it('answers each failure with its state and never sends without a valid connection', async () => {

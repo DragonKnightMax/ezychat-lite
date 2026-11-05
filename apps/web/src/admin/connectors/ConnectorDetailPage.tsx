@@ -1,3 +1,5 @@
+import type { GoogleCalendarState, SqlAccountState } from '@ezychat/shared';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -84,15 +86,10 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
   const entry = useBuiltinEntry(c.id);
   const link = links[c.id];
   if (link) return <Navigate to={link} replace />;
-  const status = connectorStatus(
-    c,
-    c.id === 'google-sheets'
-      ? sheets.data?.state
-      : c.id === 'sql-account'
-        ? sql.data?.state
-        : google.data?.state,
-    undefined,
-  );
+  let state = google.data?.state as GoogleCalendarState | SqlAccountState | undefined;
+  if (c.id === 'google-sheets') state = sheets.data?.state;
+  if (c.id === 'sql-account') state = sql.data?.state;
+  const status = connectorStatus(c, state, undefined);
   const name = t(`connectors.items.${c.id}.name`);
 
   return (
@@ -113,13 +110,7 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
         </div>
       </div>
 
-      {c.id === 'google-calendar' ? (
-        <GoogleCalendarTabs c={c} entry={entry} />
-      ) : c.id === 'google-sheets' ? (
-        <GoogleSheetsTabs c={c} entry={entry} />
-      ) : c.id === 'sql-account' ? (
-        <SqlAccountTabs entry={entry} />
-      ) : (
+      {builtinTabs(c, entry) ?? (
         <div className="flex flex-col gap-4">
           {status === 'enterprise' && (
             <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -136,6 +127,14 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
       )}
     </div>
   );
+}
+
+/** The tabs of a built-in connector, or null for any other connector page. */
+function builtinTabs(c: CatalogConnector, entry: ConnectorEntry | null): ReactNode {
+  if (c.id === 'google-calendar') return <GoogleCalendarTabs c={c} entry={entry} />;
+  if (c.id === 'google-sheets') return <GoogleSheetsTabs c={c} entry={entry} />;
+  if (c.id === 'sql-account') return <SqlAccountTabs entry={entry} />;
+  return null;
 }
 
 function GoogleCalendarTabs({

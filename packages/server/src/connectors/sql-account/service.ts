@@ -19,7 +19,14 @@ import { agentById } from '../../ai/agents.js';
 import { AI_TIMEZONE_SETTING } from '../../ai/prompt.js';
 import type { AppContext } from '../../context.js';
 import { audit } from '../../db/audit.js';
-import { SqlClient, SqlError, validSqlHost, type SqlConnection, type SqlRecord } from './client.js';
+import {
+  SqlClient,
+  SqlError,
+  sqlText,
+  validSqlHost,
+  type SqlConnection,
+  type SqlRecord,
+} from './client.js';
 import { FakeSqlAccount } from './fake.js';
 import {
   addActivity,
@@ -67,24 +74,36 @@ export function normalizePhone(raw: string): string | null {
   return digits.length >= 9 && digits.length <= 15 ? digits : null;
 }
 
+const PHONE_FIELD = /phone|mobile|tel/i;
+
 /** Every phone-like value of a customer record (any field named phone/mobile/tel, also nested). */
 export function recordPhones(record: SqlRecord, depth = 0): string[] {
   const out: string[] = [];
   for (const [key, value] of Object.entries(record)) {
-    if (typeof value === 'string' && /phone|mobile|tel/i.test(key)) {
-      const n = normalizePhone(value);
+    if (typeof value === 'string') {
+      const n = PHONE_FIELD.test(key) ? normalizePhone(value) : null;
       if (n) out.push(n);
     } else if (Array.isArray(value) && depth < 2) {
-      for (const item of value)
-        if (item && typeof item === 'object')
-          out.push(...recordPhones(item as SqlRecord, depth + 1));
+      out.push(...nestedPhones(value, depth + 1));
     }
   }
   return out;
 }
 
-const text = (v: unknown): string =>
-  typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '';
+function nestedPhones(rows: unknown[], depth: number): string[] {
+  return rows
+    .filter((item): item is SqlRecord => !!item && typeof item === 'object')
+    .flatMap((item) => recordPhones(item, depth));
+}
+
+const text = sqlText;
+
+/** The fake answers only with --fake-wa (never in service mode), like the fake Google. */
+function defaultFake(ctx: AppContext): FakeSqlAccount | null {
+  return ctx.config.fakeWa && ctx.config.mode !== 'service' ? new FakeSqlAccount() : null;
+}
+
+const NO_MATCH: ChatMatch = { kind: 'none', code: null, sqlName: null };
 
 export interface SqlAccountServiceOptions {
   /** Replaces the network (tests). With `fake`, the fake answers. */
@@ -96,13 +115,7 @@ export interface SqlAccountServiceOptions {
 export function createSqlAccountService(ctx: AppContext, options: SqlAccountServiceOptions = {}) {
   const log = ctx.log.child({ mod: 'sql-account' });
   const now = options.now ?? Date.now;
-  // The fake answers only with --fake-wa (never in service mode), like the fake Google.
-  const fake =
-    options.fake !== undefined
-      ? options.fake
-      : ctx.config.fakeWa && ctx.config.mode !== 'service'
-        ? new FakeSqlAccount()
-        : null;
+  const fake = options.fake === undefined ? defaultFake(ctx) : options.fake;
   const fetchFn = options.fetch ?? fake?.fetch;
   let client: SqlClient | null = null;
   let index: {
@@ -144,6 +157,11 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
   };
   const matchByPhone = () => ctx.settings.get<boolean>(MATCH_SETTING, true);
 
+  const phoneMatchState = (): SqlAccountStatus['phoneMatch'] => {
+    if (!index) return 'unknown';
+    return index.available ? 'available' : 'unavailable';
+  };
+
   const status = (): SqlAccountStatus => {
     const connection = readConnection();
     const { state, checkedAt } = stateOf();
@@ -153,7 +171,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
       keyEnd: connection ? sqlKeyEnd(connection.accessKey) : null,
       checkedAt,
       matchByPhone: matchByPhone(),
-      phoneMatch: index ? (index.available ? 'available' : 'unavailable') : 'unknown',
+      phoneMatch: phoneMatchState(),
     };
   };
 
@@ -225,7 +243,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
   };
 
   const phoneMatch = (jid: string): ChatMatch => {
-    if (!index) return { kind: 'none', code: null, sqlName: null };
+    if (!index) return NO_MATCH;
     const codes = new Set<string>();
     for (const raw of chatPhones(ctx.db, jid)) {
       const n = normalizePhone(raw);
@@ -235,9 +253,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
       const code = [...codes][0]!;
       return { kind: 'phone', code, sqlName: index.names.get(code) ?? null };
     }
-    return codes.size > 1
-      ? { kind: 'several', code: null, sqlName: null }
-      : { kind: 'none', code: null, sqlName: null };
+    return codes.size > 1 ? { kind: 'several', code: null, sqlName: null } : NO_MATCH;
   };
 
   const service = {
@@ -374,9 +390,9 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
         const row = rows.find((r) => text(r.code) === linked);
         return row
           ? { kind: 'linked', code: linked, sqlName: text(row.companyname) || null }
-          : { kind: 'none', code: null, sqlName: null };
+          : NO_MATCH;
       }
-      if (!matchByPhone()) return { kind: 'none', code: null, sqlName: null };
+      if (!matchByPhone()) return NO_MATCH;
       await ensureIndex(signal);
       return phoneMatch(chatJid);
     },
@@ -396,9 +412,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
             code: linked,
             sqlName: index?.names.get(linked) ?? null,
           };
-        const m: ChatMatch = matchByPhone()
-          ? phoneMatch(jid)
-          : { kind: 'none', code: null, sqlName: null };
+        const m: ChatMatch = matchByPhone() ? phoneMatch(jid) : NO_MATCH;
         return { jid, name, ...m };
       });
     },
@@ -416,7 +430,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
         if (!query) return (await run({})).slice(0, 20);
         const byCode = await run({ code: query });
         if (byCode.length) return byCode.slice(0, 20);
-        return (await run({ companyname: `*${query.replace(/\*/g, '')}*` })).slice(0, 20);
+        return (await run({ companyname: `*${query.replaceAll('*', '')}*` })).slice(0, 20);
       } catch (error) {
         noteFailure(error);
         throw error;

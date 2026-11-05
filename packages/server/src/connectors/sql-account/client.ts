@@ -36,12 +36,19 @@ export class SqlError extends Error {
     readonly kind: SqlAccountProblem,
     readonly status: number | null = null,
   ) {
-    super(`SQL Account ${kind}${status ? ` ${status}` : ''}`);
+    super(status ? `SQL Account ${kind} ${status}` : `SQL Account ${kind}`);
     this.name = 'SqlError';
   }
 }
 
 export type SqlRecord = Record<string, unknown>;
+
+/** A record value as text: strings as they are, numbers in decimal, anything else empty. */
+export function sqlText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return '';
+}
 
 /** A document body SQL Account accepts: customer code, date and at least one complete line. */
 export function completeDocument(body: SqlRecord): boolean {
@@ -136,7 +143,8 @@ export class SqlClient {
         now: at,
       });
       const qs = canonicalQuery(query);
-      const url = `https://${this.connection.host}${path}${qs ? `?${qs}` : ''}`;
+      const search = qs ? '?' + qs : '';
+      const url = `https://${this.connection.host}${path}${search}`;
       const probe = new NetProbe();
       const doFetch =
         this.options.fetch ??

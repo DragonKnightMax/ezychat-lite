@@ -188,7 +188,7 @@ describe('SQL Account: Overview and Connection', () => {
     stubSql(sqlWorld({ status: sqlStatus('disconnected') }));
     page();
     expect(await screen.findByRole('heading', { name: 'SQL Account' })).toBeTruthy();
-    expect((await screen.findAllByRole('tab')).length).toBe(5);
+    expect(await screen.findAllByRole('tab')).toHaveLength(5);
     expect(screen.getByTestId('connector-status-notConnected')).toBeTruthy();
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'Overview',

@@ -13,18 +13,24 @@ const sha256Hex = (data: string | Buffer) => createHash('sha256').update(data).d
 const hmac = (key: string | Buffer, data: string) =>
   createHmac('sha256', key).update(data).digest();
 
+/** Byte order (AWS sorts names this way, never by locale). */
+export function byCodeUnit(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
 /** RFC 3986 encoding (AWS: everything but unreserved characters). */
 export function rfc3986(value: string): string {
   return encodeURIComponent(value).replace(
     /[!'()*]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+    (c) => `%${c.codePointAt(0)!.toString(16).toUpperCase()}`,
   );
 }
 
 /** `a=1&b=x%20y`, keys sorted, both sides encoded (the same text is sent and signed). */
 export function canonicalQuery(query: Readonly<Record<string, string>>): string {
   return Object.keys(query)
-    .sort()
+    .sort(byCodeUnit)
     .map((key) => `${rfc3986(key)}=${rfc3986(query[key]!)}`)
     .join('&');
 }
@@ -66,7 +72,7 @@ export function signRequest(input: SignInput): Record<string, string> {
     'x-amz-date': date,
   };
   if (input.body) headers['content-type'] = 'application/json';
-  const names = Object.keys(headers).sort();
+  const names = Object.keys(headers).sort(byCodeUnit);
   const canonical = [
     input.method.toUpperCase(),
     input.path,

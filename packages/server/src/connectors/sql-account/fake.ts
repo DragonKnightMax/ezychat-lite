@@ -165,58 +165,65 @@ export class FakeSqlAccount {
   ) {}
 
   /** A `fetch` that answers like the API service (bound, so it can be handed around). */
-  readonly fetch: typeof fetch = async (input, init) => {
+  readonly fetch: typeof fetch = (input, init) => {
+    try {
+      return Promise.resolve(this.answer(input, init));
+    } catch (error) {
+      return Promise.reject(error as Error);
+    }
+  };
+
+  private answer(input: Parameters<typeof fetch>[0], init?: RequestInit): Response {
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+    this.failNetwork();
+    if (url.protocol !== 'https:' || !url.hostname.endsWith('.sql.my'))
+      return text(400, 'bad host');
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const body = typeof init?.body === 'string' ? init.body : '';
+    if (!this.verify(method, url, new Headers(init?.headers), body))
+      return text(401, 'Unauthorized');
+    if (this.scenario === 'bad_keys') return text(403, 'Forbidden');
+    if (this.scenario === 'old_version') return text(404, 'Not Found');
+    const query = Object.fromEntries(url.searchParams);
+    const [object, key] = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    this.requests.push({ method, path: url.pathname, query });
+    const rows = object ? this.data[object] : undefined;
+    if (!rows) return text(404, 'Not Found');
+    if (method === 'POST') return this.create(rows, body);
+    if (key !== undefined) {
+      const found = rows.find((r) => String(r.dockey ?? r.code) === key || r.code === key);
+      return found ? json(200, { data: [found] }) : text(404, 'Not Found');
+    }
+    return this.list(object!, rows, query);
+  }
+
+  /** The network scenarios fail before any answer, like DNS, a refused port or a blocked address. */
+  private failNetwork(): void {
     if (this.scenario === 'no_dns')
       throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' });
     if (this.scenario === 'unreachable')
       throw Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
     if (this.scenario === 'private_ip') throw new BlockedAddressError();
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.sql.my'))
-      return text(400, 'bad host');
-    const method = (init?.method ?? 'GET').toUpperCase();
-    const headers = new Headers(init?.headers);
-    const body = typeof init?.body === 'string' ? init.body : '';
-    const query = Object.fromEntries(url.searchParams);
-    if (!this.verify(method, url, headers, body)) return text(401, 'Unauthorized');
-    if (this.scenario === 'bad_keys') return text(403, 'Forbidden');
-    if (this.scenario === 'old_version') return text(404, 'Not Found');
-    const [object, key] = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
-    this.requests.push({ method, path: url.pathname, query });
-    const rows = object ? this.data[object] : undefined;
-    if (!rows) return text(404, 'Not Found');
-    if (method === 'POST') {
-      if (!body) return text(500, 'Access violation');
-      const record = JSON.parse(body) as SqlRecord;
-      const created = {
-        ...record,
-        dockey: this.nextDockey++,
-        docno: `QT-${String(this.nextDockey).padStart(5, '0')}`,
-      };
-      rows.push(created);
-      return json(200, created);
-    }
-    if (key !== undefined) {
-      const found = rows.find((r) => String(r.dockey ?? r.code) === key || r.code === key);
-      return found ? json(200, { data: [found] }) : text(404, 'Not Found');
-    }
+  }
+
+  private create(rows: SqlRecord[], body: string): Response {
+    if (!body) return text(500, 'Access violation');
+    const record = JSON.parse(body) as SqlRecord;
+    const dockey = this.nextDockey++;
+    const created = { ...record, dockey, docno: `QT-${String(dockey).padStart(5, '0')}` };
+    rows.push(created);
+    return json(200, created);
+  }
+
+  private list(object: string, rows: SqlRecord[], query: Record<string, string>): Response {
     const offset = Number(query.offset ?? 0);
+    const filters = Object.entries(query).filter(([f]) => f !== 'offset' && f !== 'limit');
     const matches = rows
-      .filter((row) =>
-        Object.entries(query).every(([field, wanted]) => {
-          if (field === 'offset' || field === 'limit') return true;
-          const value = String(row[field] ?? '');
-          if (wanted.includes('*')) {
-            const needle = wanted.replace(/\*/g, '').toLowerCase();
-            return value.toLowerCase().includes(needle);
-          }
-          return value === wanted;
-        }),
-      )
+      .filter((row) => filters.every(([field, wanted]) => fieldMatches(row[field], wanted)))
       .map((row) => (object === 'customer' && !this.phonesInList ? withoutPhones(row) : row));
     const page = matches.slice(offset, offset + 50);
     return json(200, { pagination: { offset, limit: 50, count: page.length }, data: page });
-  };
+  }
 
   /** Checks the SigV4 header exactly as signed (method, path, sorted query, signed headers, body). */
   private verify(method: string, url: URL, headers: Headers, body: string): boolean {
@@ -250,6 +257,15 @@ export class FakeSqlAccount {
     );
     return createHmac('sha256', key).update(toSign).digest('hex') === auth.signature;
   }
+}
+
+/** A list filter: exact, or `*part*` (case-insensitive contains) as SQL Account's wildcards. */
+function fieldMatches(raw: unknown, wanted: string): boolean {
+  let value = '';
+  if (typeof raw === 'string') value = raw;
+  else if (typeof raw === 'number' || typeof raw === 'boolean') value = String(raw);
+  if (!wanted.includes('*')) return value === wanted;
+  return value.toLowerCase().includes(wanted.replaceAll('*', '').toLowerCase());
 }
 
 function withoutPhones(row: SqlRecord): SqlRecord {
