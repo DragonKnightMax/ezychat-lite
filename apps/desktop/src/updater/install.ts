@@ -75,6 +75,30 @@ export interface PrepareUpdateInstallOptions {
 
 const resultMessage = 'Update installed. Your conversations, accounts and settings are preserved.';
 
+/**
+ * Starts the verified NSIS installer. An installer that cannot start (an antivirus block makes Start-Process throw)
+ * replaced nothing: the replacement flag is cleared so the helper restarts the old service instead of rolling back.
+ * NSIS requires /D last and unquoted, even when the target contains spaces.
+ */
+export const WINDOWS_START_INSTALLER: readonly string[] = [
+  `  $replacementStarted = $true`,
+  `  try { $process = Start-Process -FilePath $installer -ArgumentList @('/S', ('/D=' + $installDir)) -Wait -PassThru -WindowStyle Hidden }`,
+  `  catch { $replacementStarted = $false; $installerBlocked = $true; throw }`,
+];
+
+/**
+ * Puts the previous app back from the rollback copy. It empties the install folder but never removes the folder
+ * itself: another program (an antivirus scan, a shell) may hold it open, and removing it once failed after every
+ * file was gone, which left Program Files empty. The copy-back always runs.
+ */
+export const WINDOWS_RESTORE_OLD_APP = [
+  'function Restore-OldApp([string]$InstallDir, [string]$Backup) {',
+  '  if (-not (Test-Path -LiteralPath $InstallDir)) { New-Item -ItemType Directory -Path $InstallDir | Out-Null }',
+  '  Get-ChildItem -LiteralPath $InstallDir -Force | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Continue }',
+  '  Get-ChildItem -LiteralPath $Backup -Force | Copy-Item -Destination $InstallDir -Recurse -Force',
+  '}',
+].join('\r\n');
+
 /** Advisory UI eligibility. Elevated helper independently enforces ownership/ACLs and service identity. */
 /** Current and legacy program names (lower case); the Mac checks accept both bundle names too. */
 const windowsExecutables = (): string[] =>
@@ -408,6 +432,7 @@ export function buildWindowsInstallScript(plan: InstallPlan): string {
       `$installedService = ${flag(c.serviceInstalled)}`,
       `$serviceStopped = $false`,
       `$replacementStarted = $false`,
+      `$installerBlocked = $false`,
       `$accepted = $false`,
       `$backupReady = $false`,
       `$safeStage = $false`,
@@ -420,6 +445,7 @@ export function buildWindowsInstallScript(plan: InstallPlan): string {
       `  [IO.File]::WriteAllText($temporary, $state, (New-Object Text.UTF8Encoding $false))`,
       `  Move-Item -LiteralPath $temporary -Destination (Join-Path $stage 'state.json') -Force`,
       `}`,
+      WINDOWS_RESTORE_OLD_APP,
       `function Check-Hash { if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) { throw 'Installer checksum mismatch' } }`,
       `function Assert-Service {`,
       `  Assert-Locked ${psQuote(serviceDir)} -Recurse`,
@@ -507,9 +533,7 @@ export function buildWindowsInstallScript(plan: InstallPlan): string {
       `  }`,
       `  if ($runtimeProcesses.Count -ne 0) { throw 'The old app did not shut down. No replacement was attempted.' }`,
       `  Check-Hash; Assert-ProtectedRuntime $appExe`,
-      `  $replacementStarted = $true`,
-      // NSIS requires /D last and unquoted, even when the target contains spaces.
-      `  $process = Start-Process -FilePath $installer -ArgumentList @('/S', ('/D=' + $installDir)) -Wait -PassThru -WindowStyle Hidden`,
+      ...WINDOWS_START_INSTALLER,
       `  if ($process.ExitCode -ne 0) { throw 'The installer failed' }`,
       `  Assert-ProtectedRuntime $appExe`,
       `  $installedVersion = (Get-Content -LiteralPath (Join-Path $installDir 'resources\\app.asar.unpacked\\dist\\package.json') -Raw | ConvertFrom-Json).version`,
@@ -535,16 +559,14 @@ export function buildWindowsInstallScript(plan: InstallPlan): string {
       `      if ($resolved -ne [IO.Path]::GetDirectoryName($appExe) -or -not (Test-Path -LiteralPath $backup)) { throw 'Unsafe rollback target' }`,
       `      if (Test-Path -LiteralPath $installDir) {`,
       `        if ((Get-Item -LiteralPath $installDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Unsafe rollback link' }`,
-      `        Remove-Item -LiteralPath $installDir -Recurse -Force`,
       `      }`,
-      `      New-Item -ItemType Directory -Path $installDir | Out-Null`,
-      `      Get-ChildItem -LiteralPath $backup -Force | Copy-Item -Destination $installDir -Recurse -Force`,
+      `      Restore-OldApp $installDir $backup`,
       `      Assert-ProtectedRuntime $appExe; $restored = $true`,
       `    }`,
       `    if ($accepted -and $installedService) { Start-InboxService $originalVersion }`,
       `  } catch { if ($safeStage) { ($_ | Out-String) | Out-File -LiteralPath (Join-Path $stage 'rollback-error.log') -Encoding utf8 } }`,
       `  if ($safeStage) {`,
-      `    $message = if ($replacementStarted -and -not $restored) { 'Update failed and automatic recovery could not finish. Keep the rollback copy and check Status & Service.' } elseif ($accepted) { 'Update failed. The previous app was retained or restored and its service restart was attempted.' } else { 'The update could not be prepared. Your running app and service were not changed.' }`,
+      `    $message = if ($installerBlocked) { 'The update installer was blocked from starting, often by antivirus software. Your app was not changed and its service was restarted.' } elseif ($replacementStarted -and -not $restored) { 'Update failed and automatic recovery could not finish. Keep the rollback copy and check Status & Service.' } elseif ($accepted) { 'Update failed. The previous app was retained or restored and its service restart was attempted.' } else { 'The update could not be prepared. Your running app and service were not changed.' }`,
       `    Write-State 'error' $message`,
       `  }`,
       `  exit 1`,

@@ -10,6 +10,8 @@ into AGENTS.md.
 
 ## Working method
 
+- Before you call a PR a break of an owner rule, read that rule in `origin/main`'s `AGENTS.md`: memory notes and older
+  checkouts lag rule changes ("No tracking in Lite" became "Anonymous usage stats only" with #285).
 - `.partial()` keeps a zod `.default()`: a PATCH schema built from a response schema with a defaulted field fills that
   field on every patch. Re-declare such fields `.optional()` in the patch body (e.g. `SettingsPatchBody.usageStats`).
 - SonarCloud fails the security rating on a literal bidi control character in source (S6389: write `\u202e`, not the
@@ -344,7 +346,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   expected 409 of AI assistant access being off, not a fault.
 - GitHub's compare API (`repos/…/compare/a...b`) lists at most 300 files: a full list is unknown, never
   "these are all the changes". Evidence tied to a commit must also name one of the PR's own commits
-  (`compare.commits`), not just any commit in a log.
+  (`compare.commits`), not just any commit in a log. A rebase gives every commit a new SHA, so it drops all recorded
+  stages and Dev Build rows: rebase onto `main` first, then run and record the checks.
 - Dependabot opens `react` and `react-dom` as separate PRs; each fails every web test alone. `main` requires
   up-to-date branches, so each merge re-runs CI on every other PR: combine the non-critical updates into
   one PR (`npm install -w <workspace> pkg@range`, keep exact pins exact) and close the single PRs after it
@@ -602,6 +605,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   `&`, and leaves `$LASTEXITCODE` unset, so its output and exit code are lost: pipe the call (`& $exe … | Write-Output`)
   and test the generated script with the real Electron binary (`windows.test.ts`). A test that sets `$LASTEXITCODE`
   itself makes a local copy; read `$global:LASTEXITCODE`.
+- To test Windows file code against a folder "being used by another process", spawn a child with that folder as its
+  `cwd` (it holds the folder itself open, as an antivirus scan or a shell does); kill it and await its `exit` before
+  cleanup, or `rm` fails with EBUSY. Updater helper pieces are exported constants (`WINDOWS_START_INSTALLER`,
+  `WINDOWS_RESTORE_OLD_APP`) so such tests run the real PowerShell.
 - Measuring a slow tunnel locally: put a proxy that delays every request (and the WebSocket upgrade) in front
   of the server; Chrome throttling does not slow the service worker's own fetches. The fake WhatsApp has no
   photos, so give contacts a photo address in a measurement-only preload. Do not use Playwright `context.route`
@@ -654,6 +661,18 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   most and its click on a file input opens no OS dialog; a tab that reports viewport 0x0 or times out on
   screenshots is in a hidden window, so open a new tab. Other vendors: the false-positive contact list in the
   Google Threat Intelligence (VirusTotal) docs.
+- An antivirus that blocks the update installer (Windows Update helper `helper-error.log`: "the file contains a virus
+  or potentially unwanted software") can leave `Program Files\<product>` empty: the rollback ran although nothing was
+  replaced (`$replacementStarted` was set before `Start-Process`), and its `Remove-Item $installDir -Recurse` deleted
+  every file, then failed on the folder itself (in use) before it copied `old-app` back. A state flag that gates a
+  destructive rollback is set only after the step it describes has really started. The full copy stays in `<ProgramData>\<product>-updates\<nonce>\old-app` (signed, data
+  untouched): recover by copying it back as admin and `Start-Service`, and tell the owner not to accept the update
+  again (each accept repeats the failure). McAfee for home users excludes single files, and each update try uses a
+  new `<nonce>` folder: update by hand instead (download the installer, verify SHA-256 and signer, exclude that file).
+  A manual installer run over a service install leaves the service Stopped (it fails to restart while files are
+  replaced): `Start-Service` as admin afterwards, then check `/api/health`. A VirusTotal checksum lookup of a new
+  release answers "Item not found" (no evidence either way); only an upload (public and permanent: owner's yes first)
+  gives a scan.
 - `graphify hook install` appends `graphify-out/graph.json merge=graphify` to the tracked `.gitattributes`; here the graph is
   git-ignored, so revert that line or the primary checkout stays dirty and `git pull` stops. Its hooks skip linked
   worktrees, so the primary checkout needs a `post-merge` hook (`graphify update .`) to follow `git pull`.

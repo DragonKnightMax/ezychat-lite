@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,6 +13,8 @@ import {
   prepareUpdateInstall,
   readUpdateInstallResult,
   updateInstallEligibility,
+  WINDOWS_RESTORE_OLD_APP,
+  WINDOWS_START_INSTALLER,
   type InstallContext,
   type InstallPlan,
 } from './install.js';
@@ -179,10 +181,16 @@ describe('Windows update helper safety', () => {
     expect(rollback.indexOf('if (Test-Path -LiteralPath $installDir)')).toBeLessThan(
       rollback.indexOf('Get-Item -LiteralPath $installDir -Force'),
     );
-    expect(rollback.indexOf('New-Item -ItemType Directory -Path $installDir')).toBeLessThan(
-      rollback.indexOf('Copy-Item -Destination $installDir'),
+    // The rollback empties the folder through Restore-OldApp and never removes the folder itself.
+    expect(rollback.indexOf('Unsafe rollback link')).toBeLessThan(
+      rollback.indexOf('Restore-OldApp $installDir $backup'),
     );
-    expect(script).toContain('Copy-Item -Destination $installDir -Recurse -Force');
+    expect(rollback).not.toContain('Remove-Item -LiteralPath $installDir');
+    expect(script).toContain(WINDOWS_RESTORE_OLD_APP);
+    expect(script).toContain('Copy-Item -Destination $InstallDir -Recurse -Force');
+    // A blocked installer start replaced nothing: no rollback, a clear message instead.
+    expect(script).toContain('$installerBlocked = $true; throw');
+    expect(script).toContain('blocked from starting, often by antivirus software');
     expect(script).toContain('Start-InboxService $originalVersion');
     expect(script.indexOf("@('old-app', 'private')")).toBeGreaterThan(
       script.indexOf('Start-InboxService $version'),
@@ -332,6 +340,74 @@ describe.skipIf(process.platform !== 'darwin')('isolated native macOS broker', (
 });
 
 describe.skipIf(process.platform !== 'win32')('isolated native PowerShell and handshake', () => {
+  const runPowerShell = async (dir: string, body: string): Promise<string> => {
+    const file = join(dir, `run-${Math.random().toString(36).slice(2)}.ps1`);
+    await writeFile(file, `$ErrorActionPreference = 'Stop'\r\n${body}\r\n`);
+    return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', file], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 30_000,
+    });
+  };
+
+  // An antivirus that blocks the installer (seen with McAfee) makes Start-Process throw before anything was
+  // replaced: the helper must not roll back (that emptied Program Files) but only restart the old service.
+  it('treats an installer that cannot start as nothing replaced', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ezychat-blocked-installer-'));
+    directories.push(dir);
+    const out = await runPowerShell(
+      dir,
+      [
+        `$installer = '${join(dir, 'missing', 'installer.exe').replace(/'/g, "''")}'`,
+        `$installDir = '${join(dir, 'app').replace(/'/g, "''")}'`,
+        '$replacementStarted = $false; $installerBlocked = $false',
+        'try {',
+        ...WINDOWS_START_INSTALLER,
+        '} catch { }',
+        'Write-Output "started=$replacementStarted blocked=$installerBlocked"',
+      ].join('\r\n'),
+    );
+    expect(out.trim()).toBe('started=False blocked=True');
+  }, 40_000);
+
+  // The rollback once deleted every file and then failed on the folder itself (held open by another program),
+  // leaving Program Files empty. Restoring must keep the folder and always copy the previous app back.
+  it('restores the previous app while another program holds the install folder open', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ezychat-rollback-'));
+    directories.push(dir);
+    const installDir = join(dir, 'app');
+    const backup = join(dir, 'old-app');
+    await mkdir(join(installDir, 'resources'), { recursive: true });
+    await mkdir(join(backup, 'resources'), { recursive: true });
+    await writeFile(join(installDir, 'half-new.txt'), 'partial new version');
+    await writeFile(join(installDir, 'resources', 'app.asar'), 'new');
+    await writeFile(join(backup, 'App.exe'), 'old app');
+    await writeFile(join(backup, 'resources', 'app.asar'), 'old');
+    // A process whose current folder is the install folder keeps the folder itself from being deleted.
+    const holder = spawn('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Seconds 25'], {
+      cwd: installDir,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await runPowerShell(
+        dir,
+        [
+          WINDOWS_RESTORE_OLD_APP,
+          `Restore-OldApp '${installDir.replace(/'/g, "''")}' '${backup.replace(/'/g, "''")}'`,
+        ].join('\r\n'),
+      );
+      expect(await readFile(join(installDir, 'App.exe'), 'utf8')).toBe('old app');
+      expect(await readFile(join(installDir, 'resources', 'app.asar'), 'utf8')).toBe('old');
+      expect(existsSync(join(installDir, 'half-new.txt'))).toBe(false);
+    } finally {
+      const exited = new Promise((resolve) => holder.once('exit', resolve));
+      holder.kill();
+      await exited;
+    }
+  }, 60_000);
+
   it('parses Windows helper/broker without running service or installer operations', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ezychat-install-parser-'));
     directories.push(dir);

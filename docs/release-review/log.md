@@ -359,3 +359,7 @@ Decision: **risk:human**
 ## 2026-11-04 · PR #286 · `197b966` · approved by the owner
 
 > yes (include PR #286 in this release)
+
+## 2026-11-05 · PR #290 · `fb8080a` · approved by the owner
+
+> ok merge the fix
