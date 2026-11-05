@@ -1,4 +1,3 @@
-import type { GoogleCalendarState, SqlAccountState } from '@ezychat/shared';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
@@ -17,6 +16,8 @@ import type {
   CalendarBooking,
   ConnectorEntry,
   SheetsActivity,
+  GoogleCalendarState,
+  SqlAccountState,
 } from '@ezychat/shared';
 import {
   useCalendarActivity,

@@ -18,6 +18,17 @@ import { ErrorState, ListSkeleton } from '../adminUi';
 
 /* ---------------- Customers ---------------- */
 
+/** Under a chat: its SQL Account customer, or why it has none. */
+function matchLine(
+  r: SqlCustomerRow,
+  t: (key: 'connectors.sql.cust.severalHint' | 'connectors.sql.cust.noneHint') => string,
+) {
+  if (r.code) return [r.code, r.sqlName].filter(Boolean).join(' · ');
+  return t(
+    r.kind === 'several' ? 'connectors.sql.cust.severalHint' : 'connectors.sql.cust.noneHint',
+  );
+}
+
 function MatchBadge({ row }: Readonly<{ row: SqlCustomerRow }>) {
   const { t } = useTranslation('admin');
   let variant: 'default' | 'outline' | 'secondary' = 'secondary';
@@ -79,15 +90,7 @@ export function SqlCustomers() {
                   </Link>
                   <MatchBadge row={r} />
                 </span>
-                <span className="text-sm break-words text-muted-foreground">
-                  {r.code
-                    ? [r.code, r.sqlName].filter(Boolean).join(' · ')
-                    : t(
-                        r.kind === 'several'
-                          ? 'connectors.sql.cust.severalHint'
-                          : 'connectors.sql.cust.noneHint',
-                      )}
-                </span>
+                <span className="text-sm break-words text-muted-foreground">{matchLine(r, t)}</span>
               </span>
               <span className="flex shrink-0 flex-wrap gap-2">
                 <Button size="touch" variant="outline" onClick={() => setLinking(r)}>
