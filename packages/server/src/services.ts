@@ -52,6 +52,8 @@ import { initGoogleSheets } from './connectors/google-sheets/service.js';
 initializers.push(initGoogleSheets);
 import { initSqlAccount } from './connectors/sql-account/service.js';
 initializers.push(initSqlAccount);
+import { initGoogleDrive } from './connectors/google-drive/service.js';
+initializers.push(initGoogleDrive);
 
 import { initConnectorList } from './connectors/list/service.js';
 initializers.push(initConnectorList);

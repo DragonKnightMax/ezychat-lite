@@ -118,7 +118,7 @@ export class GoogleClient {
   constructor(
     readonly app: GoogleApp,
     readonly endpoints: GoogleEndpoints = GOOGLE_ENDPOINTS,
-    private readonly fetchImpl: FetchFn = fetch,
+    protected readonly fetchImpl: FetchFn = fetch,
   ) {}
 
   /** Google's sign-in page; `scopes` defaults to the calendar's (another Google connector passes its own). */

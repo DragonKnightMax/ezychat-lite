@@ -13,6 +13,7 @@ import type { AppContext } from '../../context.js';
 import { getChats } from '../../wa-bridge/index.js';
 import { GoogleError } from '../google-calendar/google.js';
 import type { SheetRecordContext } from './record.js';
+import { connectorToolRunner } from '../tool-run.js';
 import { SHEET_VALUE_CHARACTERS, type AddRowResult } from './service.js';
 
 export const READ_SHEET_ROWS = 'read_sheet_rows';
@@ -116,57 +117,29 @@ export async function sheetsAgentTools(
   // A tab whose first row is empty cannot take rows.
   const addTabs = usable.addTabs.filter((tab) => !columns || columns.get(tab)?.some(Boolean));
 
-  const run = async <T>(
+  const runner = connectorToolRunner(
+    ctx,
+    log,
+    { ...input, agentId },
+    {
+      source: SOURCE,
+      sourceLabel: SOURCE_LABEL,
+      failEvent: 'google_sheets_tool_failed',
+      calls,
+      onCall: options.onCall,
+      onFailure: options.onFailure,
+      markFailed: () => {
+        failed = true;
+      },
+    },
+  );
+  const run = <T>(
     name: string,
     title: string,
     tab: string,
     body: () => Promise<{ output: T; notRun?: boolean }>,
-  ): Promise<T> => {
-    options.onCall?.(name);
-    const started = Date.now();
-    const finish = (ok: boolean, notRun?: boolean) => {
-      const ms = Date.now() - started;
-      calls.push({
-        tool: name,
-        source: SOURCE,
-        title,
-        sourceLabel: SOURCE_LABEL,
-        ok,
-        ms,
-        ...(notRun ? { notRun } : {}),
-      });
-      log.info(
-        { event: 'ai_tool_call', tool: name, source: SOURCE, tabs: 1, ok, ms },
-        'AI tool call',
-      );
-      ctx.bus.emit('ai:tool_call', {
-        agent: input.agent,
-        agentId,
-        chatJid,
-        tool: name,
-        source: SOURCE,
-        title,
-        ok,
-        ms,
-      });
-    };
-    try {
-      const { output, notRun } = await body();
-      finish(true, notRun);
-      return output;
-    } catch (error) {
-      // A cancelled turn is not a failed look-up.
-      if (input.signal.aborted) throw error;
-      failed = true;
-      log.warn(
-        {
-          event: 'google_sheets_tool_failed',
-          tool: name,
-          kind: error instanceof GoogleError ? error.kind : 'other',
-          status: error instanceof GoogleError ? error.status : null,
-        },
-        'Google Sheets tool failed',
-      );
+  ) =>
+    runner(name, title, body, () => {
       if (chatJid)
         service.addActivity({
           kind: 'failed',
@@ -175,11 +148,7 @@ export async function sheetsAgentTools(
           tab,
           group: service.groupName(chatJid),
         });
-      finish(false);
-      options.onFailure();
-      throw error;
-    }
-  };
+    });
 
   if (usable.readTabs.length) {
     const [first, ...rest] = usable.readTabs;

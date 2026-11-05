@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   customer by a link your team sets or by a WhatsApp number exactly one customer has, and otherwise hands the
   chat to your team. The AI never changes or deletes anything in SQL Account. Not yet tried against a real SQL
   Account.
+- **Google Drive connector (Beta).** Admin → Connectors → Google Drive: sign in with Google and choose a folder for each
+  AI agent. With **Save files** on, the agent saves photos and documents people send in a chat into that folder (named
+  by date and time, never a file WhatsApp Safety locked, up to 25 MB). With **Read files**, it answers from the Drive
+  files you pick (Google Docs, Sheets, PDF, Word, text). The agent's instructions say what to save or read, and when.
+  EzyChat sees only the folder and files you choose.
+
+### Fixed
+
+- **An update blocked by antivirus software no longer breaks EzyChat on Windows.** When an antivirus program stopped
+  the update installer, EzyChat could be left without its program files. Now it keeps the version you had, starts it
+  again and says that the installer was blocked.
 
 ## [0.1.77] - 2026-11-05
 
@@ -29,12 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   we can see where new users get stuck. Only a random install code, the app version, Windows or Mac and the step are
   sent, to the EzyChat licence server; never names, numbers, chats, messages, emails or keys. Admins switch it off in
   Settings → General → Privacy or on the last step of the setup wizard.
-
-### Fixed
-
-- **An update blocked by antivirus software no longer breaks EzyChat on Windows.** When an antivirus program stopped
-  the update installer, EzyChat could be left without its program files. Now it keeps the version you had, starts it
-  again and says that the installer was blocked.
 
 ## [0.1.76] - 2026-11-05
 

@@ -285,6 +285,7 @@
     "aiToolUsed": "AI menyemak {{title}} · {{source}}",
     "internalNote": "Nota dalaman",
     "sheetRowAdded": "AI menambah satu baris ke {{tab}} · {{source}}",
+    "driveFileSaved": "AI menyimpan fail ke Google Drive · {{source}}",
     "calendarChecked": "AI menyemak masa lapang · {{source}}",
     "calendarBooked": "AI menempah {{when}} · {{source}}",
     "calendarBookedNoTime": "AI menempah satu masa · {{source}}",

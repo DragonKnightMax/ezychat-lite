@@ -6,18 +6,18 @@
     "olderReferences": "git-history"
   },
   "latestConfirmed": {
-    "feature": "sql-accounting",
-    "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
-    "mock": "docs/features/sql-accounting/mock/index.html",
-    "design": "docs/features/sql-accounting/design.md",
+    "feature": "google-drive",
+    "gitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
+    "mock": "docs/features/google-drive/mock/index.html",
+    "design": "docs/features/google-drive/design.md",
     "confirmedAt": "2026-11-05",
-    "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" = design as proposed; open questions researched (design.md).",
-    "note": "Clone of group-management plus Admin → Connectors → SQL Account; still owes the screens group-management owed."
+    "confirmation": "Owner (Jazz) 2026-11-05: connector must be use-case agnostic (mock revised, docs/connector-design.md), then \"yes confirm drive, continue it, untill all working and create pr and merge and archive the session\" (relayed verbatim by the main session) = confirmed with Save (write) and Read (read), decisions 1-7 as proposed.",
+    "note": "Clone of group-management plus the Google Drive connector; inherits its coverage gaps (message-edit-delete, whatsapp-safety, group-agents, claims-template screens)."
   },
   "proposals": [
     {
       "feature": "sql-accounting",
-      "creationOrder": 33,
+      "creationOrder": 34,
       "createdAt": "2026-11-05",
       "design": "docs/features/sql-accounting/design.md",
       "mock": "docs/features/sql-accounting/mock/index.html",
@@ -26,7 +26,23 @@
       "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
       "confirmedAt": "2026-11-05",
       "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
-      "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md."
+      "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md.",
+      "note": "Built in parallel with google-drive from the same group-management baseline; the next clone should start from the latestConfirmed (google-drive) and copy in this folder's SQL Account files (src/admin/SqlAccountPage.tsx, src/mock/sqlAccount.ts, sql-account.ts, sql-account-shots.mjs and the changed shared files listed in design.md)."
+    },
+    {
+      "feature": "google-drive",
+      "creationOrder": 33,
+      "createdAt": "2026-11-05",
+      "design": "docs/features/google-drive/design.md",
+      "mock": "docs/features/google-drive/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "group-management",
+      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
+      "coverage": "Full app clone of the confirmed group-management reference; Admin → Connectors gallery card (Google Drive beside Google Calendar), connector page Overview (about with Save / Find / Read, Google account card: not connected, stand-in consent with the drive.file wording, connected, sign-in expired, unreachable, Disconnect confirm; Your data), Settings per AI agent (not connected, no folder, stand-in folder picker and blocked window, folder chosen with Open in Google Drive, Save files switch off by default with the safety rules, Read files with Add files picker, file list with a no-text warning and remove, one line linking to the agent instructions, Save bar, paused banner), Mock only chat simulator (photo saved, PDF, question answered from a picked file, Safety-locked file, too large, paused hand-over), Activity (saved, read, skipped, failed), agent page Connectors row; state in the browser (localStorage); desktop 1280 / mobile 360 touch, light/dark (drive-shots.mjs)",
+      "note": "Inherits the coverage gaps of group-management (message-edit-delete, whatsapp-safety, group-agents and claims-template screens). Google Sheets has no mock page in the baseline (shipped without one): its gallery card stays the baseline coming-soon card. Revised 2026-11-05 on owner feedback: connector is use-case agnostic (no file types, folder schemes or example instructions; docs/connector-design.md).",
+      "confirmedAt": "2026-11-05",
+      "gitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
+      "confirmation": "Owner (Jazz) 2026-11-05: connector must be use-case agnostic (mock revised, docs/connector-design.md), then \"yes confirm drive, continue it, untill all working and create pr and merge and archive the session\" (relayed verbatim by the main session) = confirmed with Save (write) and Read (read), decisions 1-7 as proposed."
     },
     {
       "feature": "template-store",
@@ -79,7 +95,12 @@
       "coverage": "Standalone preview of the new screens (members, Claims agent page, Google Sheets tab access, group chat with claim/PDF/photo/missing/chit-chat/Word simulation, the sheet, Activity), desktop 1280 / mobile 360, light/dark; the cumulative full-app clone is still owed.",
       "note": "Several AI agents per WhatsApp number (Enterprise limit), group agent + listen mode, Google Sheets tab access per agent (Off / Read / Add rows).",
       "confirmedAt": "2026-11-03",
-      "confirmation": "Owner wrote 2026-11-03 \"look good, implement it until it done with test, than create PR and merge\" after the preview screenshots (incl. Refresh). Confirmed on the standalone preview; no full-app clone."
+      "confirmation": "Owner wrote 2026-11-03 \"look good, implement it until it done with test, than create PR and merge\" after the preview screenshots (incl. Refresh). Confirmed on the standalone preview; no full-app clone.",
+      "archived": {
+        "folderRemovedAt": "2026-11-05",
+        "lastRevision": "b5eaf97b087e7bba641b9c3a5560545f538febe9",
+        "reason": "retention: sixth feature folder (sql-accounting merged beside google-drive)"
+      }
     },
     {
       "feature": "in-app-feedback",
@@ -95,7 +116,11 @@
       "confirmedAt": "2026-11-03",
       "gitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
       "confirmation": "Owner viewed the screenshots (app dialog states and portal Feedback pages) and wrote 2026-11-03 \"ok build until it work then pr and merge verify\"; open questions as proposed.",
-      "folderRemoved": "2026-11-05 (retention: sixth folder sql-accounting); last revision with the folder: 4d07b20"
+      "archived": {
+        "folderRemovedAt": "2026-11-05",
+        "lastRevision": "32a58d6d6450d9625da87694cb480cf35f1b4565",
+        "reason": "retention: sixth feature folder (google-drive)"
+      }
     },
     {
       "feature": "google-sheets",

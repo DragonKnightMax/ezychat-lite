@@ -81,6 +81,9 @@ export function describeEvent(e: ChatEvent, dir: Directory): string {
       // Google Sheets: "AI added a row to Claims".
       if (used.data.sheet?.action === 'row_added')
         return i18n.t('inbox:events.sheetRowAdded', { tab: used.data.sheet.tab, source });
+      // Google Drive: "AI saved a file to Google Drive". Reads use the generic look-up line.
+      if (used.data.drive?.action === 'saved')
+        return i18n.t('inbox:events.driveFileSaved', { source });
       return i18n.t('inbox:events.aiToolUsed', { title: used.data.title, source });
     }
   }

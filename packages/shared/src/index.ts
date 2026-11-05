@@ -17,6 +17,7 @@ export * from './fix-english.js';
 export * from './connectors.js';
 export * from './google-sheets.js';
 export * from './sql-account.js';
+export * from './google-drive.js';
 export * from './connector-list.js';
 export * from './template-list.js';
 export * from './reports.js';

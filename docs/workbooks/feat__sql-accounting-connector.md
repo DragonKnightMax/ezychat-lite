@@ -23,3 +23,4 @@ Branch: `feat/sql-accounting-connector` · Every agent updates its stage with
 - 2026-11-05 Dev: done — official Postman collection applied (api.sql.my, customerinvoice amount owed, phones on sdsbranch)
 - 2026-11-05 Unit tests: pass — full suite 5005, changed lines 97.2 %, Sonar clean
 - 2026-11-05 Dev: migration renumbered 034 → 035 (Google Drive PR #288 takes 034 and merges first); the "no gap" migration test stays red until #288 is on main and merged in here
+- 2026-11-05 Dev: merged main after Google Drive (#288, migration 034): both connectors side by side in turn-tools, catalog, gallery, detail page, agent card, Lite import (drop list has Drive and SQL tables) and i18n; mock retention pruned group-agents (sixth folder). Typecheck clean; migrate, upgrade-from-oldest, lite-import, connector-list, SQL, Drive, web connectors and i18n tests pass (316)

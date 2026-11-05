@@ -438,6 +438,8 @@ export const AiToolUsedPayload = z.object({
   group: AiGroupEvent.optional(),
   /** Google Sheets (core connector): the AI added a row to this tab. */
   sheet: z.object({ action: z.literal('row_added'), tab: z.string().max(100) }).optional(),
+  /** Google Drive (core connector): the AI saved a file someone sent into the agent's folder. */
+  drive: z.object({ action: z.literal('saved') }).optional(),
 });
 export type AiToolUsedPayload = z.infer<typeof AiToolUsedPayload>;
 /** One extension tool call of a Try it answer: names and timing only, never input or output. */

@@ -288,6 +288,7 @@
     "aiToolUsed": "AI looked up {{title}} · {{source}}",
     "internalNote": "Internal note",
     "sheetRowAdded": "AI added a row to {{tab}} · {{source}}",
+    "driveFileSaved": "AI saved a file to Google Drive · {{source}}",
     "calendarChecked": "AI checked free times · {{source}}",
     "calendarBooked": "AI booked {{when}} · {{source}}",
     "calendarBookedNoTime": "AI booked a time · {{source}}",

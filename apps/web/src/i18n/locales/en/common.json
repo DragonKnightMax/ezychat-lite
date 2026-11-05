@@ -188,6 +188,10 @@
       "title": "Where are locked files kept?",
       "body": "In EzyChat's own folder, renamed so they can't run. Only admins can unlock or delete them."
     },
+    "driveFiles": {
+      "title": "Why pick files?",
+      "body": "Google lets {{product}} open only the folder and files you choose in Google's window, and the files it saves. Your other Drive files stay private."
+    },
     "reportNumber": {
       "title": "How to report to WhatsApp",
       "body": "WhatsApp takes reports only from the WhatsApp app.",

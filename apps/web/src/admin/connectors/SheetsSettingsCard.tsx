@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '../../lib/format';
 import { ErrorState, ListSkeleton, Pending, SaveBar } from '../adminUi';
 import { diffTabs, isAutoColumn, normalizeTabs, tabsToSave, type TabMarks } from './sheets-tabs';
+import { PickerWaiting } from './connector-ui';
 
 interface Picking {
   requestId: string;
@@ -289,33 +290,20 @@ export function SheetsSettingsCard({
                 </div>
               )}
               {picking && (
-                <div
-                  className="flex flex-col items-start gap-3 rounded-lg border px-3 py-3"
-                  role="status"
-                  data-testid="sheets-picking"
-                >
-                  <p className="flex items-center gap-2 text-sm font-medium">
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                    {t('connectors.sheets.picking')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {picking.blocked
-                      ? t('connectors.sheets.pickBlocked')
-                      : t('connectors.sheets.pickingHint')}
-                  </p>
-                  <Button asChild size="touch" variant={picking.blocked ? 'default' : 'outline'}>
-                    <a href={picking.url} target="_blank" rel="noopener noreferrer">
-                      {t('connectors.sheets.openPicker')}
-                      <ExternalLink aria-hidden />
-                    </a>
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    {t('connectors.sheets.pickSameComputer')}
-                  </p>
-                  <Button size="touch" variant="ghost" onClick={() => setPicking(null)}>
-                    {t('connectors.gc.cancelSignIn')}
-                  </Button>
-                </div>
+                <PickerWaiting
+                  testId="sheets-picking"
+                  title={t('connectors.sheets.picking')}
+                  hint={t(
+                    picking.blocked
+                      ? 'connectors.sheets.pickBlocked'
+                      : 'connectors.sheets.pickingHint',
+                  )}
+                  url={picking.url}
+                  blocked={picking.blocked}
+                  openLabel={t('connectors.sheets.openPicker')}
+                  sameComputer={t('connectors.sheets.pickSameComputer')}
+                  onCancel={() => setPicking(null)}
+                />
               )}
               {pickError && (
                 <Banner tone="danger">{t(`connectors.sheets.pickError.${pickError}`)}</Banner>

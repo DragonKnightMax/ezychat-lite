@@ -10,11 +10,16 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ConnectorGallery, ConnectorListStatus } from '@ezychat/shared';
+import type {
+  ConnectorGallery,
+  ConnectorListStatus,
+  GoogleCalendarState,
+  SqlAccountState,
+} from '@ezychat/shared';
 import { connectorText } from '@ezychat/shared';
 import { errorMessage } from '../../api/client';
 import { useConnectorGallery, useRefreshConnectorList } from '../../api/connector-list';
-import { useGoogleCalendar, useGoogleSheets } from '../../api/connectors';
+import { useGoogleCalendar, useGoogleDrive, useGoogleSheets } from '../../api/connectors';
 import { useSqlAccount } from '../../api/sql-account';
 import { Banner, EmptyState, PageHeader } from '@/components/app';
 import { SearchField } from '@/components/app/SearchField';
@@ -69,6 +74,7 @@ export function ConnectorsGalleryPage() {
   const google = useGoogleCalendar();
   const sheets = useGoogleSheets();
   const sql = useSqlAccount();
+  const drive = useGoogleDrive();
   const list = useConnectorGallery();
   const refresh = useRefreshConnectorList();
   const links = useConnectorLinks();
@@ -85,11 +91,12 @@ export function ConnectorsGalleryPage() {
     refreshNow();
   }, [refreshNow]);
 
-  const builtinState = (id: string) => {
-    if (id === 'google-sheets') return sheets.data?.state;
-    if (id === 'sql-account') return sql.data?.state;
-    return google.data?.state;
-  };
+  const builtinStates: Partial<Record<string, GoogleCalendarState | SqlAccountState | undefined>> =
+    {
+      'google-sheets': sheets.data?.state,
+      'google-drive': drive.data?.state,
+      'sql-account': sql.data?.state,
+    };
   const app = (id: (typeof CONNECTORS)[number]['id']): GalleryRow => {
     const c = CONNECTORS.find((x) => x.id === id)!;
     return {
@@ -99,7 +106,7 @@ export function ConnectorsGalleryPage() {
       short: t(`connectors.items.${c.id}.short`),
       category: c.category,
       icon: c,
-      status: connectorStatus(c, builtinState(c.id), links[c.id]),
+      status: connectorStatus(c, builtinStates[c.id] ?? google.data?.state, links[c.id]),
       beta:
         list.data?.connectors.some(
           (g) =>
@@ -107,9 +114,14 @@ export function ConnectorsGalleryPage() {
         ) ?? false,
     };
   };
-  const all: GalleryRow[] = [app('google-calendar'), app('google-sheets'), app('sql-account')];
+  const all: GalleryRow[] = [
+    app('google-calendar'),
+    app('google-sheets'),
+    app('google-drive'),
+    app('sql-account'),
+  ];
   for (const g of list.data?.connectors ?? []) {
-    // Built-in connectors are the app's own (Google Calendar, Google Sheets and SQL Account show once, with
+    // Built-in connectors are the app's own (Google Calendar, Sheets, Drive and SQL Account show once, with
     // their live state and pages); a built-in this app does not know is skipped.
     if (g.entry.kind === 'builtin') continue;
     if (g.delisted && !isLinked(g.connection)) continue;

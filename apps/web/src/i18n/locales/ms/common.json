@@ -188,6 +188,10 @@
       "title": "Di mana fail dikunci disimpan?",
       "body": "Dalam folder EzyChat sendiri, dinamakan semula supaya tidak boleh dijalankan. Hanya admin boleh membuka kunci atau memadamnya."
     },
+    "driveFiles": {
+      "title": "Kenapa pilih fail?",
+      "body": "Google hanya membenarkan {{product}} membuka folder dan fail yang anda pilih dalam tetingkap Google, serta fail yang ia simpan. Fail Drive anda yang lain kekal peribadi."
+    },
     "reportNumber": {
       "title": "Cara melapor kepada WhatsApp",
       "body": "WhatsApp hanya menerima laporan dari aplikasi WhatsApp.",
