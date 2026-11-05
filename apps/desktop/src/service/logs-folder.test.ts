@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const sudo = vi.hoisted(() => ({ script: '', stdout: '' }));
+const sudo = vi.hoisted(() => ({ script: '', body: '', stdout: '' }));
 vi.mock('@vscode/sudo-prompt', () => ({
   exec: (
     command: string,
@@ -9,6 +10,8 @@ vi.mock('@vscode/sudo-prompt', () => ({
     callback: (err: Error | undefined, stdout: string, stderr: string) => void,
   ) => {
     sudo.script = command;
+    const file = /'([^']+)'/.exec(command)?.[1];
+    sudo.body = file ? readFileSync(file, 'utf8') : '';
     callback(undefined, sudo.stdout, '');
   },
 }));
@@ -38,6 +41,12 @@ describe('copyLogs (macOS service)', () => {
     const manager = createServiceManager('darwin', deps);
     expect(await manager.copyLogs?.()).toBe('/private/tmp/wa-team-inbox-logs.AbC123');
     expect(sudo.script).toContain('/bin/bash');
+  });
+  it('start names the Allow in the Background switch when macOS refuses the service', async () => {
+    sudo.stdout = '';
+    await createServiceManager('darwin', deps).start();
+    expect(sudo.body).toContain('launchctl kickstart -k');
+    expect(sudo.body).toContain('EzyChat Lite is switched off under System Settings');
   });
   it('is only offered on macOS', () => {
     expect(createServiceManager('win32', deps).copyLogs).toBeUndefined();

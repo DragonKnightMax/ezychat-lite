@@ -270,3 +270,25 @@ describe('waits until launchd has unloaded the service', () => {
     expect(s).toMatch(/did not stop[^\n]*>&2; exit 5/);
   });
 });
+
+describe('a refused launchd start names the macOS switch', () => {
+  const hint = 'Login Items & Extensions > Allow in the Background';
+  it('install explains where to allow the background service instead of a bare launchctl error', () => {
+    const s = macInstallScript({
+      ...opts,
+      productName: 'EzyChat Lite',
+      dataDir: '/Library/Application Support/wa-team-inbox',
+      moveFrom: '/Users/me/data',
+      exists: null,
+    });
+    expect(s).toMatch(
+      /if ! launchctl bootstrap system '[^']+'; then echo '[^']*EzyChat Lite[^']*' >&2; exit 6; fi/,
+    );
+    expect(s).toContain(hint);
+  });
+  it('start does too', () => {
+    const s = macControlScript({ label: opts.label, action: 'start', productName: 'EzyChat Lite' });
+    expect(s).toContain(hint);
+    expect(s).toContain('exit 6');
+  });
+});

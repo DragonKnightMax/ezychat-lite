@@ -250,6 +250,17 @@ describe('macOS update helper safety', () => {
   });
 });
 
+describe('macOS update staging cleanup', () => {
+  it('removes finished staging folders older than a day before it creates a new one', () => {
+    const bootstrap = buildMacHelperBootstrap(fixture('darwin'), 'ZWNobw==');
+    const clean = bootstrap.indexOf(
+      'find "$stage_root" -mindepth 1 -maxdepth 1 -type d ! -name "$nonce" -mtime +0 -exec rm -rf {} + 2>/dev/null || true',
+    );
+    expect(clean).toBeGreaterThan(bootstrap.indexOf('Updater staging has an unsafe ACL'));
+    expect(clean).toBeLessThan(bootstrap.indexOf('mkdir "$stage"'));
+  });
+});
+
 describe('unprivileged outcome/relaunch broker', () => {
   it('keeps profile result writes and app reopening out of elevated helpers', () => {
     const windows = fixture();

@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A clearer message when macOS blocks the background service.** If EzyChat is switched off under Allow in
+  the Background in System Settings, EzyChat now says where to switch it on instead of "Input/output error".
+- **Mac updates clean up after themselves.** Small leftover update folders older than a day are removed.
 - **A Mac running EzyChat no longer falls asleep on its own.** While EzyChat answers chats, the Mac stays
   awake, so customers and AI replies are not left waiting. The screen can still turn off, and closing the lid
   still puts the Mac to sleep.

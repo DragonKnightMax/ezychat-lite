@@ -596,6 +596,8 @@ export function buildMacHelperBootstrap(plan: InstallPlan, scriptBase64: string)
     'set -euo pipefail',
     'PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH',
     ...macStageGuards(plan),
+    // Finished updates leave a small stage folder (state, log); keep the last day's for support.
+    `find "$stage_root" -mindepth 1 -maxdepth 1 -type d ! -name "$nonce" -mtime +0 -exec rm -rf {} + 2>/dev/null || true`,
     `if [ -e "$stage" ] || [ -L "$stage" ]; then echo 'Updater stage already exists' >&2; exit 12; fi`,
     `mkdir "$stage"; chown root:wheel "$stage"; chmod -N "$stage"; chmod 755 "$stage"`,
     `printf '%s' ${shQuote(scriptBase64)} | /usr/bin/base64 --decode > "$stage/install.sh"`,

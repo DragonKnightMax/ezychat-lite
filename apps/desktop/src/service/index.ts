@@ -339,6 +339,7 @@ export function createServiceManager(platform: NodeJS.Platform, deps: ServiceDep
         const cmd = serviceCommand(deps, 'darwin');
         const script = macInstallScript({
           label: LAUNCHD_LABEL,
+          productName: product.productName,
           program: cmd.exe,
           args: cmd.args,
           env: cmd.env,
@@ -366,7 +367,15 @@ export function createServiceManager(platform: NodeJS.Platform, deps: ServiceDep
         );
       },
       async start() {
-        log(await runElevated(macControlScript({ label: LAUNCHD_LABEL, action: 'start' })));
+        log(
+          await runElevated(
+            macControlScript({
+              label: LAUNCHD_LABEL,
+              action: 'start',
+              productName: product.productName,
+            }),
+          ),
+        );
       },
       async stop() {
         log(await runElevated(macControlScript({ label: LAUNCHD_LABEL, action: 'stop' })));

@@ -72,6 +72,8 @@ export function launchdPlist(o: LaunchdOptions): string {
 }
 
 export interface MacInstallOptions extends LaunchdOptions {
+  /** Named in the hint when macOS refuses to start the job. */
+  productName?: string;
   dataDir: string;
   moveFrom: string;
   exists?: ((p: string) => boolean) | null;
@@ -134,6 +136,15 @@ export function macStopAndWait(label: string): string[] {
   ];
 }
 
+/**
+ * Starts the job. With "Allow in the Background" switched off in System Settings, macOS refuses it with a bare
+ * "Bootstrap failed: 5: Input/output error"; say where the switch is instead.
+ */
+function macBootstrap(label: string, productName = 'EzyChat'): string {
+  const hint = `macOS did not start the background service. If ${productName} is switched off under System Settings > General > Login Items & Extensions > Allow in the Background, switch it on and try again.`;
+  return `if ! launchctl bootstrap system ${shQuote(plistPath(label))}; then echo ${shQuote(hint)} >&2; exit 6; fi`;
+}
+
 /** sh script (run as root): move data, lock down data dir, write plist, bootstrap the daemon. */
 export function macInstallScript(o: MacInstallOptions): string {
   const plist = plistPath(o.label);
@@ -152,7 +163,7 @@ export function macInstallScript(o: MacInstallOptions): string {
     'WATI_PLIST_EOF',
     `chown root:wheel ${shQuote(plist)}`,
     `chmod 644 ${shQuote(plist)}`,
-    `launchctl bootstrap system ${shQuote(plist)}`,
+    macBootstrap(o.label, o.productName),
     `echo 'Service installed and started.'`,
     '',
   ].join('\n');
@@ -213,15 +224,18 @@ export function macCopyLogsScript(o: {
   ].join('\n');
 }
 
-export function macControlScript(o: { label: string; action: 'start' | 'stop' }): string {
-  const plist = plistPath(o.label);
+export function macControlScript(o: {
+  label: string;
+  action: 'start' | 'stop';
+  productName?: string;
+}): string {
   const body =
     o.action === 'start'
       ? [
           `if launchctl print system/${o.label} >/dev/null 2>&1; then`,
           `  launchctl kickstart -k system/${o.label}`,
           'else',
-          `  launchctl bootstrap system ${shQuote(plist)}`,
+          `  ${macBootstrap(o.label, o.productName)}`,
           'fi',
         ]
       : macStopAndWait(o.label);
