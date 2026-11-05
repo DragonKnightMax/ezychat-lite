@@ -378,7 +378,7 @@ Core built-in connector for SQL Account (eStream) through its API service (API L
 `api.sql.my` (eStream's Postman collection; a saved `<32 hex>.sql.my` stays accepted) via the `connectors/mcp/net.ts` guard (no private address, no redirect, 10 s, 1 MB,
 one request at a time, 30 a minute), AWS SigV4 (`connectors/sql-account/sigv4.ts`, region `ap-southeast-5`, service
 `sqlaccount`, pinned to AWS test vectors); access key + secret key only in the encrypted `sql_account_connection`
-setting, the key end shown. `connectors/sql-account/` (`repo.ts` is its only SQL, migration 034, routes
+setting, the key end shown. `connectors/sql-account/` (`repo.ts` is its only SQL, migration 035, routes
 `/api/connectors/sql-account/*`, admins): Test connection is a signed `GET /agent`; states `no_dns`, `unreachable`,
 `private_ip`, `bad_keys`, `old_version`, `unexpected`; never another way into SQL Account. Per AI agent and per object
 (`SQL_OBJECTS` in shared `sql-account.ts`: stock items, customer, customer invoices (amount owed, off by default), sales

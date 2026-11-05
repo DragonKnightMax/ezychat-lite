@@ -6,7 +6,7 @@ import {
 } from '@ezychat/shared';
 import type { DB } from '../../db/index.js';
 
-/** The only SQL of the SQL Account connector (migration 034). */
+/** The only SQL of the SQL Account connector (migration 035). */
 
 export const ACTIVITY_LIMIT = 100;
 
