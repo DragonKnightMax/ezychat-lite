@@ -343,6 +343,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   (`ELECTRON_RUN_AS_NODE=1 electron -e "require(…)…"`); unmaintained `sudo-prompt` broke every Mac update and
   service change in every release, because no one ran a real Mac update (now `@vscode/sudo-prompt`). A
   platform-only privileged path gets one real run on that OS before its first release.
+  Never start a root helper with `nohup` on macOS: under the admin prompt (`@vscode/sudo-prompt`, no console)
+  it prints "can't detach from console" and exits without running the command, so every Mac update stopped
+  after the password (no `state.json`). Background with `&` and full redirection; the helper ignores `HUP`.
   Log it as a `real:` Dev Build row. Combine the critical updates into one PR so one smoke covers them.
   A critical `server-host` change gets the same packaged run, with the server started through the packaged
   `app.asar.unpacked/dist/server-host.cjs`. Run `prettier --write docs/dev-build-checks.md` after a new row:
