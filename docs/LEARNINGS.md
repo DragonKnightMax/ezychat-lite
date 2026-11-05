@@ -247,6 +247,7 @@ into AGENTS.md.
 - The Stop hook commits on every stop while subagents write: snapshot commits during parallel work carry `[skip ci]` so CI and its failure notices don't fire on half-written code; SonarCloud still runs on them, so read its issue list only on the integrated head.
 
 ## Git, GitHub and CI
+- Parallel feature PRs that add a migration must agree on numbers up front: `migrate.test.ts` rejects a gap or duplicate, so the PR that merges second renumbers, stays red on that test until the first lands, then merges `main` and extends the lite-import "older Lite" drop list with the first PR's tables.
 
 - A PR whose CI never starts (no workflow run for the branch) usually has a merge conflict (`mergeable_state: dirty`):
   `pull_request` runs need the merge commit. Merge main, then re-run e2e and the Dev Build check on the new head,
