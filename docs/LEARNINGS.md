@@ -44,6 +44,9 @@ into AGENTS.md.
   `github.com/eStreamSoftware/docs-sqlacc` (Docusaurus source + screenshots) gave the SQL Account API host, SigV4
   region/service and paging that `sql.com.my` and the wiki would not serve. Mark third-party API references as
   unconfirmed in the design and leave what no official source shows as owner questions, never as guessed endpoints.
+  Ask the owner early for the vendor's own API collection (a Postman export from inside the product): it settled
+  the host, the balance fields and where phones live, which no public page did. Check whether list answers carry
+  detail rows; when they do not (SQL Account lists master fields only), a lookup index needs paced per-record reads.
 - `scripts/build-summary.mjs` needs `gh repo view` (GraphQL), which cloud sessions refuse: write the workbook rows by
   hand in its table format there.
 
