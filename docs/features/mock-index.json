@@ -16,6 +16,16 @@
   },
   "proposals": [
     {
+      "feature": "sql-accounting",
+      "creationOrder": 33,
+      "createdAt": "2026-11-05",
+      "design": "docs/features/sql-accounting/design.md",
+      "mock": "docs/features/sql-accounting/mock/index.html",
+      "status": "proposal",
+      "baselineFeature": "group-management",
+      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e"
+    },
+    {
       "feature": "template-store",
       "creationOrder": 32,
       "createdAt": "2026-11-04",
@@ -81,7 +91,8 @@
       "note": "Portal side (Feedback management) is mocked in anchorsprint/anchor-licence-portal docs/features/feedback.",
       "confirmedAt": "2026-11-03",
       "gitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
-      "confirmation": "Owner viewed the screenshots (app dialog states and portal Feedback pages) and wrote 2026-11-03 \"ok build until it work then pr and merge verify\"; open questions as proposed."
+      "confirmation": "Owner viewed the screenshots (app dialog states and portal Feedback pages) and wrote 2026-11-03 \"ok build until it work then pr and merge verify\"; open questions as proposed.",
+      "folderRemoved": "2026-11-05 (retention: sixth folder sql-accounting); last revision with the folder: 4d07b20"
     },
     {
       "feature": "google-sheets",

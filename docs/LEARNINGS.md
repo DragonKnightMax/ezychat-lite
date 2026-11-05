@@ -35,6 +35,13 @@ into AGENTS.md.
   screen and state), not only a folder path: the owner confirms what they saw, and record the confirmation
   in `design.md` only after that reply.
 
+- Research a vendor API from the vendor's own docs source when its site refuses automated readers (403): eStream's
+  `github.com/eStreamSoftware/docs-sqlacc` (Docusaurus source + screenshots) gave the SQL Account API host, SigV4
+  region/service and paging that `sql.com.my` and the wiki would not serve. Mark third-party API references as
+  unconfirmed in the design and leave what no official source shows as owner questions, never as guessed endpoints.
+- `scripts/build-summary.mjs` needs `gh repo view` (GraphQL), which cloud sessions refuse: write the workbook rows by
+  hand in its table format there.
+
 - A bug report with a screenshot of the live app shows real customers: rebuild the case with demo names,
   companies and numbers in tests, docs and commits; grep the branch for the real values before pushing.
 
