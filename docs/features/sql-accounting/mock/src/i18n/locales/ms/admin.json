@@ -2097,9 +2097,13 @@
         "name": "Butiran pelanggan",
         "sees": "Kod pelanggan, nama syarikat, terma kredit. Tidak pernah had kredit."
       },
+      "customerinvoice": {
+        "name": "Invois pelanggan (amaun terhutang)",
+        "sees": "Nombor, tarikh, tarikh akhir, jumlah, dibayar dan masih terhutang. AI menyebut amaun tepat seperti yang direkodkan dalam SQL Account."
+      },
       "salesinvoice": {
         "name": "Invois jualan",
-        "sees": "Nombor, tarikh, tarikh akhir, jumlah, baki belum dibayar."
+        "sees": "Nombor, tarikh dan jumlah invois terkini."
       },
       "salesquotation": {
         "name": "Sebut harga",

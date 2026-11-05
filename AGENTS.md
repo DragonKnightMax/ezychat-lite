@@ -365,20 +365,21 @@ logs keep who and when only, never row values. `--fake-wa` without a Google app 
 
 **SQL Account** (design `docs/features/sql-accounting/design.md`, beta, untested against a real SQL Account API).
 Core built-in connector for SQL Account (eStream) through its API service (API Link, a paid module): HTTPS only to
-`<32 hex>.sql.my` (or `api.sql.my`) via the `connectors/mcp/net.ts` guard (no private address, no redirect, 10 s, 1 MB,
+`api.sql.my` (eStream's Postman collection; a saved `<32 hex>.sql.my` stays accepted) via the `connectors/mcp/net.ts` guard (no private address, no redirect, 10 s, 1 MB,
 one request at a time, 30 a minute), AWS SigV4 (`connectors/sql-account/sigv4.ts`, region `ap-southeast-5`, service
 `sqlaccount`, pinned to AWS test vectors); access key + secret key only in the encrypted `sql_account_connection`
 setting, the key end shown. `connectors/sql-account/` (`repo.ts` is its only SQL, migration 034, routes
 `/api/connectors/sql-account/*`, admins): Test connection is a signed `GET /agent`; states `no_dns`, `unreachable`,
 `private_ip`, `bad_keys`, `old_version`, `unexpected`; never another way into SQL Account. Per AI agent and per object
-(`SQL_OBJECTS` in shared `sql-account.ts`: stock items, customer, invoices, quotations, sales orders, delivery orders,
-payments) Off / Read / Read + create (create only for quotations; never update or delete). Own-record tools take no
+(`SQL_OBJECTS` in shared `sql-account.ts`: stock items, customer, customer invoices (amount owed, off by default), sales
+invoices, quotations, sales orders, delivery orders, payments) Off / Read / Read + create (create only for quotations; never update or delete). Own-record tools take no
 customer argument: the chat is matched by a teammate link (`sql_account_links`) or a WhatsApp number exactly one SQL
 Account customer has (never a name, never a code the customer types), the server adds the code to every request and
 drops other customers' rows; no match → the tool tells the AI to hand over. Groups and Try it get the stock look-up
 only. Quotation = `sql_quotation_preview` (items from a stock look-up in the chat, quantities the customer wrote, SQL
-prices) then `sql_create_quotation` after an AI reply and a newer customer message (2 a chat, 20 an agent a day). No
-outstanding balance until a real field is confirmed. Logs and Activity: tool, ok, ms, ids only. `--fake-wa` swaps in
+prices) then `sql_create_quotation` after an AI reply and a newer customer message (2 a chat, 20 an agent a day). The
+amount owed comes only from `/customerinvoice` / `customer.outstanding`, said exactly as recorded with its time. The
+phone index reads each customer's `sdsbranch` in the background (one every 4 s). Logs and Activity: tool, ok, ms, ids only. `--fake-wa` swaps in
 `FakeSqlAccount` (`fake.ts`, checks SigV4 with `FAKE_SQL_ACCESS_KEY`/`FAKE_SQL_SECRET`; `/api/dev/fake-sql-account/*`).
 
 **Connector list** (design `docs/features/connector-list/design.md`). The gallery comes from a signed list published

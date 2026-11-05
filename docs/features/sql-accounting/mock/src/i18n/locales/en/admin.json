@@ -2105,9 +2105,13 @@
         "name": "Customer details",
         "sees": "Customer code, company name, credit term. Never credit limit."
       },
+      "customerinvoice": {
+        "name": "Customer invoices (amount owed)",
+        "sees": "Number, date, due date, total, paid and still owed. The AI says amounts exactly as SQL Account records them."
+      },
       "salesinvoice": {
         "name": "Sales invoices",
-        "sees": "Number, date, due date, total, unpaid amount."
+        "sees": "Number, date and total of recent invoices."
       },
       "salesquotation": {
         "name": "Quotations",

@@ -17,6 +17,7 @@ export type MockSqlState = 'disconnected' | 'connected' | MockSqlScenario;
 export const SQL_OBJECTS = [
   { id: 'stockitem', scope: 'everyone', create: false, def: 'read' },
   { id: 'customer', scope: 'own', create: false, def: 'off' },
+  { id: 'customerinvoice', scope: 'own', create: false, def: 'off' },
   { id: 'salesinvoice', scope: 'own', create: false, def: 'read' },
   { id: 'salesquotation', scope: 'own', create: true, def: 'read' },
   { id: 'salesorder', scope: 'own', create: false, def: 'read' },
@@ -365,6 +366,16 @@ export function registerSqlAccount(app: FastifyInstance, ctx: AppContext): void 
         tools: [],
       };
     }
+    if (body.question === 'balance' && access('customerinvoice') !== 'off') {
+      log({ tool: 'account', result: 'done' });
+      return {
+        outcome: 'answer',
+        tools: ['sql_my_account'],
+        match: m,
+        reply:
+          'As recorded in our accounts on 5 Nov, 2:30 pm, you still owe RM1,240.00 on IV-02231 (due 11 Nov) and RM860.00 on IV-02305 (due 27 Nov).',
+      };
+    }
     if (body.question === 'balance') {
       log({ tool: 'account', result: 'done' });
       return {
@@ -372,7 +383,7 @@ export function registerSqlAccount(app: FastifyInstance, ctx: AppContext): void 
         tools: ['sql_my_account'],
         match: m,
         reply:
-          'You have 2 unpaid invoices: IV-02231 (12 Oct, RM1,240.00, due 11 Nov) and IV-02305 (28 Oct, RM860.00, due 27 Nov). Total unpaid: RM2,100.00.',
+          'Your recent invoices are IV-02305 (28 Oct, RM860.00) and IV-02231 (12 Oct, RM1,240.00). A team member will confirm what is still unpaid.',
       };
     }
     if (body.question === 'document') {

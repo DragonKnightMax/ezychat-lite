@@ -1978,7 +1978,7 @@
       "about": "Ejen AI anda menjawab daripada SQL Account: stok dan harga untuk semua orang, serta invois dan pesanan milik setiap pelanggan.",
       "can": {
         "stock": "Menyemak sama ada barang ada stok dan harga jualannya.",
-        "account": "Memberitahu pelanggan invois mereka sendiri dan sama ada setiap satu sudah dibayar.",
+        "account": "Memberitahu pelanggan invois mereka sendiri dan, jika anda hidupkan, jumlah yang masih terhutang.",
         "documents": "Memberitahu pelanggan status sebut harga, pesanan jualan atau pesanan penghantaran mereka sendiri.",
         "quotation": "Boleh menyediakan sebut harga selepas pelanggan mengesahkannya (tutup sehingga anda menghidupkannya)."
       },
@@ -2057,11 +2057,15 @@
         },
         "customer": {
           "name": "Butiran pelanggan",
-          "sees": "Kod pelanggan, nama syarikat, terma kredit. Tidak pernah had kredit."
+          "sees": "Kod pelanggan, nama syarikat, terma kredit dan jumlah masih terhutang. Tidak pernah had kredit."
+        },
+        "customerinvoice": {
+          "name": "Invois pelanggan (amaun terhutang)",
+          "sees": "Nombor, tarikh, tarikh akhir, jumlah, dibayar dan masih terhutang. AI menyebut amaun tepat seperti yang direkodkan dalam SQL Account."
         },
         "salesinvoice": {
           "name": "Invois jualan",
-          "sees": "Nombor, tarikh, tarikh akhir, jumlah, sudah dibayar atau belum."
+          "sees": "Nombor, tarikh dan jumlah invois terkini."
         },
         "salesquotation": {
           "name": "Sebut harga",
@@ -2096,7 +2100,8 @@
         "rule3": "Jika tidak, tiada padanan: AI menyerahkan chat kepada pasukan anda.",
         "byPhone": "Padankan dengan nombor telefon",
         "never": "{{product}} tidak pernah memadankan dengan nama dan tidak pernah menggunakan kod pelanggan yang ditaip oleh pelanggan.",
-        "unavailable": "SQL Account anda tidak menghantar nombor telefon kepada {{product}}: pautkan pelanggan secara manual."
+        "unavailable": "SQL Account anda tidak menghantar nombor telefon kepada {{product}}: pautkan pelanggan secara manual.",
+        "building": "Sedang membaca nombor telefon daripada SQL Account… Chat dipadankan sebaik sahaja pelanggannya dibaca."
       },
       "cust": {
         "title": "Pelanggan",

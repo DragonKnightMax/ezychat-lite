@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **SQL Account connector (beta).** Your AI agent can now answer from SQL Account (eStream): stock and selling
-  prices for everyone, and each customer's own invoices, quotations, sales orders and delivery orders. It works
+  prices for everyone, and each customer's own invoices, quotations, sales orders and delivery orders, and (once you
+  turn it on) what they still owe, said exactly as recorded in your accounts. It works
   only when your SQL Account has the API module (API Link, a paid add-on from your SQL dealer). Connect it in
   Admin → Connectors → SQL Account with the access key and secret key from SQL Account. For each AI agent you
   choose, per kind of record, Off, Read or Read + create (create is offered only for quotations, after the

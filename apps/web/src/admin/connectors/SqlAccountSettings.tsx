@@ -217,6 +217,11 @@ export function SqlMatchCard({ status }: Readonly<{ status: SqlAccountStatus }>)
               />
             </Label>
           </div>
+          {status.phoneMatch === 'building' && (
+            <p className="text-sm text-muted-foreground" data-testid="sql-phone-building">
+              {t('connectors.sql.match.building')}
+            </p>
+          )}
           {status.phoneMatch === 'unavailable' && (
             <p className="text-sm text-muted-foreground" data-testid="sql-phone-unavailable">
               {t('connectors.sql.match.unavailable')}

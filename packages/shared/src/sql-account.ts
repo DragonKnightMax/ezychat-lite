@@ -30,6 +30,7 @@ export type SqlAccountProblem = Exclude<SqlAccountState, 'disconnected' | 'conne
 export const SQL_OBJECT_IDS = [
   'stockitem',
   'customer',
+  'customerinvoice',
   'salesinvoice',
   'salesquotation',
   'salesorder',
@@ -55,6 +56,8 @@ export interface SqlObjectDef {
 export const SQL_OBJECTS: readonly SqlObjectDef[] = [
   { id: 'stockitem', scope: 'everyone', create: false, def: 'read' },
   { id: 'customer', scope: 'own', create: false, def: 'off' },
+  // The accounts-receivable invoice: amount paid and still owed (money figures: off by default).
+  { id: 'customerinvoice', scope: 'own', create: false, def: 'off' },
   { id: 'salesinvoice', scope: 'own', create: false, def: 'read' },
   { id: 'salesquotation', scope: 'own', create: true, def: 'read' },
   { id: 'salesorder', scope: 'own', create: false, def: 'read' },
@@ -89,10 +92,16 @@ export function sqlAccessOf(settings: SqlAgentSettings, id: SqlObjectId): SqlAcc
 export const SQL_ACCESS_KEY = /^([0-9a-f]{32})\.sql\.my\/([A-Za-z0-9_.-]{1,30})$/;
 export const SQL_SECRET_MAX = 200;
 
-/** The company's API address from its access key, or null when the key has another form. */
+/**
+ * SQL Account's API address. eStream's Postman collection (2026-05-28) uses `https://api.sql.my`;
+ * the access key itself names the company (`<32 hex>.sql.my/<user>`), so the same address serves
+ * every company.
+ */
+export const SQL_API_HOST = 'api.sql.my';
+
+/** The API address for an access key, or null when the key has another form. */
 export function sqlHostFromKey(accessKey: string): string | null {
-  const match = SQL_ACCESS_KEY.exec(accessKey.trim());
-  return match ? `${match[1]}.sql.my` : null;
+  return SQL_ACCESS_KEY.test(accessKey.trim()) ? SQL_API_HOST : null;
 }
 
 /** `…c393/APIUSER`: the only part of the key ever shown again. */
@@ -104,14 +113,17 @@ export function sqlKeyEnd(accessKey: string): string | null {
 /** `GET /api/connectors/sql-account` (admins). */
 export const SqlAccountStatus = z.object({
   state: SqlAccountState,
-  /** `https://<id>.sql.my` while keys are saved, else null. */
+  /** `https://api.sql.my` while keys are saved, else null. */
   host: z.string().nullable(),
   keyEnd: z.string().nullable(),
   checkedAt: z.number().int().nullable(),
   /** Match a chat to a SQL Account customer by phone number (else only teammate links). */
   matchByPhone: z.boolean(),
-  /** Whether SQL Account's customer list carries phone numbers EzyChat can match on. */
-  phoneMatch: z.enum(['unknown', 'available', 'unavailable']),
+  /**
+   * The phone index (read in the background from each customer's branches): `building` while the
+   * first read runs, `unavailable` when no customer has a phone number EzyChat can read.
+   */
+  phoneMatch: z.enum(['unknown', 'building', 'available', 'unavailable']),
 });
 export type SqlAccountStatus = z.infer<typeof SqlAccountStatus>;
 

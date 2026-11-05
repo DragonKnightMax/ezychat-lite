@@ -6,7 +6,7 @@ import { CORE_AGENT_TOOL_NAMES } from '../src/ai/agent/extension-tools.js';
 import { agentLookupsAvailable, agentTurnTools } from '../src/ai/agent/turn-tools.js';
 import { FAKE_SQL_ACCESS_KEY, FAKE_SQL_SECRET } from '../src/connectors/sql-account/fake.js';
 import { mergeSqlAccountRows } from '../src/connectors/sql-account/repo.js';
-import { RECHECK_MS } from '../src/connectors/sql-account/service.js';
+import { RECHECK_MS, createSqlAccountService } from '../src/connectors/sql-account/service.js';
 import {
   QUOTES_PER_CHAT_DAY,
   SQL_TOOL_NAMES,
@@ -37,7 +37,11 @@ async function call(tools: ToolSet, name: string, input: object): Promise<string
 }
 
 async function setUp(settings: Partial<SqlAgentSettings> = {}, connect = true) {
-  t = await makeTestApp();
+  t = await makeTestApp({
+    beforeBuild: (ctx) => {
+      ctx.services.sqlAccount = createSqlAccountService(ctx, { sleep: () => Promise.resolve() });
+    },
+  });
   adminId = t.ctx.services.auth!.createUser({
     username: 'admin',
     displayName: 'Admin',
@@ -60,6 +64,7 @@ async function setUp(settings: Partial<SqlAgentSettings> = {}, connect = true) {
       { userId: adminId, ip: null },
     );
     expect(res.ok).toBe(true);
+    await svc.indexReady();
   }
   svc.saveAgentSettings(
     agentId,
@@ -188,11 +193,55 @@ describe('SQL Account AI tools', () => {
       code: '300-F0001',
       company: 'Farah Catering Co',
       creditTerm: '30 Days',
+      stillOwed: '2100.00',
     });
+    expect(out.asOf).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(out.note).toMatch(/as recorded in our accounts on/);
     expect(out.invoices.map((i: { number: string }) => i.number)).toEqual(['IV-02305', 'IV-02231']);
     expect(JSON.stringify(out)).not.toContain('IV-02310');
     expect(JSON.stringify(out)).not.toContain('creditlimit');
     expect(JSON.stringify(out)).not.toContain('30000');
+  });
+
+  it('tells a customer what they still owe from their own customer invoices only', async () => {
+    await setUp({ access: { customerinvoice: 'read', salesinvoice: 'off' } });
+    const out = JSON.parse(await call((await turn(FARAH)).tools, 'sql_my_account', {}));
+    expect(out.unpaidInvoices).toEqual([
+      {
+        number: 'IV-02305',
+        date: '2026-10-28',
+        dueDate: '2026-11-27',
+        total: '860.00',
+        paid: '0.00',
+        stillOwed: '860.00',
+      },
+      {
+        number: 'IV-02231',
+        date: '2026-10-12',
+        dueDate: '2026-11-11',
+        total: '1240.00',
+        paid: '0.00',
+        stillOwed: '1240.00',
+      },
+    ]);
+    expect(out.customer).toBeUndefined();
+    expect(out.invoices).toBeUndefined();
+    expect(JSON.stringify(out)).not.toContain('IV-02190');
+    expect(JSON.stringify(out)).not.toContain('IV-02310');
+    const priya = JSON.parse(await call((await turn(PRIYA)).tools, 'sql_my_account', {}));
+    expect(priya.unpaidInvoices).toEqual([]);
+    const requests = t.ctx.services.sqlAccount!.fake!.requests.filter(
+      (r) => r.path === '/customerinvoice',
+    );
+    expect(requests.every((r) => r.query.code)).toBe(true);
+  });
+
+  it('describes the account tool without a balance when no amount object is on', async () => {
+    await setUp();
+    const tools = (await turn(FARAH)).tools;
+    expect(String(tools.sql_my_account?.description)).toMatch(/no unpaid balance/);
+    const out = JSON.parse(await call(tools, 'sql_my_account', {}));
+    expect(out.note).toMatch(/never work one out/);
   });
 
   it('hands over when the chat is not matched, or several customers share the number', async () => {
@@ -280,6 +329,29 @@ describe('SQL Account AI tools', () => {
     });
     await svc.recheckIfStale();
     expect(svc.status().state).toBe('unreachable');
+  });
+
+  it('reads the phone index in the background, shows building, and stops on disconnect', async () => {
+    await setUp({}, false);
+    let release: () => void = () => {};
+    const gated = createSqlAccountService(t.ctx, {
+      sleep: () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    });
+    gated.fake!.phonesOnBranches = false;
+    await gated.connect(
+      { accessKey: FAKE_SQL_ACCESS_KEY, secretKey: FAKE_SQL_SECRET },
+      { userId: adminId, ip: null },
+    );
+    await vi.waitFor(() => expect(gated.status().phoneMatch).toBe('building'));
+    const running = gated.indexReady();
+    gated.disconnect({ userId: adminId, ip: null });
+    release();
+    await running;
+    expect(gated.status().phoneMatch).toBe('unknown');
+    expect(gated.customers().every((r) => r.kind === 'none')).toBe(true);
   });
 
   it('records the chat line for look-ups and moves rows when chats merge', async () => {

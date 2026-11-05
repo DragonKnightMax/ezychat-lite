@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SqlAccountStatus, SqlConnectResult } from '@ezychat/shared';
 import { listAgents } from '../src/ai/agents.js';
 import { FAKE_SQL_ACCESS_KEY, FAKE_SQL_SECRET } from '../src/connectors/sql-account/fake.js';
-import { CONNECTION_SETTING } from '../src/connectors/sql-account/service.js';
+import {
+  CONNECTION_SETTING,
+  createSqlAccountService,
+} from '../src/connectors/sql-account/service.js';
 import { getMessages } from '../src/wa-bridge/index.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
 import { expectAdminOnly } from './google-connector-helpers.js';
@@ -19,7 +22,11 @@ const JASON = '60129001234@s.whatsapp.net';
 const AHMAD = '60125550142@s.whatsapp.net';
 
 async function setUp() {
-  t = await makeTestApp();
+  t = await makeTestApp({
+    beforeBuild: (ctx) => {
+      ctx.services.sqlAccount = createSqlAccountService(ctx, { sleep: () => Promise.resolve() });
+    },
+  });
   const admin = await createUserAndLogin(t, { role: 'admin' });
   const agent = await createUserAndLogin(t, { role: 'agent' });
   t.ctx.services.ai!.saveMember(
@@ -122,7 +129,7 @@ describe('SQL Account routes', () => {
       error: null,
       status: {
         state: 'connected',
-        host: 'https://0123456789abcdef0123456789abcdef.sql.my',
+        host: 'https://api.sql.my',
         keyEnd: '…cdef/APIUSER',
         matchByPhone: true,
       },
@@ -199,6 +206,7 @@ describe('SQL Account routes', () => {
     const { admin } = await setUp();
     expect((await get('/api/connectors/sql-account/customers', admin)).json()).toHaveLength(4);
     await connect(admin);
+    await t.ctx.services.sqlAccount!.indexReady();
     const rows = (await get('/api/connectors/sql-account/customers', admin)).json() as Array<{
       jid: string;
       kind: string;
@@ -253,14 +261,15 @@ describe('SQL Account routes', () => {
     expect(off.every((r) => r.kind === 'none')).toBe(true);
   });
 
-  it('says when SQL Account sends no phone numbers', async () => {
+  it('reads phones from branches in the background and says when there are none', async () => {
     const { admin } = await setUp();
+    t.ctx.services.sqlAccount!.fake!.phonesOnBranches = false;
     await connect(admin);
-    t.ctx.services.sqlAccount!.fake!.phonesInList = false;
-    await post('/api/connectors/sql-account/disconnect', admin);
-    await connect(admin);
-    await get('/api/connectors/sql-account/customers', admin);
+    await t.ctx.services.sqlAccount!.indexReady();
     expect((await get('/api/connectors/sql-account', admin)).json().phoneMatch).toBe('unavailable');
+    // The index read customers one by one (their branches), after the list.
+    const paths = t.ctx.services.sqlAccount!.fake!.requests.map((r) => r.path);
+    expect(paths).toEqual(expect.arrayContaining(['/customer', '/customer/300-F0001']));
   });
 
   it('searches SQL Account customers for the Link dialog', async () => {

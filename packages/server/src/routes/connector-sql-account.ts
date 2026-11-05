@@ -12,7 +12,7 @@ const AgentParams = z.object({ agentId: z.coerce.number().int().positive() });
 const DebtorQuery = z.object({ q: z.string().max(60).default('') });
 const FakeScenarioBody = z.object({
   scenario: z.enum(['ok', 'no_dns', 'unreachable', 'private_ip', 'bad_keys', 'old_version']),
-  phonesInList: z.boolean().optional(),
+  phonesOnBranches: z.boolean().optional(),
 });
 
 const unavailable = () =>
@@ -67,7 +67,7 @@ export default function connectorSqlAccountRoutes(
     return Promise.resolve(saved);
   });
 
-  app.get('/connectors/sql-account/customers', admin, () => sql.customers());
+  app.get('/connectors/sql-account/customers', admin, () => Promise.resolve(sql.customers()));
 
   app.get('/connectors/sql-account/debtors', admin, async (req) => {
     const { q } = parse(DebtorQuery, req.query ?? {});
@@ -102,7 +102,7 @@ export default function connectorSqlAccountRoutes(
   app.post('/dev/fake-sql-account/scenario', admin, (req) => {
     const body = parse(FakeScenarioBody, req.body ?? {});
     fake.scenario = body.scenario;
-    if (body.phonesInList !== undefined) fake.phonesInList = body.phonesInList;
+    if (body.phonesOnBranches !== undefined) fake.phonesOnBranches = body.phonesOnBranches;
     return Promise.resolve({ ok: true });
   });
   app.get('/dev/fake-sql-account/quotations', admin, () =>

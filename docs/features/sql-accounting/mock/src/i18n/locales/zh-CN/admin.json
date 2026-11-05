@@ -2096,9 +2096,13 @@
         "name": "客户资料",
         "sees": "客户代码、公司名称、信用期限。绝不显示信用额度。"
       },
+      "customerinvoice": {
+        "name": "客户发票（欠款）",
+        "sees": "号码、日期、到期日、总额、已付和尚欠金额。AI 按 SQL Account 记录的金额原样说明。"
+      },
       "salesinvoice": {
         "name": "销售发票",
-        "sees": "号码、日期、到期日、总额、未付金额。"
+        "sees": "近期发票的号码、日期和总额。"
       },
       "salesquotation": {
         "name": "报价单",

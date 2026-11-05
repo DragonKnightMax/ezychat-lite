@@ -9,6 +9,7 @@ export type SqlAccess = 'off' | 'read' | 'create';
 export type SqlObjectId =
   | 'stockitem'
   | 'customer'
+  | 'customerinvoice'
   | 'salesinvoice'
   | 'salesquotation'
   | 'salesorder'

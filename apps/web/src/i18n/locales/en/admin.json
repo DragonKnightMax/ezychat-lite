@@ -1994,7 +1994,7 @@
       "about": "Your AI agent answers from SQL Account: stock and prices for everyone, and each customer's own invoices and orders.",
       "can": {
         "stock": "Checks if an item is in stock and its selling price.",
-        "account": "Tells a customer their own invoices and whether each is paid.",
+        "account": "Tells a customer their own invoices and, if you turn it on, what they still owe.",
         "documents": "Tells a customer the status of their own quotation, sales order or delivery order.",
         "quotation": "Can prepare a quotation after the customer confirms it (off until you turn it on)."
       },
@@ -2073,11 +2073,15 @@
         },
         "customer": {
           "name": "Customer details",
-          "sees": "Customer code, company name, credit term. Never credit limit."
+          "sees": "Customer code, company name, credit term and total still owed. Never credit limit."
+        },
+        "customerinvoice": {
+          "name": "Customer invoices (amount owed)",
+          "sees": "Number, date, due date, total, paid and still owed. The AI says amounts exactly as SQL Account records them."
         },
         "salesinvoice": {
           "name": "Sales invoices",
-          "sees": "Number, date, due date, total, paid or not."
+          "sees": "Number, date and total of recent invoices."
         },
         "salesquotation": {
           "name": "Quotations",
@@ -2112,7 +2116,8 @@
         "rule3": "Otherwise no match: the AI hands the chat to your team.",
         "byPhone": "Match by phone number",
         "never": "{{product}} never matches by name and never uses a customer code the customer types.",
-        "unavailable": "Your SQL Account does not send phone numbers to {{product}}: link customers by hand."
+        "unavailable": "Your SQL Account does not send phone numbers to {{product}}: link customers by hand.",
+        "building": "Reading phone numbers from SQL Account… Chats are matched as soon as their customer is read."
       },
       "cust": {
         "title": "Customers",

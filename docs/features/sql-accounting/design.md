@@ -268,7 +268,7 @@ The owner confirmed the design as proposed and asked for the questions to be res
   product without a readable price). No official eStream price page is readable. The page says "needs SQL Account's API
   module (a paid add-on from your SQL dealer)".
 - **Q2 Host:** as proposed: `https://<id>.sql.my` from the access key; only that form or `api.sql.my` is accepted.
-- **Q3 Outstanding amount:** no field is confirmed in any public source (`docamt` exists, an unpaid amount does not).
+- **Q3 Outstanding amount (superseded by the Postman collection below):** no field is confirmed in any public source (`docamt` exists, an unpaid amount does not).
   v1 shows each invoice's number, date and total only; `sql_my_account` says it has no balance and tells the AI to
   hand over for "how much do I owe". **Open item:** confirm the field with the Postman collection a real SQL Account
   downloads (setup-configuration.md "Download Postman Collection").
@@ -305,6 +305,33 @@ The owner confirmed the design as proposed and asked for the questions to be res
 - **v2 option (not built):** unpaid ≈ invoice `docamt` − Σ customer-payment allocations (`sdsdocdetail[].fromdocno` = the
   invoice, `fromdoctype` "SI") − credit notes and contra. Enable only after checking against a real SQL Account
   (Postman collection or a test company); until then balance questions are handed over.
+
+## Official Postman collection (owner, 2026-11-05)
+
+Source: eStream SQL Account API Postman collection `APICollection-20260528.json` (285 requests, 81 folders, placeholders
+only), provided by the owner; not committed (vendor file, licence unknown). Field presence in live GET answers is still
+**per official collection, untested live**.
+
+- **Host:** collection variable `host = https://api.sql.my` (with `api_ver v1.0`, `region ap-southeast-5`, `service
+sqlaccount`, auth `awsv4`). EzyChat now calls `https://api.sql.my` for every key (`SQL_API_HOST`); a saved per-company
+  `<32 hex>.sql.my` host stays accepted.
+- **Q3 answered:** the accounts-receivable invoice `/customerinvoice` carries `docamt`, `paymentamt`, `outstanding`,
+  `duedate`, `cancelled`, `status`; `/customer` carries `outstanding` (the customer's balance), `creditlimit`,
+  `overduelimit`, `creditterm`, `agingon`. The sales document `/salesinvoice` has no paid or outstanding field.
+  → New object **Customer invoices (amount owed)** (`customerinvoice`, own records, Off by default like payments):
+  `sql_my_account` returns each unpaid invoice (number, date, due date, total, paid, still owed) and, with Customer
+  details on, `customer.outstanding` as "still owed" (never the credit limit). The AI says amounts exactly as given with
+  "as recorded in our accounts on" + `asOf` (business time zone) and never works out an amount. With neither object on,
+  the tool says it has no balance and the AI hands over (unchanged).
+- **Q4 answered:** phones are on `customer.sdsbranch[]` (`phone1`, `phone2`, `mobile`, `email`, `attention`,
+  `branchname`), which only the single-customer read returns (a list answer has master fields only, eStream FAQ). The
+  phone index therefore reads the list, then each customer, in the background at most one every 4 s (15 a minute,
+  leaving half the 30-a-minute budget to the AI), once a day and right after connecting; numbers stay in memory.
+  Status `phoneMatch: building` until the first phone is read; a chat not matched yet is handed over meanwhile.
+- **Fake API** follows these shapes (lower-case fields, `sdsbranch[]`, `/customerinvoice`, `sdsknockoff[]` on payments,
+  stock `balsqty`/`uom`/`refprice`).
+- Mock: the access table gains the row (`mock/screenshots/sql-17-access-amount-owed-*.png`) and Try a question answers
+  "How much do I still owe?" with the amounts as recorded (`sql-18-try-amount-owed-*.png`).
 
 ## Implementation notes (differences from the proposal)
 

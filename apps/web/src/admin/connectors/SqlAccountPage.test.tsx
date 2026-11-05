@@ -205,7 +205,7 @@ describe('SQL Account: Overview and Connection', () => {
       'SQL Cloud: ask your dealer whether the API module is available.',
     );
     expect(
-      screen.getByText('Tells a customer their own invoices and whether each is paid.'),
+      screen.getByText('Tells a customer their own invoices and, if you turn it on, what they still owe.'),
     ).toBeTruthy();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Connect SQL Account' }));
@@ -237,7 +237,7 @@ describe('SQL Account: Overview and Connection', () => {
     await user.clear(access);
     await user.type(access, KEY);
     expect(screen.getByTestId('sql-host').textContent).toContain(
-      'https://13fcdacdc0429dc2f8fa47dddf97c393.sql.my',
+      'https://api.sql.my',
     );
     await user.click(submit);
     expect(await screen.findByText('API service not set up')).toBeTruthy();
@@ -248,7 +248,7 @@ describe('SQL Account: Overview and Connection', () => {
     expect(await screen.findByTestId('sql-connection')).toBeTruthy();
     expect(toast.success).toHaveBeenCalledWith('SQL Account connected');
     expect(screen.getByText('Connected', { selector: 'p' })).toBeTruthy();
-    expect(screen.getByText('https://13fcdacdc0429dc2f8fa47dddf97c393.sql.my')).toBeTruthy();
+    expect(screen.getByText('https://api.sql.my')).toBeTruthy();
     expect(screen.getByText('…c393/APIUSER')).toBeTruthy();
     expect(screen.queryByText('SQL Account version')).toBeNull();
     expect(writes(fetchMock)).toEqual([
@@ -342,6 +342,14 @@ describe('SQL Account: Settings', () => {
     expect(choice('stockitem', 'Read').getAttribute('aria-checked')).toBe('true');
     expect(choice('customer', 'Off').getAttribute('aria-checked')).toBe('true');
     expect(choice('customerpayment', 'Off').getAttribute('aria-checked')).toBe('true');
+    // The amount owed (accounts-receivable invoices) is money: Off until the admin turns it on.
+    expect(choice('customerinvoice', 'Off').getAttribute('aria-checked')).toBe('true');
+    expect(
+      within(object('customerinvoice')).getByText('Customer invoices (amount owed)'),
+    ).toBeTruthy();
+    expect(
+      within(object('customerinvoice')).queryByRole('radio', { name: 'Read + create' }),
+    ).toBeNull();
     expect(within(object('stockitem')).getByText('All customers')).toBeTruthy();
     expect(within(object('salesinvoice')).getByText("Customer's own only")).toBeTruthy();
     // Create only for quotations.
@@ -405,6 +413,15 @@ describe('SQL Account: Settings', () => {
     stubSql(sqlWorld());
     page(`${PAGE}?tab=settings`);
     expect(await screen.findByText('Who is this customer in SQL Account?')).toBeTruthy();
+    expect(screen.queryByTestId('sql-phone-unavailable')).toBeNull();
+  });
+
+  it('says while phone numbers are still being read', async () => {
+    stubSql(sqlWorld({ status: sqlStatus('connected', { phoneMatch: 'building' }) }));
+    page(`${PAGE}?tab=settings`);
+    expect((await screen.findByTestId('sql-phone-building')).textContent).toBe(
+      'Reading phone numbers from SQL Account… Chats are matched as soon as their customer is read.',
+    );
     expect(screen.queryByTestId('sql-phone-unavailable')).toBeNull();
   });
 });
@@ -603,7 +620,7 @@ describe('SQL Account: agent page', () => {
     });
     const row = await screen.findByTestId('agent-connector-sql-account');
     expect(row.getAttribute('href')).toBe(`${PAGE}?tab=settings&agent=1`);
-    expect(await within(row).findByText('4 of 7 kinds of records on')).toBeTruthy();
+    expect(await within(row).findByText('4 of 8 kinds of records on')).toBeTruthy();
   });
 
   it('marks a SQL Account that needs attention and says Off when nothing is on', async () => {

@@ -1,7 +1,7 @@
 import { tool, type ToolSet } from 'ai';
 import type { Logger } from 'pino';
 import { z } from 'zod';
-import { sqlAccessOf, type SqlAgentSettings, type SqlObjectId } from '@ezychat/shared';
+import { SQL_OBJECTS, sqlAccessOf, type SqlAgentSettings, type SqlObjectId } from '@ezychat/shared';
 import { agentById } from '../../ai/agents.js';
 import type {
   AgentToolInfo,
@@ -85,9 +85,7 @@ const text = sqlText;
 export function sqlLookupsAvailable(ctx: AppContext, agentId?: number | null): boolean {
   const settings = ctx.services.sqlAccount?.usable(agentId);
   if (!settings) return false;
-  return (['stockitem', 'customer', ...DOCUMENTS, 'customerpayment'] as SqlObjectId[]).some(
-    (id) => sqlAccessOf(settings, id) !== 'off',
-  );
+  return SQL_OBJECTS.some((o) => sqlAccessOf(settings, o.id) !== 'off');
 }
 
 function stockAnswer(row: SqlRecord, settings: SqlAgentSettings) {
@@ -124,6 +122,63 @@ const own = (rows: SqlRecord[], code: string) => rows.filter((r) => text(r.code)
 
 const NO_CUSTOMER =
   'No SQL Account customer is linked to this chat. Do not ask for or use a customer code. Tell the person a team member will check, and hand the chat over.';
+
+type AccountService = NonNullable<AppContext['services']['sqlAccount']>;
+
+/**
+ * The customer's own account by object access: Customer details (term, total still owed),
+ * Customer invoices (each unpaid one: total, paid, still owed, due date) and Sales invoices (recent
+ * ones, number/date/total). Every row is checked to be this customer's.
+ */
+async function accountAnswer(
+  service: AccountService,
+  code: string,
+  access: (id: SqlObjectId) => string,
+  signal: AbortSignal,
+): Promise<Record<string, unknown>> {
+  const c = service.client();
+  const out: Record<string, unknown> = {};
+  const read = (object: string, pages = 1) =>
+    service
+      .timed(object, () => c.list(object, { code }, signal, pages))
+      .then((rows) => own(rows, code));
+  if (access('customer') !== 'off') {
+    const row = (await read('customer'))[0];
+    if (row)
+      out.customer = {
+        code,
+        company: text(row.companyname),
+        creditTerm: text(row.creditterm),
+        ...(text(row.outstanding) ? { stillOwed: text(row.outstanding) } : {}),
+      };
+  }
+  if (access('customerinvoice') !== 'off') {
+    out.unpaidInvoices = (await read('customerinvoice', 2))
+      .filter((r) => r.cancelled !== true && Number(text(r.outstanding)) > 0)
+      .toSorted(newestFirst)
+      .slice(0, DOC_LIMIT)
+      .map((r) => ({
+        number: text(r.docno),
+        date: text(r.docdate),
+        dueDate: text(r.duedate),
+        total: text(r.docamt),
+        paid: text(r.paymentamt),
+        stillOwed: text(r.outstanding),
+      }));
+  }
+  if (access('salesinvoice') !== 'off')
+    out.invoices = (await read('salesinvoice', 2))
+      .toSorted(newestFirst)
+      .slice(0, DOC_LIMIT)
+      .map(docAnswer);
+  const owed =
+    'unpaidInvoices' in out || (out.customer as { stillOwed?: string } | undefined)?.stillOwed;
+  out.asOf = service.asOf();
+  out.note = owed
+    ? 'Only this customer\'s own records. Say amounts exactly as given, with "as recorded in our accounts on" and asOf. Never work out an amount.'
+    : "Only this customer's own records. There is no unpaid balance here: never work one out; for what they still owe, hand over.";
+  return out;
+}
 
 const refused = (reason: string, output: string) => ({ output, refused: reason });
 
@@ -355,42 +410,20 @@ export async function sqlAgentTools(
     return finishTurn();
   }
 
-  if (access('customer') !== 'off' || access('salesinvoice') !== 'off') {
+  const owed = access('customer') !== 'off' || access('customerinvoice') !== 'off';
+  if (owed || access('salesinvoice') !== 'off') {
     tools[SQL_MY_ACCOUNT] = tool({
       description:
-        'The account of the customer writing in this chat in SQL Account: their details and recent invoices (number, date, total). No argument: EzyChat knows who the customer is. It has no unpaid balance: for what they still owe, say a team member will confirm and hand the chat over.',
+        'The account of the customer writing in this chat in SQL Account. No argument: EzyChat knows who the customer is. ' +
+        (owed
+          ? 'It returns what they still owe as SQL Account records it: say each amount exactly as given and add "as recorded in our accounts on" with the asOf time. Never add up, round or work out an amount yourself.'
+          : 'It has no unpaid balance: for what they still owe, say a team member will confirm and hand the chat over.'),
       inputSchema: z.object({}),
       execute: () =>
         run(SQL_MY_ACCOUNT, () =>
-          withCustomer(async (code) => {
-            const c = service.client();
-            const out: Record<string, unknown> = {};
-            if (access('customer') !== 'off') {
-              const rows = own(
-                await service.timed('customer', () => c.list('customer', { code }, input.signal)),
-                code,
-              );
-              const row = rows[0];
-              if (row)
-                out.customer = {
-                  code,
-                  company: text(row.companyname),
-                  creditTerm: text(row.creditterm),
-                };
-            }
-            if (access('salesinvoice') !== 'off') {
-              const rows = own(
-                await service.timed('salesinvoice', () =>
-                  c.list('salesinvoice', { code }, input.signal, 2),
-                ),
-                code,
-              );
-              out.invoices = rows.toSorted(newestFirst).slice(0, DOC_LIMIT).map(docAnswer);
-            }
-            out.note =
-              "Only this customer's own records. There is no unpaid balance here: never work one out; for what they still owe, hand over.";
-            return { output: out };
-          }),
+          withCustomer(async (code) => ({
+            output: await accountAnswer(service, code, access, input.signal),
+          })),
         ),
     });
   }

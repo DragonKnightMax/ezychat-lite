@@ -11,7 +11,7 @@ import type { SqlRecord } from './client.js';
  */
 export const FAKE_SQL_ACCESS_KEY = '0123456789abcdef0123456789abcdef.sql.my/APIUSER';
 export const FAKE_SQL_SECRET = 'fake-sql-secret';
-export const FAKE_SQL_HOST = '0123456789abcdef0123456789abcdef.sql.my';
+export const FAKE_SQL_HOST = 'api.sql.my';
 
 export type FakeSqlScenario =
   'ok' | 'no_dns' | 'unreachable' | 'private_ip' | 'bad_keys' | 'old_version';
@@ -19,134 +19,155 @@ export type FakeSqlScenario =
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const hmac = (k: string | Buffer, d: string) => createHmac('sha256', k).update(d).digest();
 
+const branch = (phone1: string, mobile: string, attention: string): SqlRecord => ({
+  dtlkey: 1,
+  branchtype: 'B',
+  branchname: 'BILLING',
+  attention,
+  phone1,
+  phone2: '',
+  mobile,
+  email: '',
+});
+
+/**
+ * Demo records in the shapes of eStream's SQL Account API Postman collection (2026-05-28): lower-case
+ * fields, customer phones on `sdsbranch[]`, the amount owed on the accounts-receivable invoice
+ * (`/customerinvoice`: `docamt`, `paymentamt`, `outstanding`) and the customer (`outstanding`).
+ */
 function demoData(): Record<string, SqlRecord[]> {
+  const customer = (
+    code: string,
+    companyname: string,
+    creditterm: string,
+    outstanding: string,
+    branches: SqlRecord[],
+  ): SqlRecord => ({
+    code,
+    controlaccount: '300-000',
+    companyname,
+    creditterm,
+    creditlimit: '30000.00',
+    overduelimit: '0.00',
+    outstanding,
+    agingon: 'I',
+    status: 'A',
+    sdsbranch: branches,
+  });
+  const doc = (dockey: number, docno: string, docdate: string, code: string, docamt: string) => ({
+    dockey,
+    docno,
+    docdate,
+    code,
+    docamt,
+    localdocamt: docamt,
+    cancelled: false,
+    status: 0,
+  });
   return {
     agent: [{ code: '----', description: 'DEFAULT AGENT', isactive: true }],
     customer: [
-      {
-        code: '300-F0001',
-        companyname: 'Farah Catering Co',
-        creditterm: '30 Days',
-        creditlimit: '30000',
-        phone1: '04-226 1188',
-        mobile: '+60123110021',
-      },
-      {
-        code: '300-P0007',
-        companyname: 'Priya Nair Enterprise',
-        creditterm: 'C.O.D.',
-        creditlimit: '5000',
-        phone1: '',
-        mobile: '012-881 4455',
-      },
-      {
-        code: '300-J0003',
-        companyname: 'JL Trading',
-        creditterm: '30 Days',
-        creditlimit: '10000',
-        phone1: '0129001234',
-        mobile: '',
-      },
-      {
-        code: '300-J0004',
-        companyname: 'Jason Lim Kopitiam',
-        creditterm: '30 Days',
-        creditlimit: '10000',
-        phone1: '',
-        mobile: '+60 12-900 1234',
-      },
+      customer('300-F0001', 'Farah Catering Co', '30 Days', '2100.00', [
+        branch('04-226 1188', '+60123110021', 'Farah Aziz'),
+      ]),
+      customer('300-P0007', 'Priya Nair Enterprise', 'C.O.D.', '0.00', [
+        branch('', '012-881 4455', 'Priya Nair'),
+      ]),
+      customer('300-J0003', 'JL Trading', '30 Days', '0.00', [branch('0129001234', '', 'Jason')]),
+      customer('300-J0004', 'Jason Lim Kopitiam', '30 Days', '0.00', [
+        branch('', '+60 12-900 1234', 'Jason Lim'),
+      ]),
     ],
     stockitem: [
       {
         dockey: 11,
         code: 'KP-L',
         description: 'Kopi Peng Large',
+        stockgroup: 'DEFAULT',
+        stockcontrol: true,
+        uom: 'CUP',
         refprice: '6.50',
         refcost: '2.10',
         balsqty: '42',
-        uom: 'CUP',
+        isactive: true,
       },
       {
         dockey: 12,
         code: 'KP-R',
         description: 'Kopi Peng Regular',
+        stockgroup: 'DEFAULT',
+        stockcontrol: true,
+        uom: 'CUP',
         refprice: '4.80',
         refcost: '1.60',
         balsqty: '0',
-        uom: 'CUP',
+        isactive: true,
       },
       {
         dockey: 13,
         code: 'NL-01',
         description: 'Nasi Lemak Biasa',
+        stockgroup: 'DEFAULT',
+        stockcontrol: true,
+        uom: 'PACK',
         refprice: '5.00',
         refcost: '2.00',
         balsqty: '18',
-        uom: 'PACK',
+        isactive: true,
+      },
+    ],
+    customerinvoice: [
+      {
+        ...doc(401, 'IV-02231', '2026-10-12', '300-F0001', '1240.00'),
+        duedate: '2026-11-11',
+        paymentamt: '0.00',
+        outstanding: '1240.00',
+      },
+      {
+        ...doc(402, 'IV-02305', '2026-10-28', '300-F0001', '860.00'),
+        duedate: '2026-11-27',
+        paymentamt: '0.00',
+        outstanding: '860.00',
+      },
+      {
+        ...doc(403, 'IV-02190', '2026-09-30', '300-F0001', '500.00'),
+        duedate: '2026-10-30',
+        paymentamt: '500.00',
+        outstanding: '0.00',
+      },
+      {
+        ...doc(404, 'IV-02310', '2026-10-30', '300-P0007', '99.00'),
+        duedate: '2026-10-30',
+        paymentamt: '99.00',
+        outstanding: '0.00',
       },
     ],
     salesinvoice: [
-      {
-        dockey: 501,
-        docno: 'IV-02231',
-        docdate: '2026-10-12',
-        code: '300-F0001',
-        docamt: '1240.00',
-        cancelled: false,
-      },
-      {
-        dockey: 502,
-        docno: 'IV-02305',
-        docdate: '2026-10-28',
-        code: '300-F0001',
-        docamt: '860.00',
-        cancelled: false,
-      },
-      {
-        dockey: 503,
-        docno: 'IV-02310',
-        docdate: '2026-10-30',
-        code: '300-P0007',
-        docamt: '99.00',
-        cancelled: false,
-      },
+      doc(501, 'IV-02231', '2026-10-12', '300-F0001', '1240.00'),
+      doc(502, 'IV-02305', '2026-10-28', '300-F0001', '860.00'),
+      doc(503, 'IV-02310', '2026-10-30', '300-P0007', '99.00'),
     ],
     salesorder: [
-      {
-        dockey: 601,
-        docno: 'SO-00412',
-        docdate: '2026-11-02',
-        code: '300-F0001',
-        docamt: '412.00',
-        cancelled: false,
-      },
-      {
-        dockey: 602,
-        docno: 'SO-00399',
-        docdate: '2026-10-25',
-        code: '300-P0007',
-        docamt: '120.00',
-        cancelled: false,
-      },
+      doc(601, 'SO-00412', '2026-11-02', '300-F0001', '412.00'),
+      doc(602, 'SO-00399', '2026-10-25', '300-P0007', '120.00'),
     ],
-    deliveryorder: [
-      {
-        dockey: 701,
-        docno: 'DO-00388',
-        docdate: '2026-11-04',
-        code: '300-F0001',
-        docamt: '412.00',
-        cancelled: false,
-      },
-    ],
+    deliveryorder: [doc(701, 'DO-00388', '2026-11-04', '300-F0001', '412.00')],
     salesquotation: [],
     customerpayment: [
       {
-        dockey: 801,
-        docno: 'OR-00120',
-        docdate: '2026-10-20',
-        code: '300-F0001',
-        docamt: '500.00',
+        ...doc(801, 'OR-00120', '2026-10-20', '300-F0001', '500.00'),
+        paymentmethod: '310-000',
+        unappliedamt: '0.00',
+        sdsknockoff: [
+          {
+            doctype: 'IV',
+            docno: 'IV-02190',
+            docamt: '500.00',
+            originaloutstanding: '500.00',
+            outstanding: '0.00',
+            koamt: '500.00',
+          },
+        ],
       },
     ],
   };
@@ -154,8 +175,8 @@ function demoData(): Record<string, SqlRecord[]> {
 
 export class FakeSqlAccount {
   scenario: FakeSqlScenario = 'ok';
-  /** Off: the customer list carries no phone numbers (a SQL Account that keeps them on branches only). */
-  phonesInList = true;
+  /** Off: the customers' branches carry no phone numbers. */
+  phonesOnBranches = true;
   data = demoData();
   requests: Array<{ method: string; path: string; query: Record<string, string> }> = [];
   private nextDockey = 1100;
@@ -192,7 +213,7 @@ export class FakeSqlAccount {
     if (method === 'POST') return this.create(rows, body);
     if (key !== undefined) {
       const found = rows.find((r) => String(r.dockey ?? r.code) === key || r.code === key);
-      return found ? json(200, { data: [found] }) : text(404, 'Not Found');
+      return found ? json(200, { data: [this.detail(found)] }) : text(404, 'Not Found');
     }
     return this.list(object!, rows, query);
   }
@@ -204,6 +225,12 @@ export class FakeSqlAccount {
     if (this.scenario === 'unreachable')
       throw Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
     if (this.scenario === 'private_ip') throw new BlockedAddressError();
+  }
+
+  /** One record with its detail rows (a customer's branches without phones when switched off). */
+  private detail(row: SqlRecord): SqlRecord {
+    if (this.phonesOnBranches || !Array.isArray(row.sdsbranch)) return row;
+    return { ...row, sdsbranch: row.sdsbranch.map((b) => withoutPhones(b as SqlRecord)) };
   }
 
   private create(rows: SqlRecord[], body: string): Response {
@@ -220,7 +247,7 @@ export class FakeSqlAccount {
     const filters = Object.entries(query).filter(([f]) => f !== 'offset' && f !== 'limit');
     const matches = rows
       .filter((row) => filters.every(([field, wanted]) => fieldMatches(row[field], wanted)))
-      .map((row) => (object === 'customer' && !this.phonesInList ? withoutPhones(row) : row));
+      .map(masterOnly);
     const page = matches.slice(offset, offset + 50);
     return json(200, { pagination: { offset, limit: 50, count: page.length }, data: page });
   }
@@ -269,8 +296,13 @@ function fieldMatches(raw: unknown, wanted: string): boolean {
 }
 
 function withoutPhones(row: SqlRecord): SqlRecord {
-  const { phone1: _p, mobile: _m, ...rest } = row;
+  const { phone1: _p, phone2: _q, mobile: _m, ...rest } = row;
   return rest;
+}
+
+/** A list answer carries master fields only (eStream FAQ): no `sds…` detail arrays. */
+function masterOnly(row: SqlRecord): SqlRecord {
+  return Object.fromEntries(Object.entries(row).filter(([key]) => !key.startsWith('sds')));
 }
 
 const json = (status: number, body: unknown) =>

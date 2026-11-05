@@ -49,10 +49,17 @@ declare module '../../context.js' {
 export const CONNECTION_SETTING = 'sql_account_connection';
 export const STATE_SETTING = 'sql_account_state';
 export const MATCH_SETTING = 'sql_account_match_by_phone';
-/** The phone → customer index is read again after this long (and on Refresh). */
-export const INDEX_TTL_MS = 6 * 60 * 60_000;
+/** The phone → customer index is read again after this long. */
+export const INDEX_TTL_MS = 24 * 60 * 60_000;
 /** At most this many SQL Account customers are read for the phone index (40 pages of 50). */
 export const INDEX_MAX_PAGES = 40;
+/**
+ * Phones live on each customer's branches, which only the single-customer read returns (eStream
+ * Postman collection: `customer.sdsbranch[].phone1/phone2/mobile`), so the index reads customers one
+ * by one in the background, at most one every 4 s (15 a minute), leaving the rest of the 30-a-minute
+ * budget to the AI's look-ups.
+ */
+export const INDEX_GAP_MS = 4_000;
 /** While an agent uses the connector, the connection is checked again after this long. */
 export const RECHECK_MS = 30 * 60_000;
 
@@ -110,6 +117,8 @@ export interface SqlAccountServiceOptions {
   fetch?: typeof fetch;
   fake?: FakeSqlAccount | null;
   now?: () => number;
+  /** Waits between two customer reads of the phone index (tests: none). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export function createSqlAccountService(ctx: AppContext, options: SqlAccountServiceOptions = {}) {
@@ -118,13 +127,18 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
   const fake = options.fake === undefined ? defaultFake(ctx) : options.fake;
   const fetchFn = options.fetch ?? fake?.fetch;
   let client: SqlClient | null = null;
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  /** Phone → customer codes, filled in the background; numbers stay in memory only. */
   let index: {
     at: number;
     byPhone: Map<string, Set<string>>;
     names: Map<string, string>;
-    available: boolean;
+    complete: boolean;
   } | null = null;
   let indexing: Promise<void> | null = null;
+  /** Bumped on disconnect and shutdown: a running index read stops. */
+  let generation = 0;
 
   const readConnection = (): SqlConnection | null => {
     const raw = ctx.settings.getSecret(CONNECTION_SETTING);
@@ -159,7 +173,8 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
 
   const phoneMatchState = (): SqlAccountStatus['phoneMatch'] => {
     if (!index) return 'unknown';
-    return index.available ? 'available' : 'unavailable';
+    if (index.byPhone.size > 0) return 'available';
+    return index.complete ? 'unavailable' : 'building';
   };
 
   const status = (): SqlAccountStatus => {
@@ -211,35 +226,56 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
     return c;
   };
 
-  const refreshIndex = async (signal?: AbortSignal) => {
+  const refreshIndex = async () => {
+    const run = generation;
     const c = require();
     const rows = await timed('customer_index', () =>
-      c.list('customer', {}, signal, INDEX_MAX_PAGES),
+      c.list('customer', {}, undefined, INDEX_MAX_PAGES),
     );
-    const byPhone = new Map<string, Set<string>>();
-    const names = new Map<string, string>();
-    let anyPhone = false;
-    for (const row of rows) {
-      const code = text(row.code);
-      if (!code) continue;
-      names.set(code, text(row.companyname));
-      const hasField = Object.keys(row).some((k) => /phone|mobile|tel/i.test(k));
-      if (hasField) anyPhone = true;
-      for (const phone of recordPhones(row)) {
-        const set = byPhone.get(phone) ?? new Set<string>();
+    const next = {
+      at: now(),
+      byPhone: new Map<string, Set<string>>(),
+      names: new Map(rows.map((r) => [text(r.code), text(r.companyname)])),
+      complete: false,
+    };
+    next.names.delete('');
+    index = next;
+    for (const code of next.names.keys()) {
+      if (run !== generation) return;
+      const detail = await c.one('customer', code);
+      for (const phone of detail ? recordPhones(detail) : []) {
+        const set = next.byPhone.get(phone) ?? new Set<string>();
         set.add(code);
-        byPhone.set(phone, set);
+        next.byPhone.set(phone, set);
       }
+      await sleep(INDEX_GAP_MS);
     }
-    index = { at: now(), byPhone, names, available: anyPhone };
+    next.complete = true;
+    log.info(
+      { event: 'sql_account_index', customers: next.names.size, phones: next.byPhone.size },
+      'SQL Account phone index read',
+    );
   };
 
-  const ensureIndex = async (signal?: AbortSignal) => {
-    if (index && now() - index.at < INDEX_TTL_MS) return;
-    indexing ??= refreshIndex(signal).finally(() => {
-      indexing = null;
-    });
-    await indexing;
+  /** Starts the background read when there is no fresh index (never waits for it). */
+  const ensureIndex = (): Promise<void> => {
+    if (!matchByPhone() || stateOf().state !== 'connected') return Promise.resolve();
+    if (index && now() - index.at < INDEX_TTL_MS) return indexing ?? Promise.resolve();
+    indexing ??= refreshIndex()
+      .catch((error: unknown) => {
+        noteFailure(error);
+        log.warn(
+          {
+            event: 'sql_account_index_failed',
+            kind: error instanceof SqlError ? error.kind : 'other',
+          },
+          'SQL Account phone index not read',
+        );
+      })
+      .finally(() => {
+        indexing = null;
+      });
+    return indexing;
   };
 
   const phoneMatch = (jid: string): ChatMatch => {
@@ -286,7 +322,9 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
       );
       client = trial;
       index = null;
+      generation++;
       setState('connected');
+      void ensureIndex();
       audit(ctx.db, {
         userId: actor.userId,
         action: 'sql_account.connect',
@@ -321,12 +359,14 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
       ctx.settings.set(STATE_SETTING, null);
       client = null;
       index = null;
+      generation++;
       audit(ctx.db, { userId: actor.userId, action: 'sql_account.disconnect', ip: actor.ip });
       return status();
     },
 
     setMatchByPhone(value: boolean, actor: Actor): SqlAccountStatus {
       ctx.settings.set(MATCH_SETTING, value);
+      void ensureIndex();
       audit(ctx.db, {
         userId: actor.userId,
         action: 'sql_account.match_setting',
@@ -393,14 +433,13 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
           : NO_MATCH;
       }
       if (!matchByPhone()) return NO_MATCH;
-      await ensureIndex(signal);
+      void ensureIndex();
       return phoneMatch(chatJid);
     },
 
-    /** Customers tab: every direct chat and its match (from the cached index; no per-chat call). */
-    async customers(): Promise<SqlCustomerRow[]> {
-      if (stateOf().state === 'connected' && matchByPhone())
-        await ensureIndex().catch((error: unknown) => noteFailure(error));
+    /** Customers tab: every direct chat and its match (from the index so far; no per-chat call). */
+    customers(): SqlCustomerRow[] {
+      void ensureIndex();
       const links = allLinks(ctx.db);
       return directChats(ctx.db).map(({ jid, name }) => {
         const linked = links.get(jid);
@@ -465,12 +504,33 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
       return 'ok';
     },
 
+    /** Resolves when the running phone-index read ends (tests, Dev Build checks). */
+    indexReady: (): Promise<void> => indexing ?? Promise.resolve(),
     activity: () => listActivity(ctx.db),
     addActivity: (row: Parameters<typeof addActivity>[1]) => addActivity(ctx.db, row, now()),
     noteFailure,
     timed,
     client: require,
     now,
+
+    /** Now in the business time zone, `YYYY-MM-DD HH:mm` (when the AI read an amount). */
+    asOf(): string {
+      const zone = ctx.settings.get<string>(AI_TIMEZONE_SETTING, '') || 'Asia/Kuala_Lumpur';
+      const format = (timeZone: string) =>
+        new Intl.DateTimeFormat('sv-SE', {
+          timeZone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(now()));
+      try {
+        return format(zone);
+      } catch {
+        return format('Asia/Kuala_Lumpur');
+      }
+    },
 
     /** Today in the business time zone, `YYYY-MM-DD` (a quotation's date). */
     today(): string {
@@ -487,6 +547,7 @@ export function createSqlAccountService(ctx: AppContext, options: SqlAccountServ
     shutdown() {
       client = null;
       index = null;
+      generation++;
     },
   };
   return service;

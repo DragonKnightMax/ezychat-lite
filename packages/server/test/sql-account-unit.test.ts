@@ -62,7 +62,7 @@ describe('SigV4 for SQL Account', () => {
     expect(headers['content-type']).toBeUndefined();
     // Pinned: a change in canonicalisation changes this value.
     expect(auth!.signature).toBe(
-      '73defbe2b6d6f3bf362428bcf71bf2007825525f0a55798cca5b7f9ebe646ded',
+      'df14276205e9efaab3fbad3f51909dae46fdeeefe52885dec76ebf0d35f8d683',
     );
     const post = signRequest({
       method: 'POST',
