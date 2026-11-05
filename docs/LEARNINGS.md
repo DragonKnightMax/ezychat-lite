@@ -974,8 +974,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   traversal): resolve it and accept only the repo or `os.tmpdir()` (`path.relative`, no `..`), and check
   ports. Read a PR's Sonar issues with a script file: `api/issues/search?componentKeys=ossmalaysia_wa-team-inbox&pullRequest=<n>&types=VULNERABILITY` (public, no token).
   New code meets Sonar's usual findings before the first push (and say so in a subagent's brief): no nested
-  ternaries (S3358), `toSorted`/`replaceAll`/`find`, no `async` without `await`, one import per module, functions
-  under cognitive complexity 15: a first push of a new feature otherwise drew 42 findings.
+  ternaries (S3358), `toSorted`/`replaceAll`/`find`, no `async` without `await`, one import per module, no `await` inside a loop (S9382:
+  a deliberately sequential, paced loop becomes a recursive step function), functions under cognitive complexity 15: a first push of a new feature otherwise drew 42 findings.
   Tests of such a guard build paths from `os.tmpdir()`, never `/tmp`: macOS's temp folder is `/var/folders/…`.
 - Every `/api/ai` route is admin-only (`ai-routes-access.test.ts` lists them all): an AI route that every
   signed-in user may call lives outside that prefix (`GET /api/reply-suggestions`, `/api/chats/:jid/ai/*`).
