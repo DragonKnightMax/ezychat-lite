@@ -526,6 +526,11 @@
       "businessTitle_one": "业务资料中有 {{count}} 个词永远不会被标出",
       "businessTitle_other": "业务资料中有 {{count}} 个词永远不会被标出",
       "businessHint": "它们随业务资料变化。这里显示词典不认识的词。"
+    },
+    "usageStats": {
+      "title": "隐私",
+      "label": "分享匿名使用统计",
+      "hint": "帮助我们了解新用户在哪一步遇到困难。不含姓名、号码或消息。"
     }
   },
   "resolveAll": {

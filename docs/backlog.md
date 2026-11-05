@@ -5,6 +5,11 @@ are listed here until they get a branch. Newest first; remove an item when its P
 
 ## Bugs
 
+- Windows updater after an antivirus block (seen 2026-11-05, Enterprise 0.1.25 → 0.1.26 with McAfee, twice): the
+  rollback that emptied Program Files is fixed (`WINDOWS_START_INSTALLER`, `WINDOWS_RESTORE_OLD_APP` in
+  `apps/desktop/src/updater/install.ts`). Still to do: show the blocked-installer result in the app's own language
+  and do not offer the same version again for some days, and an owner decision on a delay before offering new
+  releases (frequent releases are always new, low-reputation installers).
 - `e2e/devbuild-multi-inbox-check.mjs` fails from its second step on a fresh `--fake-wa --mode dev --max-inboxes 3`
   server (one inbox, adding Catering answers 409), also with `main`'s copy of the script (found 2026-10-30 in a cloud
   session while verifying PR ossmalaysia/ezychat-lite#229). Find whether the CLI start line or the limit changed.

@@ -35,6 +35,7 @@ describe('settings', () => {
       historyDays: 3,
       namedTunnelHostname: null,
       hasTunnelToken: false,
+      usageStats: true,
     });
   });
 

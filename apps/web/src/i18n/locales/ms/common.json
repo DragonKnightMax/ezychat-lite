@@ -216,6 +216,13 @@
     "sqlCustomerCode": {
       "title": "Apakah kod pelanggan?",
       "body": "Kod pelanggan dalam SQL Account, contohnya 300-F0001. Apabila dipautkan pada chat, AI hanya menunjukkan rekod pelanggan itu sendiri."
+    },
+    "usageStats": {
+      "title": "Apakah statistik penggunaan tanpa nama?",
+      "body": "EzyChat mengira langkah persediaan, seperti WhatsApp dipautkan atau AI dihidupkan, untuk menambah baik aplikasi. Bukan siapa anda atau apa yang anda tulis.",
+      "step1": "Dihantar: kod pemasangan rawak, versi aplikasi, Windows atau Mac, dan langkah yang dicapai.",
+      "step2": "Tidak sekali-kali dihantar: nama, nombor telefon, sembang, mesej, e-mel, alamat IP atau kunci.",
+      "step3": "Ia dihantar ke pelayan lesen EzyChat, yang mengiranya dalam Google Analytics. Matikan di sini pada bila-bila masa."
     }
   }
 }

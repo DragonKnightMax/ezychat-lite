@@ -21,6 +21,7 @@ import { AiAssistantStep } from './AiAssistantStep';
 import { usernameFrom, usernameFromName } from './username';
 import { WhatsAppStepChoice } from './WhatsAppStepChoice';
 import { LiteSetupStart } from '../lite-import/LiteSetupStart';
+import { UsageStatsSwitch } from '../admin/UsageStatsSwitch';
 
 /** Account → WhatsApp → AI assistant (skippable) → Ready. */
 type Step = 'account' | 'whatsapp' | 'ai' | 'ready';
@@ -216,6 +217,7 @@ function ReadyStep({ aiOn }: { aiOn: boolean }) {
           </SummaryRow>
         </ul>
       </div>
+      <UsageStatsSwitch />
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">{t('setup.ready.later')}</p>
         <div className="flex flex-col gap-2 sm:flex-row">

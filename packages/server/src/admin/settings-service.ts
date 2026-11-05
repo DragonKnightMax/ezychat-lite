@@ -2,6 +2,7 @@ import type { Settings, SettingsPatchBody } from '@ezychat/shared';
 import { DEFAULT_PORT } from '../config.js';
 import type { AppContext } from '../context.js';
 import { TUNNEL_HOSTNAME_KEY, TUNNEL_TOKEN_KEY } from '../tunnel/manager.js';
+import { usageStatsEnabled } from '../usage/service.js';
 
 /** Settings keys (shared with main.ts which reads port / lan_enabled / history_days at startup). */
 export const SETTINGS_KEYS = {
@@ -40,6 +41,7 @@ export function createSettingsService(ctx: AppContext): SettingsService {
     historyDays: s.get<number>(SETTINGS_KEYS.historyDays, DEFAULT_HISTORY_DAYS),
     namedTunnelHostname: s.get<string | null>(SETTINGS_KEYS.namedTunnelHostname, null),
     hasTunnelToken: s.getSecret(SETTINGS_KEYS.tunnelToken) !== null,
+    usageStats: usageStatsEnabled(s),
   });
 
   return {

@@ -31,3 +31,4 @@ export type {
 } from './desktop-updates.js';
 export * from './i18n/index.js';
 export * from './feedback.js';
+export * from './usage.js';
