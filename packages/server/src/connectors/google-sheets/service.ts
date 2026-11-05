@@ -9,9 +9,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   SHEETS_LEAD_COLUMNS,
+  SheetLayout,
   SheetsAgentSettings,
   googleSheetUrl,
   spreadsheetIdFromLink,
+  type SheetTabSetting,
   type SheetsActivity,
   type SpreadsheetInfo,
   type GoogleSheetsStatus,
@@ -43,12 +45,23 @@ import {
   type SheetRowKey,
 } from './repo.js';
 import { legacyLeadsTabOf, upgradeSheetsSettings } from './upgrade.js';
-import { autoColumn, columnKey, headerColumns, matchColumns, personWrote } from './values.js';
+import {
+  asText,
+  autoColumn,
+  columnKey,
+  formulaReachesOut,
+  headerColumns,
+  isFormula,
+  matchColumns,
+  personWrote,
+} from './values.js';
 import {
   SHEETS_ENDPOINTS,
   SHEETS_REQUIRED_SCOPES,
   SHEETS_SCOPES,
   SheetsClient,
+  tabRange,
+  type SheetValueInput,
   type SpreadsheetMeta,
 } from './sheets.js';
 
@@ -98,7 +111,8 @@ export type AddRowResult =
   | { ok: false; reason: 'not_allowed'; tabs: string[] }
   | { ok: false; reason: 'no_columns'; tab: string }
   | { ok: false; reason: 'unknown_columns'; tab: string; unknown: string[]; columns: string[] }
-  | { ok: false; reason: 'not_from_person'; tab: string; columns: string[] };
+  | { ok: false; reason: 'not_from_person'; tab: string; columns: string[] }
+  | { ok: false; reason: 'formula_blocked'; tab: string; columns: string[] };
 
 export interface GoogleSheetsServiceOptions {
   /** Overrides the client (tests); default from the build's Google app, or the fake with --fake-wa. */
@@ -117,6 +131,36 @@ export interface UsableSheets {
   readTabs: string[];
   /** Tabs on Add rows, in the saved order. */
   addTabs: string[];
+  /** Add rows tabs where the AI may fill values it looked up or worked out (admin switch). */
+  aiValueTabs: string[];
+  /** Add rows tabs where values go in as typed, formulas included (admin switch). */
+  formulaTabs: string[];
+}
+
+/** One tab's permission switches as saved: kept (true) only on Add rows, else left out. */
+function tabPermissions(tab: SheetTabSetting): SheetTabSetting {
+  const add = tab.access === 'add';
+  return {
+    title: tab.title,
+    access: tab.access,
+    ...(add && tab.aiValues ? { aiValues: true } : {}),
+    ...(add && tab.formulas ? { formulas: true } : {}),
+  };
+}
+
+/** The switches that changed between two saves, per tab (audit: names and on/off only). */
+export function permissionChanges(
+  before: readonly SheetTabSetting[],
+  after: readonly SheetTabSetting[],
+): Array<{ tab: string; switch: 'aiValues' | 'formulas'; before: boolean; after: boolean }> {
+  const titles = [...new Set([...before, ...after].map((t) => t.title))];
+  return titles.flatMap((tab) =>
+    (['aiValues', 'formulas'] as const).flatMap((key) => {
+      const was = !!before.find((t) => t.title === tab)?.[key];
+      const now = !!after.find((t) => t.title === tab)?.[key];
+      return was === now ? [] : [{ tab, switch: key, before: was, after: now }];
+    }),
+  );
 }
 
 function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -318,12 +362,13 @@ export function createGoogleSheetsService(
     tab: string,
     rows: string[][],
     signal?: AbortSignal,
+    input: SheetValueInput = 'RAW',
   ): Promise<void> {
     await account.withToken(async (token) => {
       let waited = 0;
       for (let attempt = 0; ; attempt++) {
         try {
-          return await client!.append(token, spreadsheetId, tab, rows, signal);
+          return await client!.append(token, spreadsheetId, tab, rows, signal, input);
         } catch (error) {
           const wait = QUOTA_WAITS_MS[attempt];
           const quota = error instanceof GoogleError && error.status === 429;
@@ -401,9 +446,17 @@ export function createGoogleSheetsService(
       const settings = readSettings(ctx.db, agentId);
       if (!settings.spreadsheetId) return null;
       const readTabs = settings.tabs.filter((t) => t.access === 'read').map((t) => t.title);
-      const addTabs = settings.tabs.filter((t) => t.access === 'add').map((t) => t.title);
+      const adds = settings.tabs.filter((t) => t.access === 'add');
+      const addTabs = adds.map((t) => t.title);
       if (!readTabs.length && !addTabs.length) return null;
-      return { settings, spreadsheetId: settings.spreadsheetId, readTabs, addTabs };
+      return {
+        settings,
+        spreadsheetId: settings.spreadsheetId,
+        readTabs,
+        addTabs,
+        aiValueTabs: adds.filter((t) => t.aiValues).map((t) => t.title),
+        formulaTabs: adds.filter((t) => t.formulas).map((t) => t.title),
+      };
     },
 
     /** The column names of these tabs of the agent's spreadsheet (cached 5 minutes). */
@@ -466,7 +519,8 @@ export function createGoogleSheetsService(
       actor: { userId: number; ip: string | null },
     ): Promise<SheetsAgentSettings> {
       if (!agentById(ctx.db, agentId)) throw errors.notFound('Agent');
-      const parsed = SheetsAgentSettings.parse(next);
+      const input = SheetsAgentSettings.parse(next);
+      const parsed = { ...input, tabs: input.tabs.map(tabPermissions) };
       const before = readSettings(ctx.db, agentId);
       let saved: SheetsAgentSettings;
       let droppedTabs = 0;
@@ -485,6 +539,8 @@ export function createGoogleSheetsService(
       const fields: string[] = [];
       if (before.spreadsheetId !== saved.spreadsheetId) fields.push('spreadsheetId');
       if (JSON.stringify(before.tabs) !== JSON.stringify(saved.tabs)) fields.push('tabs');
+      // The permission switches, before/after per tab (tab names and on/off only).
+      const permissions = permissionChanges(before.tabs, saved.tabs);
       writeSettings(ctx.db, agentId, saved, now());
       clearColumns(agentId);
       if (fields.length)
@@ -492,7 +548,12 @@ export function createGoogleSheetsService(
           userId: actor.userId,
           action: 'google_sheets.agent_settings',
           ip: actor.ip,
-          meta: { agentId, fields, ...(droppedTabs ? { droppedTabs } : {}) },
+          meta: {
+            agentId,
+            fields,
+            ...(droppedTabs ? { droppedTabs } : {}),
+            ...(permissions.length ? { permissions } : {}),
+          },
         });
       return saved;
     },
@@ -532,8 +593,12 @@ export function createGoogleSheetsService(
      * Adds one row to a tab on Add rows (design group-agents Part A). Guards: the tab is on Add
      * rows for this agent, the column names are the tab's own, every value the AI passes (auto
      * columns aside) was written by the person this row is for unless a file they sent was given
-     * to the model, and the same row (chat, tab, newest message, values) is never added twice.
-     * Values are written RAW. Google errors are thrown (the tool hands over).
+     * to the model or the tab lets the AI fill values ("aiValues"), and the same row (chat, tab,
+     * newest message, values) is never added twice. Values are written RAW; a tab with "formulas"
+     * on is written USER_ENTERED, where only a formula the AI made (aiValues on, not in any
+     * person's message of the chat, no file given) runs and never one that reaches outside the
+     * sheet; every other value that looks like a formula is kept as text. Google errors are thrown
+     * (the tool hands over).
      */
     async addRow(
       agentId: number,
@@ -569,12 +634,35 @@ export function createGoogleSheetsService(
       let personJids = record?.personJids ?? null;
       if (!personJids && group && newest?.senderJid) personJids = [newest.senderJid];
       const filesGiven = record?.filesGiven ?? false;
-      if (!filesGiven) {
+      const aiValues = usable.aiValueTabs.includes(tab);
+      const formulas = usable.formulaTabs.includes(tab);
+      if (!filesGiven && !aiValues) {
         const texts = personTexts(ctx.db, chatJid, personJids);
         const refused = [...matched.byIndex]
           .filter(([i, value]) => value && !autoColumn(header[i]!) && !personWrote(texts, value))
           .map(([i]) => header[i]!);
         if (refused.length) return { ok: false, reason: 'not_from_person', tab, columns: refused };
+      }
+      // Formulas: only the AI's own run (see above); a formula from a person stays text.
+      const runFormula = new Set<number>();
+      if (formulas) {
+        let chatTexts: string[] | null = null;
+        const reachesOut: string[] = [];
+        for (const [i, value] of matched.byIndex) {
+          if (!value || autoColumn(header[i]!) || !isFormula(value)) continue;
+          chatTexts ??= personTexts(ctx.db, chatJid, null);
+          const fromPerson = filesGiven || !aiValues || personWrote(chatTexts, value);
+          if (fromPerson) continue;
+          if (formulaReachesOut(value)) reachesOut.push(header[i]!);
+          else runFormula.add(i);
+        }
+        if (reachesOut.length) {
+          log.info(
+            { event: 'google_sheets_formula_refused', agentId, columns: reachesOut.length },
+            'Sheet formula refused',
+          );
+          return { ok: false, reason: 'formula_blocked', tab, columns: reachesOut };
+        }
       }
 
       const key: SheetRowKey = {
@@ -604,11 +692,14 @@ export function createGoogleSheetsService(
         aiagent: agentById(ctx.db, agentId)?.displayName ?? '',
         source: record?.fileNames.length ? record.fileNames.join(', ') : 'Message',
       };
+      const cell = (i: number, text: string) =>
+        formulas && !runFormula.has(i) ? asText(text) : text;
       const row = header.map((name, i) => {
         const value = matched.byIndex.get(i);
-        if (value !== undefined && value !== '') return value.slice(0, SHEET_VALUE_CHARACTERS);
+        if (value !== undefined && value !== '')
+          return cell(i, value.slice(0, SHEET_VALUE_CHARACTERS));
         const which = name ? autoColumn(name) : null;
-        return which ? oneLine(auto[which] ?? '').slice(0, SHEET_VALUE_CHARACTERS) : '';
+        return which ? cell(i, oneLine(auto[which] ?? '').slice(0, SHEET_VALUE_CHARACTERS)) : '';
       });
       while (row.length && !row[row.length - 1]) row.pop();
 
@@ -619,6 +710,7 @@ export function createGoogleSheetsService(
           tab,
           writeHeader ? [header, row] : [row],
           signal,
+          formulas ? 'USER_ENTERED' : 'RAW',
         );
         values.delete(`${usable.spreadsheetId}\n${tab}`);
         if (writeHeader)
@@ -638,10 +730,89 @@ export function createGoogleSheetsService(
         now(),
       );
       log.info(
-        { event: 'google_sheets_row_added', agentId, columns: matched.byIndex.size },
+        {
+          event: 'google_sheets_row_added',
+          agentId,
+          columns: matched.byIndex.size,
+          ...(formulas ? { asTyped: true, formulas: runFormula.size } : {}),
+        },
         'AI added a sheet row',
       );
       return { ok: true, already: false, tab };
+    },
+
+    /**
+     * Creates a spreadsheet for an agent (admins; docs/connector-design.md Part E): the tabs with their
+     * column names in the first row and the layout's formulas (USER_ENTERED, an admin's action),
+     * then saves it as the agent's spreadsheet with the layout's tab access. A formula that reaches
+     * outside the sheet refuses the whole layout before anything is created (400
+     * `formula_blocked`). Audited with the spreadsheet id and counts, never names or cells.
+     */
+    async createSpreadsheet(
+      agentId: number,
+      input: SheetLayout,
+      actor: { userId: number; ip: string | null },
+    ): Promise<SheetsAgentSettings> {
+      if (!agentById(ctx.db, agentId)) throw errors.notFound('Agent');
+      const layout = SheetLayout.parse(input);
+      if (!linked()) throw new HttpError(409, 'not_connected', 'Connect a Google account first');
+      const formulas = layout.tabs.flatMap((tab) =>
+        (tab.formulas ?? []).map((f) => ({ tab: tab.title, ...f })),
+      );
+      if (formulas.some((f) => formulaReachesOut(f.formula)))
+        throw new HttpError(
+          400,
+          'formula_blocked',
+          'A formula reaches outside the sheet (a web address or a function such as IMPORTRANGE)',
+        );
+      const data = [
+        ...layout.tabs.map((tab) => ({
+          range: tabRange(tab.title, 'A1'),
+          values: [tab.columns.map(asText)],
+        })),
+        ...formulas.map((f) => ({ range: tabRange(f.tab, f.cell), values: [[f.formula]] })),
+      ];
+      let id: string;
+      try {
+        id = await account.withToken(async (token) => {
+          const created = await client!.create(
+            token,
+            layout.name,
+            layout.tabs.map((tab) => tab.title),
+          );
+          await client!.writeCells(token, created, data);
+          return created;
+        });
+      } catch (error) {
+        if (error instanceof HttpError) throw error;
+        throw googleHttpError(error);
+      }
+      audit(ctx.db, {
+        userId: actor.userId,
+        action: 'google_sheets.spreadsheet_created',
+        ip: actor.ip,
+        meta: { agentId, spreadsheetId: id, tabs: layout.tabs.length, formulas: formulas.length },
+      });
+      log.info(
+        {
+          event: 'google_sheets_created',
+          agentId,
+          tabs: layout.tabs.length,
+          formulas: formulas.length,
+        },
+        'Spreadsheet created',
+      );
+      return service.putSettings(
+        agentId,
+        {
+          spreadsheetId: id,
+          spreadsheetName: layout.name,
+          tabs: layout.tabs
+            .filter((tab) => tab.access !== 'off')
+            .map((tab) => ({ title: tab.title, access: tab.access })),
+        },
+        actor,
+      );
     },
 
     /**

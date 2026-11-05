@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AiAgentPreset, AI_CONTEXT_NAME_CHARACTERS, AI_HANDOFF_RULES_CHARACTERS } from './ai.js';
 import { ConnectorId, versionAtLeast } from './connector-list.js';
+import { SheetLayout } from './google-sheets.js';
 
 /**
  * The AI agent template list (design: docs/features/template-store/design.md). The public repo
@@ -100,6 +101,11 @@ export const AgentTemplateEntry = z.object({
     .object({ answerDirect: z.boolean().optional(), answerGroups: z.boolean().optional() })
     .optional(),
   recommendedConnectors: z.array(ConnectorId).max(5).optional(),
+  /**
+   * A Google Sheets layout the admin can create in one step on the Google Sheets page ("Create
+   * from <template> layout"). Optional: older lists and older apps (which strip it) keep working.
+   */
+  sheet: SheetLayout.optional(),
 });
 export type AgentTemplateEntry = z.infer<typeof AgentTemplateEntry>;
 export type AgentTemplateEntryInput = z.input<typeof AgentTemplateEntry>;

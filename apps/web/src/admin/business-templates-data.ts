@@ -1,4 +1,4 @@
-import type { AiAgentPreset } from '@ezychat/shared';
+import type { AiAgentPreset, SheetLayoutInput } from '@ezychat/shared';
 
 /**
  * The templates built into this app (plain data, no React: `scripts/export-templates.mjs` reads it to
@@ -22,6 +22,30 @@ export interface TemplateDefaults {
   answerGroups?: boolean;
 }
 export const GROUP_AGENT_DEFAULTS = { answerGroups: true, answerDirect: false } as const;
+
+/**
+ * The Claims template's Google Sheets layout ("Create from Claims layout" on the Google Sheets
+ * page): one tab the agent adds claims to, with EzyChat's own columns where they help.
+ */
+export const CLAIMS_SHEET_LAYOUT: SheetLayoutInput = {
+  name: 'Claims',
+  tabs: [
+    {
+      title: 'Claims',
+      columns: [
+        'Date',
+        'Name',
+        'WhatsApp',
+        'Group',
+        'Policy no',
+        'Amount',
+        'What happened',
+        'Source',
+      ],
+      access: 'add',
+    },
+  ],
+};
 
 export const BUSINESS_TEMPLATES = [
   { id: 'clinic', preset: 'faq', category: 'health', icon: 'stethoscope' },
@@ -48,6 +72,7 @@ export const BUSINESS_TEMPLATES = [
     category: 'operations',
     icon: 'receipt-text',
     defaults: GROUP_AGENT_DEFAULTS,
+    sheet: CLAIMS_SHEET_LAYOUT,
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -55,6 +80,7 @@ export const BUSINESS_TEMPLATES = [
   category: TemplateCategory;
   icon: string;
   defaults?: TemplateDefaults;
+  sheet?: SheetLayoutInput;
 }>;
 
 export type BusinessTemplateId = (typeof BUSINESS_TEMPLATES)[number]['id'];

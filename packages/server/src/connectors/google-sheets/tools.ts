@@ -46,19 +46,56 @@ export function refusal(result: Exclude<AddRowResult, { ok: true }>): string {
       return `Not added: the tab "${result.tab}" has no column ${quoted(result.unknown)}. Its columns are ${quoted(result.columns)}. Call add_sheet_row again with these names.`;
     case 'not_from_person':
       return `Not added: the value for ${quoted(result.columns)} is not in what the person wrote or sent. Ask the person for it, then call add_sheet_row again with their exact words; or leave that column out.`;
+    case 'formula_blocked':
+      return `Not added: the formula for ${quoted(result.columns)} uses a function or web address that reaches outside the sheet, which is not allowed. Call add_sheet_row again with a plain value or a formula that only uses this spreadsheet.`;
   }
 }
 
+/** What an Add rows tab allows beyond the person's own words, for its line in the description. */
+export interface TabAllows {
+  aiValues: readonly string[];
+  formulas: readonly string[];
+}
+
 /** `"Prices" (columns: Item, Price)` lines for a tool description. */
-function tabList(tabs: readonly string[], columns: Map<string, string[]> | null): string {
+function tabList(
+  tabs: readonly string[],
+  columns: Map<string, string[]> | null,
+  allows?: TabAllows,
+): string {
   return tabs
     .map((tab) => {
       const names = columns?.get(tab)?.filter(Boolean);
-      return names?.length
-        ? `"${tab}" (columns: ${names.join(', ')})`
-        : `"${tab}"${columns ? ' (no column names)' : ''}`;
+      const extra = [
+        allows?.aiValues.includes(tab) && 'values you looked up or worked out allowed',
+        allows?.formulas.includes(tab) && 'formulas allowed',
+      ].filter(Boolean);
+      let columnText: string | null = null;
+      if (names?.length) columnText = `columns: ${names.join(', ')}`;
+      else if (columns) columnText = 'no column names';
+      const parts = [columnText, ...extra].filter(Boolean);
+      return parts.length ? `"${tab}" (${parts.join('; ')})` : `"${tab}"`;
     })
     .join('; ');
+}
+
+/** The add tool's rule for values, with the extra rules only when a tab allows them. */
+export function valueRules(addTabs: readonly string[], allows: TabAllows): string {
+  const aiValues = addTabs.some((tab) => allows.aiValues.includes(tab));
+  const formulas = addTabs.some((tab) => allows.formulas.includes(tab));
+  let text = 'Use only values the person wrote or that are in a file they sent.';
+  if (aiValues)
+    text +=
+      ' On a tab marked "values you looked up or worked out allowed" you may also pass a figure you ' +
+      'read with read_sheet_rows or worked out from those rows and the chat (a total, a date); never ' +
+      'invent or estimate one, and leave a column out when you do not have it.';
+  if (formulas)
+    text +=
+      ' On a tab marked "formulas allowed" a value starting with = is entered as a Google Sheets ' +
+      'formula and numbers and dates are entered as numbers and dates; a formula that fetches data ' +
+      'from outside the spreadsheet or uses a web address is refused, and a formula the person wrote ' +
+      'is kept as text.';
+  return text;
 }
 
 /**
@@ -201,13 +238,14 @@ export async function sheetsAgentTools(
 
   if (addTabs.length) {
     const [first, ...rest] = addTabs;
+    const allows: TabAllows = { aiValues: usable.aiValueTabs, formulas: usable.formulaTabs };
     tools[ADD_SHEET_ROW] = tool({
       description:
         "Add one new row to a tab of the business's Google Sheet when your instructions say to record " +
-        `something there. Tabs you may add rows to: ${tabList(addTabs, columns)}. ` +
+        `something there. Tabs you may add rows to: ${tabList(addTabs, columns, allows)}. ` +
         'Pass the values by column name. EzyChat fills these columns itself when the tab has them: ' +
         `${SHEETS_AUTO_COLUMNS.join(', ')} (pass one only to change it). ` +
-        'Use only values the person wrote or that are in a file they sent. Rows are only added, never ' +
+        `${valueRules(addTabs, allows)} Rows are only added, never ` +
         'changed. Report recorded only when this tool says it was added.',
       inputSchema: z.object({
         tab: z.enum([first!, ...rest]).describe('The tab to add the row to'),

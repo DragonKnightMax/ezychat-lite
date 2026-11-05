@@ -18,6 +18,9 @@ into AGENTS.md.
   it in the same PR. Read the duplicated blocks with `api/duplications/show?key=<project>:<path>&pullRequest=<n>`.
 - `.partial()` keeps a zod `.default()`: a PATCH schema built from a response schema with a defaulted field fills that
   field on every patch. Re-declare such fields `.optional()` in the patch body (e.g. `SettingsPatchBody.usageStats`).
+- SonarCloud flags a scanning regex with two adjacent overlapping quantifiers as super-linear (S8786), e.g.
+  `matchAll(/(name)\s*\(/g)` or `[\d,\s]*\s*`: match the token alone and check what follows with `slice`/`startsWith`,
+  and trim before a plain-value regex instead of allowing spaces twice.
 - SonarCloud fails the security rating on a literal bidi control character in source (S6389: write `\u202e`, not the
   character; an editor or the agent's file-writing tool may turn the escape into the character, so scan new test
   files for U+200E/F, U+202A–202E, U+2066–2069, U+FEFF before pushing) and on a JSON key containing "password" (S2068,
@@ -188,7 +191,8 @@ into AGENTS.md.
 - `build-summary.mjs record` takes the short stage keys (`design dev unit e2e devbuild screen`), and release-review
   counts a stage only when the code diff at its `--sha` equals the head's: re-record with `--sha <head>` after a
   docs-only commit, or the stages show as `✗ missing`. The same holds for the commit cited in a
-  `docs/dev-build-checks.md` row: cite the commit that already contains a new check script, not the one before it.
+  `docs/dev-build-checks.md` row: cite the commit that already contains a new check script, not the one before it;
+  a row with no commit in backticks never counts. Record screen and devbuild only on a commit after the last UI fix.
 - Never rebase, stash or switch branches in a checkout where subagents are still writing files: commit each finished
   agent's files first, and rebase onto a newly merged base only after the last agent has handed back.
 - AGENTS.md is the single source of truth (CLAUDE.md imports it); edit rules there.
@@ -480,8 +484,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   search the open `docs(learnings)` PRs (`gh pr diff <n>`), not only `main`: one may already hold it. Bring a long PR branch
   up to date by merging `main` into it (one resolution, squash-merged later) rather than rebasing every
   commit. After a base PR is squash-merged, replay only your own commits
-  (`git rebase --onto origin/main <old base>`); a clean rebase still needs a typecheck (semantic
-  conflicts), and never chain `git add`/`rebase --continue` after edits that may have failed — grep for
+  (`git rebase --onto origin/main <old base>`); a clean rebase or merge still needs a typecheck (semantic
+  conflicts) and a look at the import blocks of auto-merged files (both sides adding an import from the same module
+  leaves two lines that ESLint passes and SonarCloud flags, S3863), and never chain `git add`/`rebase --continue` after edits that may have failed — grep for
   conflict markers first.
 - After merging `main` into the rename branch, `git grep -l "@wa-team-inbox/" -- apps packages e2e scripts`
   (not `grep -r | head`, which shows ignored release folders first): new files from `main` keep old imports.
@@ -1190,7 +1195,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 - A connector tool that writes into a customer-visible business system (a sheet row, a calendar event) must store the
   customer's text as data, never as something the other system runs: Google Sheets `append` with
-  `valueInputOption=RAW` (USER_ENTERED would run `=HYPERLINK(…)`), and pin it with a test that writes `=…`.
+  `valueInputOption=RAW` (USER_ENTERED would run `=HYPERLINK(…)`), and pin it with a test that writes `=…`. When an
+  admin switch allows USER_ENTERED, escape every value that is not the AI's own allowed formula with a leading `'`,
+  auto-filled ones too (a WhatsApp push name can be `=IMPORTXML(…)`), and check formulas fail closed (URL anywhere,
+  blocked function names and name parts), with a test per escape path.
 - A connector tool that acts on a chat's file lets the model choose a **label** of files the server listed (this chat's
   inbound files, its senders), never a message id, link or path from the model; the server maps the label back and
   re-checks Safety, size and duplicates (`connectors/google-drive/tools.ts`).

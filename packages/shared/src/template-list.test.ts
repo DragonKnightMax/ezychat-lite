@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AI_AGENT_PRESETS, AI_INSTRUCTIONS_CHARACTERS } from './ai.js';
+import { SHEET_CELL } from './google-sheets.js';
 import {
   AgentTemplateEntry,
   AgentTemplateListFile,
@@ -90,6 +91,34 @@ describe('agent template contract', () => {
       expect(preset.instructions.length + 2 + TEMPLATE_FOCUS_CHARACTERS).toBeLessThanOrEqual(
         AI_INSTRUCTIONS_CHARACTERS,
       );
+  });
+
+  it('takes an optional Google Sheets layout, checked like the create route', () => {
+    expect(entry().sheet).toBeUndefined();
+    const sheet = {
+      name: 'Claims',
+      tabs: [
+        {
+          title: 'Claims',
+          columns: ['Date', 'Amount'],
+          access: 'add',
+          formulas: [{ cell: 'C2', formula: '=SUM(B2:B1000)' }],
+        },
+        { title: 'Notes', columns: ['Note'] },
+      ],
+    };
+    const parsed = entry({ sheet });
+    expect(parsed.sheet?.tabs[1]).toEqual({ title: 'Notes', columns: ['Note'], access: 'off' });
+    for (const bad of [
+      { ...sheet, tabs: [] },
+      { ...sheet, tabs: [sheet.tabs[1], sheet.tabs[1]] },
+      { ...sheet, tabs: [{ ...sheet.tabs[0], formulas: [{ cell: 'C1', formula: '=1' }] }] },
+      { ...sheet, tabs: [{ ...sheet.tabs[0], formulas: [{ cell: 'AA2', formula: '=1' }] }] },
+      { ...sheet, tabs: [{ ...sheet.tabs[0], formulas: [{ cell: 'C2', formula: 'SUM(1)' }] }] },
+    ])
+      expect(() => entry({ sheet: bad })).toThrow();
+    expect(SHEET_CELL.test('Z1000')).toBe(true);
+    expect(SHEET_CELL.test('A1001')).toBe(false);
   });
 
   it('a list file needs the templates catalog marker (a connector list never parses)', () => {

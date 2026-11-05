@@ -369,7 +369,16 @@ read, `upgrade.ts` adds a leads line to the agent's instructions once). Tools `r
 …/agents/:agentId/refresh` clears it); the agent's instructions say what to record. `add_sheet_row` fills Date, Name,
 WhatsApp, Group, AI agent, Source, accepts other values only from the person's messages or a file they sent
 (`values.ts`), never twice for the same message+values, no daily cap, RAW, also in group turns (the only write there),
-never Try it. Activity and
+never Try it. Per Add rows tab, two admin switches (off by default, `SheetTabSetting.aiValues` / `.formulas` in the
+settings JSON, audited before/after; design `docs/connector-design.md` Part D): `aiValues` skips the "the person wrote it" check (the
+tool description says only looked-up or worked-out figures); `formulas` appends `USER_ENTERED`, where only a formula the
+AI made runs (aiValues on, not in any person's message, no file given) and never one that reaches outside the sheet
+(`values.ts#formulaReachesOut`: web address, IMPORT*/IMAGE/HYPERLINK/WEBSERVICE/… → `formula_blocked`); every other
+formula-like value, auto columns included, is written as text with a leading `'` (`asText`). Admins can **create a new
+sheet** (`POST …/agents/:agentId/create`, shared `SheetLayout`; Part E): `spreadsheets.create` + one USER_ENTERED
+`values:batchUpdate` (column names, the layout's formulas, same `formulaReachesOut` check → 400 `formula_blocked`),
+then saved as the agent's; blank or from a template's optional `AgentTemplateEntry.sheet` (built-in Claims has one);
+audit `google_sheets.spreadsheet_created` with counts only. Activity and
 logs keep who and when only, never row values. `--fake-wa` without a Google app uses `FakeGoogleSheets`
 (`/api/dev/fake-google-sheets*`, demo sheet `FAKE_SPREADSHEET_ID`).
 

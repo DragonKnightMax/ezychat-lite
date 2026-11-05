@@ -61,6 +61,7 @@ import {
   type AgentTemplateText,
   type AiAgentPreset,
   type AiContextTextBody,
+  type SheetLayoutInput,
 } from '@ezychat/shared';
 import { presetDefaults } from './ai-status';
 import {
@@ -160,6 +161,8 @@ export interface GalleryTemplate {
   groupAgent: boolean;
   /** Names of the connectors the template recommends (list templates only). */
   connectors: string[];
+  /** Its Google Sheets layout ("Create from … layout" on the Google Sheets page), else null. */
+  sheet: SheetLayoutInput | null;
 }
 
 /** The app's own templates, texts from the catalogs. */
@@ -185,6 +188,7 @@ export function builtinTemplates(t: TFunction<'admin'>): GalleryTemplate[] {
       },
       groupAgent: isGroupAgent('defaults' in tpl ? tpl.defaults : undefined),
       connectors: [],
+      sheet: 'sheet' in tpl ? tpl.sheet : null,
     };
   });
 }
@@ -209,6 +213,7 @@ export function galleryTemplates(
     texts: agentTemplateTexts(entry, language),
     groupAgent: isGroupAgent(entry.defaults),
     connectors: connectors.map((c) => c.name),
+    sheet: entry.sheet ?? null,
   }));
   return mergeAgentTemplates(builtinTemplates(t), listed);
 }

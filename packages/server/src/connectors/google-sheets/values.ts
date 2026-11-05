@@ -148,3 +148,67 @@ export function personWrote(texts: readonly string[], value: string): boolean {
   }
   return false;
 }
+
+// ── Formulas (a tab with "Allow formulas" on) ─────────────────────────────────────────────
+
+/** A plain number as typed: sign, digits, separators, an optional decimal part and percent. */
+const PLAIN_NUMBER = /^[+-]?\d[\d, ]*(?:\.\d+)?%?$/;
+
+/**
+ * True when Google would read `value` as a formula if it were typed into a cell: it starts with
+ * `=`, or with `+`, `-` or `@` and is not a plain number (fail closed: treated as a formula).
+ */
+export function isFormula(value: string): boolean {
+  const text = value.trimStart();
+  if (text.startsWith('=')) return true;
+  return /^[+\-@]/.test(text) && !PLAIN_NUMBER.test(text.trim().replace(/^([+-])\s+/, '$1'));
+}
+
+/**
+ * Functions that fetch or send data outside the sheet, or open another file. Any function whose
+ * name contains one of `BLOCKED_PARTS` is refused too (custom functions such as `FETCHPRICE`).
+ */
+export const BLOCKED_FORMULA_FUNCTIONS = [
+  'IMPORTXML',
+  'IMPORTHTML',
+  'IMPORTDATA',
+  'IMPORTFEED',
+  'IMPORTRANGE',
+  'IMAGE',
+  'HYPERLINK',
+  'WEBSERVICE',
+  'GOOGLEFINANCE',
+  'GOOGLETRANSLATE',
+  'DETECTLANGUAGE',
+  'ENCODEURL',
+  'FILTERXML',
+] as const;
+const BLOCKED_PARTS = /IMPORT|WEB|URL|HTTP|FETCH|LINK|MAIL|SEND/;
+const BLOCKED_NAMES = new Set<string>(BLOCKED_FORMULA_FUNCTIONS);
+/** A web address or a link scheme anywhere in the formula (also inside a quoted text). */
+const URL_IN_FORMULA = /(?:https?|ftp|file|data|javascript|mailto)\s*:|:\/\/|www\./i;
+
+/**
+ * True when a formula may reach outside the sheet: a blocked function, a function name with a
+ * blocked part, or a web address anywhere in it. Fails closed (an unusual name is refused).
+ */
+export function formulaReachesOut(formula: string): boolean {
+  const text = formula.normalize('NFKC');
+  if (URL_IN_FORMULA.test(text)) return true;
+  // Each name, then whether a "(" follows it (spaces allowed): a call. One linear pass per name.
+  for (const match of text.matchAll(/[A-Za-z_][\w.]*/g)) {
+    const after = text.slice(match.index + match[0].length).trimStart();
+    if (!after.startsWith('(')) continue;
+    const name = match[0].toUpperCase().replace(/^_XLFN\./, '');
+    if (BLOCKED_NAMES.has(name) || BLOCKED_PARTS.test(name)) return true;
+  }
+  return false;
+}
+
+/**
+ * A value as Google should store it as text when values are entered as typed: a leading `'`
+ * makes Google keep the rest as text (a formula never runs, a leading `'` is kept).
+ */
+export function asText(value: string): string {
+  return isFormula(value) || value.startsWith("'") ? `'${value}` : value;
+}

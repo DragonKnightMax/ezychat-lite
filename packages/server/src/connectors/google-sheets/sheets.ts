@@ -1,7 +1,8 @@
 /**
  * The few Google Sheets API v4 calls the connector needs, on GoogleClient's sign-in, timeout, body
- * limit and error mapping. Values are written with `valueInputOption=RAW`: Google stores them as
- * typed text and never runs a formula a customer wrote (`=HYPERLINK(…)`, `+…`).
+ * limit and error mapping. Values are written with `valueInputOption=RAW` by default: Google stores
+ * them as text and never runs a formula a customer wrote (`=HYPERLINK(…)`, `+…`). A tab with
+ * "Allow formulas" on appends `USER_ENTERED`; the service escapes every value that must stay text.
  *
  * Never log tokens, sheet values, names or phone numbers.
  */
@@ -30,6 +31,9 @@ export const SHEETS_ENDPOINTS: GoogleEndpoints = {
 export const MAX_READ_ROWS = 1000;
 export const MAX_READ_COLUMNS = 26;
 const MAX_TABS = 100;
+
+/** How Google reads appended values. */
+export type SheetValueInput = 'RAW' | 'USER_ENTERED';
 
 export interface SpreadsheetMeta {
   name: string;
@@ -128,17 +132,58 @@ export class SheetsClient extends GoogleClient {
     return out;
   }
 
-  /** Adds `rows` below the last row of the tab's table (RAW: never parsed as formulas). */
+  /**
+   * Creates a spreadsheet in the signed-in account with these grid tabs (`drive.file` covers files
+   * the app creates) and returns its id. Nothing is written into the cells here.
+   */
+  async create(
+    token: string,
+    name: string,
+    tabs: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const { json } = await this.api('/spreadsheets', token, {
+      method: 'POST',
+      signal,
+      body: JSON.stringify({
+        properties: { title: name },
+        sheets: tabs.map((title) => ({ properties: { title } })),
+      }),
+    });
+    const id = str(json.spreadsheetId);
+    if (!id) throw new GoogleError('rejected');
+    return id;
+  }
+
+  /** Writes cells as typed (USER_ENTERED): `data` is A1 ranges with their rows. */
+  async writeCells(
+    token: string,
+    id: string,
+    data: ReadonlyArray<{ range: string; values: string[][] }>,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await this.api(`/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`, token, {
+      method: 'POST',
+      signal,
+      body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+    });
+  }
+
+  /**
+   * Adds `rows` below the last row of the tab's table. RAW (default): never parsed as formulas.
+   * USER_ENTERED: as if typed (formulas, numbers, dates); the caller escapes text with a `'`.
+   */
   async append(
     token: string,
     id: string,
     tab: string,
     rows: string[][],
     signal?: AbortSignal,
+    input: SheetValueInput = 'RAW',
   ): Promise<void> {
     const range = tabRange(tab, 'A1');
     const { json } = await this.api(
-      `/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      `/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}:append?valueInputOption=${input}&insertDataOption=INSERT_ROWS`,
       token,
       { method: 'POST', signal, body: JSON.stringify({ majorDimension: 'ROWS', values: rows }) },
     );

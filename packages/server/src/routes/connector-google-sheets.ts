@@ -1,6 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { SheetsAgentSettings, SheetsPickerResult, SpreadsheetLookupBody } from '@ezychat/shared';
+import {
+  SheetLayout,
+  SheetsAgentSettings,
+  SheetsPickerResult,
+  SpreadsheetLookupBody,
+} from '@ezychat/shared';
 import { requireAdmin } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import {
@@ -145,6 +150,14 @@ export default async function connectorGoogleSheetsRoutes(app: FastifyInstance, 
     sheets.getSettings(agentId);
     const body = parse(SheetsAgentSettings, req.body ?? {});
     return sheets.putSettings(agentId, body, actor(req));
+  });
+
+  // Settings → Create a new sheet (blank or a template's layout): created, then saved as the agent's.
+  app.post('/connectors/google-sheets/agents/:agentId/create', admin, async (req) => {
+    const { agentId } = parse(AgentParams, req.params);
+    sheets.getSettings(agentId);
+    const layout = parse(SheetLayout, req.body ?? {});
+    return sheets.createSpreadsheet(agentId, layout, actor(req));
   });
 
   // Settings → Refresh: tab names and column names read from Google again (1 a 10 s per install).

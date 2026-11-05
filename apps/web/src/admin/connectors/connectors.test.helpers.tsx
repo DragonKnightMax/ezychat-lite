@@ -16,6 +16,7 @@ import {
   type DrivePickerProgress,
   type GoogleDriveStatus,
   type SheetsActivity,
+  type SheetLayout,
   type SheetsAgentSettings,
   type SheetsPickerProgress,
   type SpreadsheetInfo,
@@ -233,6 +234,8 @@ export interface World {
    * saved spreadsheet as `spreadsheets` holds it. `'busy'` answers 429 rate_limited.
    */
   sheetRefresh: (SpreadsheetInfo | 'busy')[];
+  /** Layouts sent to Create a new sheet (`POST …/agents/:id/create`), in order. */
+  sheetCreated: SheetLayout[];
   /** Google Drive: its own sign-in, settings per agent, activity and picker answers. */
   drive: GoogleDriveStatus;
   driveProgress: GoogleCalendarConnectProgress[];
@@ -279,6 +282,7 @@ export function world(patch: Partial<World> = {}): World {
     spreadsheets: { [SHEET_ID]: SHEET },
     pickerProgress: [{ status: 'done', sheet: SHEET }],
     sheetRefresh: [],
+    sheetCreated: [],
     drive: driveStatus('disconnected'),
     driveProgress: [{ status: 'done', error: null }],
     driveSettings: {},
@@ -431,6 +435,27 @@ function sheetsRoute(w: World, method: string, path: string, init?: RequestInit)
     return found
       ? json(found)
       : json({ error: { code: 'validation', message: 'No spreadsheet chosen.' } }, 400);
+  }
+  const createMatch = /^\/agents\/(\d+)\/create$/.exec(rest);
+  if (createMatch && method === 'POST') {
+    const layout = JSON.parse(init!.body as string) as SheetLayout;
+    w.sheetCreated.push(layout);
+    const id = `created-sheet-${w.sheetCreated.length}-000000000000`;
+    w.spreadsheets[id] = {
+      id,
+      name: layout.name,
+      tabs: layout.tabs.map((tab) => ({ title: tab.title, rows: 1000, columns: tab.columns })),
+      checkedAt: Date.now(),
+      url: `https://docs.google.com/spreadsheets/d/${id}/edit`,
+    };
+    w.sheetSettings[Number(createMatch[1])] = {
+      spreadsheetId: id,
+      spreadsheetName: layout.name,
+      tabs: layout.tabs
+        .filter((tab) => tab.access !== 'off')
+        .map((tab) => ({ title: tab.title, access: tab.access })),
+    };
+    return json(w.sheetSettings[Number(createMatch[1])]);
   }
   const agentMatch = /^\/agents\/(\d+)$/.exec(rest);
   if (agentMatch) {

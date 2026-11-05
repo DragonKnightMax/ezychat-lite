@@ -15,6 +15,7 @@ import {
   GoogleSheetsStatus,
   SheetsActivityList,
   SheetsAgentSettings,
+  type SheetLayout,
   SheetsPickerProgress,
   SheetsPickerStart,
   SpreadsheetInfo,
@@ -191,6 +192,23 @@ export function useSaveSheetsSettings(agentId: number) {
       api(`/connectors/google-sheets/agents/${agentId}`, {
         method: 'PUT',
         body,
+        schema: SheetsAgentSettings,
+      }),
+    onSuccess: (saved) => qc.setQueryData(sheetsSettingsKey(agentId), saved),
+  });
+}
+
+/**
+ * Creates a new spreadsheet in the connected Google account from `layout` and saves it as the
+ * agent's (admins). 400 `formula_blocked` when a formula reaches outside the sheet.
+ */
+export function useCreateSheet(agentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (layout: SheetLayout) =>
+      api(`/connectors/google-sheets/agents/${agentId}/create`, {
+        method: 'POST',
+        body: layout,
         schema: SheetsAgentSettings,
       }),
     onSuccess: (saved) => qc.setQueryData(sheetsSettingsKey(agentId), saved),

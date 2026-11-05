@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BLOCKED_FORMULA_FUNCTIONS,
+  asText,
   autoColumn,
   columnKey,
   datesIn,
+  formulaReachesOut,
   headerColumns,
+  isFormula,
   matchColumns,
   personWrote,
 } from './values.js';
@@ -75,5 +79,44 @@ describe('personWrote', () => {
   it('lists the dates of a text', () => {
     expect(datesIn('2026-13-40 or 13/13')).toEqual([]);
     expect(datesIn('5th of nothing, Dec 25')).toEqual([{ d: 25, m: 12, y: null }]);
+  });
+});
+
+describe('sheet formulas', () => {
+  it('tells formulas from plain numbers', () => {
+    for (const value of ['=SUM(B2:B9)', '  =1+1', '+A1', '-B2*3', '@A1', '+ x'])
+      expect(isFormula(value), value).toBe(true);
+    for (const value of ['1250', '-12.50', '+60 12 345 6789', '15%', 'RM 1,250', 'P-1042', ''])
+      expect(isFormula(value), value).toBe(false);
+  });
+
+  it('refuses every function that reaches outside the sheet, and any web address', () => {
+    for (const name of BLOCKED_FORMULA_FUNCTIONS)
+      expect(formulaReachesOut(`=${name.toLowerCase()}("x")`), name).toBe(true);
+    expect(formulaReachesOut('=_xlfn.WEBSERVICE(A1)')).toBe(true);
+    // Custom functions with a telling name (Apps Script can fetch) fail closed.
+    expect(formulaReachesOut('=FETCHPRICE(A2)')).toBe(true);
+    expect(formulaReachesOut('=SENDTOCRM(A2)')).toBe(true);
+    expect(formulaReachesOut('=CONCAT("https", "://x.io")')).toBe(true);
+    expect(formulaReachesOut('=CONCAT("see ", "www.x.io")')).toBe(true);
+    expect(formulaReachesOut('=A1&"http:x"')).toBe(true);
+    // Full-width letters are normalised first.
+    expect(formulaReachesOut('=ＩＭＰＯＲＴＸＭＬ("a","b")')).toBe(true);
+    expect(formulaReachesOut('=IMPORTRANGE ("id", "A1")')).toBe(true);
+    for (const ok of [
+      '=SUM(B2:B9)*1.06',
+      "=VLOOKUP(A2,'Prices'!A:B,2,FALSE)",
+      '=TODAY()+3',
+      '=1+1',
+    ])
+      expect(formulaReachesOut(ok), ok).toBe(false);
+  });
+
+  it('keeps text as text when values are entered as typed', () => {
+    expect(asText('=HYPERLINK("http://x")')).toBe(`'=HYPERLINK("http://x")`);
+    expect(asText('+A1')).toBe("'+A1");
+    expect(asText("'quoted")).toBe("''quoted");
+    expect(asText('1250')).toBe('1250');
+    expect(asText('Mei Ying')).toBe('Mei Ying');
   });
 });

@@ -196,6 +196,7 @@ export function ToolSwitchRow({
   label,
   hint,
   badge,
+  tip,
   checked,
   disabled,
   onCheckedChange,
@@ -205,6 +206,8 @@ export function ToolSwitchRow({
   label: string;
   hint: string;
   badge?: string;
+  /** An InfoTip after the label (what a risky switch does). */
+  tip?: ReactNode;
   checked: boolean;
   disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -217,6 +220,7 @@ export function ToolSwitchRow({
           <span className="flex flex-wrap items-center gap-2">
             <Label htmlFor={id}>{label}</Label>
             {badge && <Badge variant="secondary">{badge}</Badge>}
+            {tip}
           </span>
           <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
         </div>

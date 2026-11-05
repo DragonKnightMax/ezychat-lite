@@ -8,6 +8,7 @@ import {
   googleSheetUrl,
   type GoogleSheetsStatus,
   type SheetTabAccess,
+  type SheetTabSetting,
   type SpreadsheetInfo,
 } from '@ezychat/shared';
 import { errorMessage } from '../../api/client';
@@ -20,14 +21,16 @@ import {
   useSpreadsheetLookup,
 } from '../../api/connectors';
 import { Banner, SegmentedControl } from '@/components/app';
+import { InfoTip } from '@/components/app/InfoTip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '../../lib/format';
 import { ErrorState, ListSkeleton, Pending, SaveBar } from '../adminUi';
+import { PickerWaiting, ToolSwitchRow } from './connector-ui';
+import { CreateSheetDialog } from './CreateSheetDialog';
 import { diffTabs, isAutoColumn, normalizeTabs, tabsToSave, type TabMarks } from './sheets-tabs';
-import { PickerWaiting } from './connector-ui';
 
 interface Picking {
   requestId: string;
@@ -72,6 +75,7 @@ export function SheetsSettingsCard({
   const [info, setInfo] = useState<SpreadsheetInfo | null>(null);
   /** The tabs before the admin pressed Refresh (marks what changed); null = nothing to compare. */
   const [before, setBefore] = useState<SpreadsheetInfo | null>(null);
+  const [creating, setCreating] = useState(false);
   const headingId = useId();
   const saved = query.data;
   const value = draft ?? saved;
@@ -168,12 +172,14 @@ export function SheetsSettingsCard({
     });
   };
 
-  const access = (title: string): SheetTabAccess =>
-    value?.tabs.find((x) => x.title === title)?.access ?? 'off';
-  const setAccess = (title: string, next: SheetTabAccess) => {
+  const tabSetting = (title: string): SheetTabSetting =>
+    value?.tabs.find((x) => x.title === title) ?? { title, access: 'off' };
+  /** Off removes the tab; the permission switches are kept while the admin edits. */
+  const setTab = (title: string, patch: Partial<SheetTabSetting>) => {
     if (!value) return;
     const rest = value.tabs.filter((x) => x.title !== title);
-    set({ tabs: next === 'off' ? rest : [...rest, { title, access: next }] });
+    const next = { ...tabSetting(title), ...patch };
+    set({ tabs: next.access === 'off' ? rest : [...rest, next] });
   };
   const marks = sheetInfo && before ? diffTabs(before, sheetInfo) : new Map<string, TabMarks>();
   const marked = [...marks.values()];
@@ -272,18 +278,28 @@ export function SheetsSettingsCard({
               )}
               {!picking && (
                 <div className="flex flex-col items-start gap-2">
-                  <Button
-                    size="touch"
-                    variant={value.spreadsheetId ? 'outline' : 'default'}
-                    disabled={picker.isPending}
-                    onClick={() => void choose()}
-                    data-testid="sheets-choose"
-                  >
-                    <Pending show={picker.isPending} />
-                    {value.spreadsheetId
-                      ? t('connectors.sheets.chooseAnother')
-                      : t('connectors.sheets.choose')}
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="touch"
+                      variant={value.spreadsheetId ? 'outline' : 'default'}
+                      disabled={picker.isPending}
+                      onClick={() => void choose()}
+                      data-testid="sheets-choose"
+                    >
+                      <Pending show={picker.isPending} />
+                      {value.spreadsheetId
+                        ? t('connectors.sheets.chooseAnother')
+                        : t('connectors.sheets.choose')}
+                    </Button>
+                    <Button
+                      size="touch"
+                      variant="outline"
+                      onClick={() => setCreating(true)}
+                      data-testid="sheets-create-open"
+                    >
+                      {t('connectors.sheets.create.open')}
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {t('connectors.sheets.chooseHint')}
                   </p>
@@ -362,9 +378,9 @@ export function SheetsSettingsCard({
                         key={tab.title}
                         title={tab.title}
                         columns={tab.columns}
-                        access={access(tab.title)}
+                        setting={tabSetting(tab.title)}
                         marks={marks.get(tab.title)}
-                        onChange={(next) => setAccess(tab.title, next)}
+                        onChange={(patch) => setTab(tab.title, patch)}
                       />
                     ))}
                     {gone.map((tab) => (
@@ -402,6 +418,18 @@ export function SheetsSettingsCard({
                 ))}
               </ul>
             </div>
+            <CreateSheetDialog
+              agentId={agentId}
+              name={name}
+              open={creating}
+              onOpenChange={setCreating}
+              onCreated={() => {
+                // The new sheet is saved: its tabs are read from Google as on opening.
+                setDraft(undefined);
+                setInfo(null);
+                setBefore(null);
+              }}
+            />
             {save.error && <Banner tone="danger">{errorMessage(save.error)}</Banner>}
             <SaveBar dirty={dirty} inset="card">
               <Button size="touch" disabled={!dirty || save.isPending} onClick={submit}>
@@ -416,22 +444,27 @@ export function SheetsSettingsCard({
   );
 }
 
-/** One tab of the spreadsheet: its column names (EzyChat's own tinted) and Off / Read / Add rows. */
+/**
+ * One tab of the spreadsheet: its column names (EzyChat's own tinted), Off / Read / Add rows and,
+ * on Add rows, what the AI may write beyond the person's own words (both switches off by default).
+ */
 function TabRow({
   title,
   columns,
-  access,
+  setting,
   marks,
   onChange,
 }: Readonly<{
   title: string;
   columns: readonly string[];
-  access: SheetTabAccess;
+  setting: SheetTabSetting;
   marks: TabMarks | undefined;
-  onChange: (access: SheetTabAccess) => void;
+  onChange: (patch: Partial<SheetTabSetting>) => void;
 }>) {
   const { t } = useTranslation('admin');
   const labelId = useId();
+  const switchId = useId();
+  const access = setting.access;
   // Add rows and Read need column names: a tab with an empty first row stays Off.
   const empty = columns.length === 0;
   const options = (empty ? (['off'] as const) : ACCESS).map((value) => ({
@@ -439,62 +472,91 @@ function TabRow({
     label: t(`connectors.sheets.access.${value}`),
   }));
   return (
-    <li
-      className="flex flex-col gap-3 rounded-lg border px-3 py-3 sm:flex-row sm:items-start sm:justify-between"
-      data-testid="sheets-tab"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="flex flex-wrap items-center gap-2">
-          <span id={labelId} className="font-medium break-words">
-            {title}
+    <li className="flex flex-col gap-3 rounded-lg border px-3 py-3" data-testid="sheets-tab">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="flex flex-wrap items-center gap-2">
+            <span id={labelId} className="font-medium break-words">
+              {title}
+            </span>
+            {marks?.newTab && (
+              <Badge variant="outline" className="border-warning/40 text-warning">
+                {t('connectors.sheets.newTab')}
+              </Badge>
+            )}
+            {marks?.changed && (
+              <Badge variant="outline" className="border-warning/40 text-warning">
+                {t('connectors.sheets.columnsChanged')}
+              </Badge>
+            )}
           </span>
-          {marks?.newTab && (
-            <Badge variant="outline" className="border-warning/40 text-warning">
-              {t('connectors.sheets.newTab')}
-            </Badge>
+          {empty ? (
+            <Banner tone="warning">{t('connectors.sheets.emptyFirstRow')}</Banner>
+          ) : (
+            <ul
+              className="flex flex-wrap gap-1.5"
+              aria-label={t('connectors.sheets.columnsOf', { tab: title })}
+            >
+              {columns.map((column, i) => {
+                const added = marks?.added.has(column) ?? false;
+                const auto = isAutoColumn(column);
+                return (
+                  <li
+                    key={`${i}-${column}`}
+                    className={cn(
+                      'rounded-sm border border-transparent px-2 py-0.5 text-xs [overflow-wrap:anywhere]',
+                      auto ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                      added && 'border-dashed border-warning/60 bg-warning/10 text-foreground',
+                    )}
+                    data-auto={auto || undefined}
+                    data-added={added || undefined}
+                  >
+                    {column}
+                    {added && (
+                      <span className="sr-only"> ({t('connectors.sheets.newColumn')})</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           )}
-          {marks?.changed && (
-            <Badge variant="outline" className="border-warning/40 text-warning">
-              {t('connectors.sheets.columnsChanged')}
-            </Badge>
-          )}
-        </span>
-        {empty ? (
-          <Banner tone="warning">{t('connectors.sheets.emptyFirstRow')}</Banner>
-        ) : (
-          <ul
-            className="flex flex-wrap gap-1.5"
-            aria-label={t('connectors.sheets.columnsOf', { tab: title })}
-          >
-            {columns.map((column, i) => {
-              const added = marks?.added.has(column) ?? false;
-              const auto = isAutoColumn(column);
-              return (
-                <li
-                  key={`${i}-${column}`}
-                  className={cn(
-                    'rounded-sm border border-transparent px-2 py-0.5 text-xs [overflow-wrap:anywhere]',
-                    auto ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-                    added && 'border-dashed border-warning/60 bg-warning/10 text-foreground',
-                  )}
-                  data-auto={auto || undefined}
-                  data-added={added || undefined}
-                >
-                  {column}
-                  {added && <span className="sr-only"> ({t('connectors.sheets.newColumn')})</span>}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        </div>
+        <SegmentedControl
+          aria-labelledby={labelId}
+          value={empty ? 'off' : access}
+          onValueChange={(next: SheetTabAccess) => onChange({ access: next })}
+          options={options}
+          className="shrink-0 self-start"
+        />
       </div>
-      <SegmentedControl
-        aria-labelledby={labelId}
-        value={empty ? 'off' : access}
-        onValueChange={onChange}
-        options={options}
-        className="shrink-0 self-start"
-      />
+      {!empty && access === 'add' && (
+        <fieldset
+          className="flex min-w-0 flex-col divide-y rounded-lg border"
+          aria-label={t('connectors.sheets.permissions.groupLabel', { tab: title })}
+          data-testid="sheets-tab-permissions"
+        >
+          <ToolSwitchRow
+            id={`${switchId}-ai`}
+            label={t('connectors.sheets.permissions.aiValues')}
+            hint={t('connectors.sheets.permissions.aiValuesHint')}
+            checked={!!setting.aiValues}
+            onCheckedChange={(aiValues) => onChange({ aiValues })}
+          />
+          <ToolSwitchRow
+            id={`${switchId}-formulas`}
+            label={t('connectors.sheets.permissions.formulas')}
+            hint={t('connectors.sheets.permissions.formulasHint')}
+            tip={
+              <InfoTip
+                title={t('connectors.sheets.permissions.formulasTipTitle')}
+                body={t('connectors.sheets.permissions.formulasTipBody')}
+              />
+            }
+            checked={!!setting.formulas}
+            onCheckedChange={(formulas) => onChange({ formulas })}
+          />
+        </fieldset>
+      )}
     </li>
   );
 }

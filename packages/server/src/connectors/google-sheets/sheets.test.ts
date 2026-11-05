@@ -69,6 +69,33 @@ describe('SheetsClient', () => {
       majorDimension: 'ROWS',
       values: [['=1+1']],
     });
+    const made = client(answer(200, { spreadsheetId: 'new-sheet-id-000000000000' }));
+    expect(await made.sheets.create('tok', 'Claims', ['Claims', 'Rates'])).toBe(
+      'new-sheet-id-000000000000',
+    );
+    const [createUrl, createInit] = (made.fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0]!;
+    expect(String(createUrl)).toMatch(/\/spreadsheets$/);
+    expect(JSON.parse(String((createInit as RequestInit).body))).toEqual({
+      properties: { title: 'Claims' },
+      sheets: [{ properties: { title: 'Claims' } }, { properties: { title: 'Rates' } }],
+    });
+    await expect(client(answer(200, {})).sheets.create('t', 'X', ['T'])).rejects.toMatchObject({
+      kind: 'rejected',
+    });
+    const cells = client(answer(200, {}));
+    await cells.sheets.writeCells('tok', 'abc', [{ range: "'T'!A1", values: [['=1']] }]);
+    const [cellsUrl, cellsInit] = (cells.fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0]!;
+    expect(String(cellsUrl)).toContain('/spreadsheets/abc/values:batchUpdate');
+    expect(JSON.parse(String((cellsInit as RequestInit).body))).toEqual({
+      valueInputOption: 'USER_ENTERED',
+      data: [{ range: "'T'!A1", values: [['=1']] }],
+    });
+    const typed = client(answer(200, { updates: { updatedRows: 1 } }));
+    await typed.sheets.append('tok', 'abc', 'Leads', [['=1+1']], undefined, 'USER_ENTERED');
+    const [typedUrl] = (typed.fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(String(typedUrl)).toContain(':append?valueInputOption=USER_ENTERED&insertDataOption');
     await expect(
       client(answer(200, { updates: { updatedRows: 0 } })).sheets.append('t', 'a', 'L', [['x']]),
     ).rejects.toMatchObject({ kind: 'rejected' });

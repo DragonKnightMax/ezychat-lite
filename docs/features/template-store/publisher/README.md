@@ -11,7 +11,7 @@ templates/
   categories.json                 [{ "id": "health", "name": { "en": "…", "ms": "…", "zh-CN": "…" } }, …]
   <id>/
     template.json                 id, version, schemaVersion, minAppVersion, editions, category, icon,
-                                  preset, defaults?, recommendedConnectors?,
+                                  preset, defaults?, recommendedConnectors?, sheet?,
                                   texts: { en: { agentName, name, description, keywords, contextName }, ms?, zh-CN? }
     en/focus.md                   business part of the role (the app puts the agent type's starting text first)
     en/handoff-rules.md           one rule per line
@@ -29,7 +29,13 @@ Rules for authors (from `docs/LEARNINGS.md` of ezychat-lite):
 - `icon` is a name from the app's bundled set (`TEMPLATE_ICONS` in `apps/web/src/admin/business-templates.ts`); an
   unknown name shows a neutral icon until an app release adds it.
 - Raise `version` to replace a template the app ships (the app's own are version 1); a new `id` adds a template.
-- Keep `minAppVersion` at the first app version that understands every field you use.
+- Keep `minAppVersion` at the first app version that understands every field you use. Exception: `sheet` (a Google
+  Sheets layout: `{name, tabs: [{title, columns[], access?, formulas?: [{cell, formula}]}]}`) is ignored by older
+  apps, so it needs no higher `minAppVersion`. Formulas must stay inside the sheet: the app refuses a layout with a
+  web address or IMPORT*/IMAGE/HYPERLINK/WEBSERVICE-style functions.
+- **Change needed in the publishing repo for `sheet`:** regenerate `schema/template-v1.json` with
+  `npx tsx scripts/template-schema.mjs` from ezychat-lite (its objects are closed, so the old schema rejects `sheet`).
+  `build-templates.mjs` already passes every `template.json` field through.
 
 ## Files here
 

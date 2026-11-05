@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Google Sheets: let the AI fill worked-out values and formulas.** On a tab set to Add rows, an admin can now let
+  the AI write figures it looked up in your sheet or worked out from the chat (such as a total), and allow formulas
+  (numbers and dates are then saved as numbers and dates). Both are off by default. Formulas that reach outside your
+  sheet are always blocked, and a formula a customer types is saved as plain text.
+- **Google Sheets: create a new sheet from the connector page.** Admins can create a spreadsheet in the connected
+  Google account, blank or from a template's layout (the Claims template has one), with its tabs, column names and
+  what the AI agent may do with each tab. It is used by the agent at once.
 - **Tap a quote to see the original.** In a conversation, click or tap the quoted part of a reply (from a customer
   or a teammate, in direct chats and groups) to scroll to the message it answers, which is highlighted for a
   moment. Older messages load by themselves when the original is further back. When the original is not in

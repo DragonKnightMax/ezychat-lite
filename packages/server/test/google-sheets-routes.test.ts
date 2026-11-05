@@ -53,6 +53,7 @@ describe('Google Sheets routes', () => {
       ['GET', `/api/connectors/google-sheets/agents/${agentId}`],
       ['PUT', `/api/connectors/google-sheets/agents/${agentId}`],
       ['POST', `/api/connectors/google-sheets/agents/${agentId}/refresh`],
+      ['POST', `/api/connectors/google-sheets/agents/${agentId}/create`],
       ['GET', '/api/connectors/google-sheets/activity'],
       ['GET', '/api/dev/fake-google-sheets'],
       ['POST', '/api/dev/fake-google-sheets'],
@@ -251,6 +252,46 @@ describe('Google Sheets routes', () => {
       droppedTabs: 1,
     });
 
+    // The permission switches: kept only on Add rows, audited before/after per tab.
+    const switched = await put(url, admin, {
+      ...base,
+      tabs: [
+        { title: 'Prices', access: 'read', aiValues: true, formulas: true },
+        { title: 'Claims', access: 'add', aiValues: true, formulas: true },
+      ],
+    });
+    expect(switched.json()).toMatchObject({
+      tabs: [
+        { title: 'Prices', access: 'read' },
+        { title: 'Claims', access: 'add', aiValues: true, formulas: true },
+      ],
+    });
+    expect((switched.json() as { tabs: object[] }).tabs[0]).toEqual({
+      title: 'Prices',
+      access: 'read',
+    });
+    await put(url, admin, {
+      ...base,
+      tabs: [
+        { title: 'Prices', access: 'read' },
+        { title: 'Claims', access: 'add', aiValues: true },
+      ],
+    });
+    const metas = (
+      t.ctx.db
+        .prepare(
+          "SELECT meta FROM audit_log WHERE action = 'google_sheets.agent_settings' ORDER BY id",
+        )
+        .all() as Array<{ meta: string }>
+    ).map((row) => JSON.parse(row.meta) as Record<string, unknown>);
+    expect(metas.at(-2)!.permissions).toEqual([
+      { tab: 'Claims', switch: 'aiValues', before: false, after: true },
+      { tab: 'Claims', switch: 'formulas', before: false, after: true },
+    ]);
+    expect(metas.at(-1)!.permissions).toEqual([
+      { tab: 'Claims', switch: 'formulas', before: true, after: false },
+    ]);
+
     // Clearing the spreadsheet clears the tabs.
     const cleared = await put(url, admin, { ...(saved.json() as object), spreadsheetId: null });
     expect(cleared.json()).toEqual(DEFAULT_SHEETS_SETTINGS);
@@ -329,6 +370,105 @@ describe('Google Sheets routes', () => {
     expect((await get('/api/connectors/google-sheets', admin)).json().state).toBe('connected');
     const dev = (await get('/api/dev/fake-google-sheets', admin)).json();
     expect(dev.sheets[0].tabs.Prices[0]).toEqual(['Item', 'Price (RM)', 'In stock', 'Notes']);
+  });
+});
+
+describe('Google Sheets: create a new sheet', () => {
+  const LAYOUT = {
+    name: 'Claims 2026',
+    tabs: [
+      {
+        title: 'Claims',
+        columns: ['Date', 'Name', 'Policy no', 'Amount', '=Total'],
+        access: 'add',
+        formulas: [{ cell: 'F2', formula: '=SUM(D2:D1000)' }],
+      },
+      { title: 'Rates', columns: ['Plan', 'Rate'], access: 'read' },
+      { title: 'Notes', columns: ['Note'] },
+    ],
+  };
+
+  it('creates the tabs, writes the column names and formulas, and saves it for the agent', async () => {
+    const { admin, agentId } = await setUp();
+    const url = `/api/connectors/google-sheets/agents/${agentId}/create`;
+    // Not connected yet.
+    expect((await post(url, admin, LAYOUT)).statusCode).toBe(409);
+    await connect(admin);
+    const fake = t.ctx.services.googleSheets!.fake!;
+    const res = await post(url, admin, LAYOUT);
+    expect(res.statusCode).toBe(200);
+    const saved = res.json() as { spreadsheetId: string; spreadsheetName: string; tabs: object[] };
+    expect(saved.spreadsheetName).toBe('Claims 2026');
+    expect(saved.tabs).toEqual([
+      { title: 'Claims', access: 'add' },
+      { title: 'Rates', access: 'read' },
+    ]);
+    expect((await get(`/api/connectors/google-sheets/agents/${agentId}`, admin)).json()).toEqual(
+      saved,
+    );
+    const claims = fake.rows(saved.spreadsheetId, 'Claims');
+    // A column name that looks like a formula stays text; the layout's formula is written as typed.
+    expect(claims[0]).toEqual(['Date', 'Name', 'Policy no', 'Amount', "'=Total"]);
+    expect(claims[1]).toEqual(['', '', '', '', '', '=SUM(D2:D1000)']);
+    expect(fake.rows(saved.spreadsheetId, 'Notes')).toEqual([['Note']]);
+    expect(fake.valueInputs).toEqual(['USER_ENTERED']);
+    const audits = t.ctx.db
+      .prepare("SELECT action, meta FROM audit_log WHERE action LIKE 'google_sheets.%' ORDER BY id")
+      .all() as Array<{ action: string; meta: string }>;
+    const created = audits.find((a) => a.action === 'google_sheets.spreadsheet_created')!;
+    expect(JSON.parse(created.meta)).toEqual({
+      agentId,
+      spreadsheetId: saved.spreadsheetId,
+      tabs: 3,
+      formulas: 1,
+    });
+    expect(created.meta).not.toContain('Claims');
+    expect(audits.map((a) => a.action)).toContain('google_sheets.agent_settings');
+  });
+
+  it('refuses a formula that reaches outside the sheet, a bad layout and an unknown agent', async () => {
+    const { admin, agentId } = await setUp();
+    await connect(admin);
+    const fake = t.ctx.services.googleSheets!.fake!;
+    const url = `/api/connectors/google-sheets/agents/${agentId}/create`;
+    for (const formula of ['=IMPORTRANGE("x","A1")', '=A1&"https://x.example"']) {
+      const res = await post(url, admin, {
+        name: 'X',
+        tabs: [{ title: 'T', columns: ['A'], formulas: [{ cell: 'B2', formula }] }],
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ error: { code: 'formula_blocked' } });
+    }
+    expect(fake.calls).not.toContain('create');
+    for (const bad of [
+      { name: 'X', tabs: [] },
+      { name: 'X', tabs: [{ title: 'T', columns: [] }] },
+      {
+        name: 'X',
+        tabs: [
+          { title: 'T', columns: ['A'] },
+          { title: 'T', columns: ['B'] },
+        ],
+      },
+      {
+        name: 'X',
+        tabs: [{ title: 'T', columns: ['A'], formulas: [{ cell: 'A1', formula: '=1' }] }],
+      },
+      {
+        name: 'X',
+        tabs: [{ title: 'T', columns: ['A'], formulas: [{ cell: 'B2', formula: '1' }] }],
+      },
+    ])
+      expect((await post(url, admin, bad)).statusCode).toBe(400);
+    expect(
+      (await post('/api/connectors/google-sheets/agents/999/create', admin, LAYOUT)).statusCode,
+    ).toBe(404);
+    // Google out of reach: 503, nothing saved.
+    await post('/api/dev/fake-google-sheets', admin, { state: 'unavailable' });
+    expect((await post(url, admin, LAYOUT)).statusCode).toBe(503);
+    expect(
+      (await get(`/api/connectors/google-sheets/agents/${agentId}`, admin)).json().spreadsheetId,
+    ).toBeNull();
   });
 });
 

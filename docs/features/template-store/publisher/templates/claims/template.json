@@ -14,6 +14,25 @@
     "answerGroups": true,
     "answerDirect": false
   },
+  "sheet": {
+    "name": "Claims",
+    "tabs": [
+      {
+        "title": "Claims",
+        "columns": [
+          "Date",
+          "Name",
+          "WhatsApp",
+          "Group",
+          "Policy no",
+          "Amount",
+          "What happened",
+          "Source"
+        ],
+        "access": "add"
+      }
+    ]
+  },
   "texts": {
     "en": {
       "agentName": "Claims assistant",

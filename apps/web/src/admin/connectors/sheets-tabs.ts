@@ -41,11 +41,19 @@ export function diffTabs(
   return marks;
 }
 
-/** The tabs that are not off, sorted by title (a tab that is not listed is off). */
+/**
+ * The tabs that are not off, sorted by title (a tab that is not listed is off). The permission
+ * switches are kept only on Add rows and only when on (as the server saves them).
+ */
 export const normalizeTabs = (tabs: readonly SheetTabSetting[]): SheetTabSetting[] =>
   tabs
     .filter((t) => t.access !== 'off')
-    .map((t) => ({ title: t.title, access: t.access }))
+    .map((t) => ({
+      title: t.title,
+      access: t.access,
+      ...(t.access === 'add' && t.aiValues ? { aiValues: true } : {}),
+      ...(t.access === 'add' && t.formulas ? { formulas: true } : {}),
+    }))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
 
 /**

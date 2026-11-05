@@ -3,7 +3,7 @@
 // catalog texts ai.businessTemplates.<id>.* in en, ms, zh-CN) in the publishing repo's folder format
 // (docs/features/template-store/publisher/README.md):
 //   <out>/categories.json
-//   <out>/<id>/template.json            id, version, category, icon, preset, defaults, short texts
+//   <out>/<id>/template.json            id, version, category, icon, preset, defaults, sheet, short texts
 //   <out>/<id>/<lang>/focus.md          business part of the role
 //   <out>/<id>/<lang>/handoff-rules.md
 //   <out>/<id>/<lang>/context.md        the Business context item's text
@@ -79,6 +79,7 @@ export function exportFiles() {
       icon: tpl.icon,
       preset: tpl.preset,
       ...('defaults' in tpl ? { defaults: tpl.defaults } : {}),
+      ...('sheet' in tpl ? { sheet: tpl.sheet } : {}),
       texts,
     });
     for (const lang of LANGUAGES) {
