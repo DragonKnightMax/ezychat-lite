@@ -370,6 +370,13 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   after the password (no `state.json`). Background with `&` and full redirection; the helper ignores `HUP`.
   A Mac that sleeps drops WhatsApp and every AI reply waits (lost sales): the server holds
   `caffeinate -i -w <pid>` (`keep-awake.ts`), which ends by itself when the server exits, even after a crash.
+  A root-owned copy of a downloaded, unnotarized app keeps `com.apple.quarantine` (`ditto` keeps xattrs):
+  Gatekeeper then refuses every launchd start (`OS_REASON_EXEC`, "cannot be opened" popups in a loop). Clear
+  it with `xattr -dr com.apple.quarantine` after the copy. Test the Mac service with a quarantined build
+  (`xattr -r -w com.apple.quarantine "0083;<hex time>;Safari;" <app>`): a local build has no flag and hides it.
+  launchd has no restart limit: use `KeepAlive {SuccessfulExit false}` and exit 0 for errors a restart
+  cannot fix. A platform-level `files:` in electron-builder.yml replaces the top-level list (the 32 MB
+  `server.cjs.map` came back), it does not add to it.
   Log it as a `real:` Dev Build row. Combine the critical updates into one PR so one smoke covers them.
   A critical `server-host` change gets the same packaged run, with the server started through the packaged
   `app.asar.unpacked/dist/server-host.cjs`. Run `prettier --write docs/dev-build-checks.md` after a new row:

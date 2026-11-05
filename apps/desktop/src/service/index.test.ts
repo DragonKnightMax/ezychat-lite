@@ -117,8 +117,12 @@ describe('serviceCommand', () => {
       for (const a of [c.args[0], c.args[1], c.env.WATI_CLOUDFLARED_DIR])
         expect(a?.startsWith(dest)).toBe(true);
       expect(c.args.join(' ')).not.toContain('/Applications/');
+      expect(c.env.WATI_SERVICE_MANAGER).toBe('launchd');
     },
   );
+  it('marks only the launchd job, so Windows keeps its own restart policy', () => {
+    expect(serviceCommand(winDeps, 'win32', () => false).env.WATI_SERVICE_MANAGER).toBeUndefined();
+  });
 });
 
 describe('macOS privileged operations require a packaged runtime', () => {

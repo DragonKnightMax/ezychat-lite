@@ -722,7 +722,8 @@ export function buildMacInstallScript(plan: InstallPlan): string {
       `candidate="\${candidates[0]}"`,
       `case "$(basename "$candidate")" in ${quotedBundles}) ;; *) echo 'Unrecognized update app' >&2; false;; esac`,
       `if [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$candidate/Contents/Info.plist")" != '${product.appUserModelId}' ] || [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$candidate/Contents/Info.plist")" != "$version" ]; then echo 'Wrong update identity or version' >&2; false; fi`,
-      `ditto --noacl "$candidate" "$new_main"; validate_links "$new_main"; protect_tree "$new_main"; assert_protected "$new_main"`,
+      // An unnotarized copy that keeps the quarantine flag is refused by Gatekeeper (the service copy on every start).
+      `ditto --noacl "$candidate" "$new_main"; xattr -dr com.apple.quarantine "$new_main" 2>/dev/null || true; validate_links "$new_main"; protect_tree "$new_main"; assert_protected "$new_main"`,
       `new_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$new_main/Contents/Info.plist")`,
       `case "$new_executable" in ${quotedNames}) ;; *) echo 'Unrecognized update executable' >&2; false;; esac`,
       `if [ ! -f "$new_main/Contents/MacOS/$new_executable" ] || [ -L "$new_main/Contents/MacOS/$new_executable" ]; then false; fi`,

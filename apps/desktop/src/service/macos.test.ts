@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   launchdPlist,
   macInstallScript,
+  macCopyLogsScript,
   macUninstallScript,
   parseLaunchctlPrint,
   remapRuntimePaths,
@@ -29,12 +30,15 @@ describe('launchdPlist', () => {
     expect(xml).toContain('<!DOCTYPE plist');
     expect(xml.trim().endsWith('</plist>')).toBe(true);
   });
-  it('has label, RunAtLoad and KeepAlive true', () => {
+  it('has label, RunAtLoad and restarts after a crash only', () => {
     expect(xml).toMatch(
       /<key>Label<\/key>\s*<string>org\.ossmalaysia\.wateaminbox\.server<\/string>/,
     );
     expect(xml).toMatch(/<key>RunAtLoad<\/key>\s*<true\/>/);
-    expect(xml).toMatch(/<key>KeepAlive<\/key>\s*<true\/>/);
+    expect(xml).toMatch(
+      /<key>KeepAlive<\/key>\s*<dict>\s*<key>SuccessfulExit<\/key>\s*<false\/>\s*<\/dict>/,
+    );
+    expect(xml).toMatch(/<key>ThrottleInterval<\/key>\s*<integer>10<\/integer>/);
   });
   it('has ProgramArguments array: program first, then escaped args', () => {
     const m = xml.match(/<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/);
@@ -54,9 +58,7 @@ describe('launchdPlist', () => {
       /<key>EnvironmentVariables<\/key>\s*<dict>\s*<key>ELECTRON_RUN_AS_NODE<\/key>\s*<string>1<\/string>/,
     );
     expect(xml).toContain('<key>StandardOutPath</key>');
-    expect(xml).toContain(
-      '<string>/Library/Application Support/wa-team-inbox/logs/service.out.log</string>',
-    );
+    expect(xml).toContain('<key>StandardOutPath</key>\n  <string>/dev/null</string>');
     expect(xml).toContain('<key>StandardErrorPath</key>');
   });
   it('balances dict/array tags', () => {
@@ -186,6 +188,18 @@ describe('macOS root daemon never runs user-writable code', () => {
     // previous copy is removed first
     expect(s.indexOf(`rm -rf '${dest}'`)).toBeLessThan(iDitto);
   });
+  it('clears the quarantine flag of the runtime copy, or Gatekeeper refuses every launchd start', () => {
+    const s = macInstallScript({
+      ...opts,
+      dataDir: '/Library/Application Support/wa-team-inbox',
+      moveFrom: '/Users/me/data',
+      exists: null,
+      runtime: { from: bundle, to: dest },
+    });
+    const strip = s.indexOf(`xattr -dr com.apple.quarantine '${dest}'`);
+    expect(strip).toBeGreaterThan(s.indexOf(`ditto --noacl '${bundle}' '${dest}'`));
+    expect(strip).toBeLessThan(s.indexOf('launchctl bootstrap'));
+  });
   it('uninstall removes the runtime copy', () => {
     const s = macUninstallScript({
       label: opts.label,
@@ -195,5 +209,22 @@ describe('macOS root daemon never runs user-writable code', () => {
       runtimeDir: '/Library/Application Support/wa-team-inbox-runtime',
     });
     expect(s).toContain("rm -rf '/Library/Application Support/wa-team-inbox-runtime'");
+  });
+});
+
+describe('macCopyLogsScript', () => {
+  const s = macCopyLogsScript({
+    logDir: '/Library/Application Support/wa-team-inbox/logs',
+    tempPrefix: 'wa-team-inbox-logs',
+    owner: 'me',
+  });
+  it('copies the root-only logs into a fresh folder the user owns and prints it', () => {
+    expect(s).toContain("out=$(mktemp -d '/private/tmp/wa-team-inbox-logs.XXXXXX')");
+    expect(s).toContain(`ditto --noacl '/Library/Application Support/wa-team-inbox/logs' "$out"`);
+    expect(s).toContain(`chown -R 'me' "$out"`);
+    expect(s.trim().endsWith('echo "$out"')).toBe(true);
+  });
+  it('never writes as root into a folder the user could have prepared', () => {
+    expect(s).not.toMatch(/\$TMPDIR|\/Users\//);
   });
 });

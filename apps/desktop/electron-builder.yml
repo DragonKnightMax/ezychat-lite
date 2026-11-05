@@ -99,9 +99,11 @@ mac:
   # macOS asks before the microphone is used for a voice note; without this text it refuses.
   extendInfo:
     NSMicrophoneUsageDescription: EzyChat Lite uses the microphone only while you record a voice note.
+  # No arch list: a local `npm run dist` builds this Mac's own architecture. Native packages
+  # (@node-rs/argon2, sherpa-onnx) are installed for the host only, so a cross-built Intel app would
+  # have no server. The release workflow builds each architecture on its own runner (dmg:<arch>).
   target:
     - target: dmg
-      arch: [x64, arm64]
   extraResources:
     - from: ../../resources/cloudflared/darwin-${arch}
       to: cloudflared

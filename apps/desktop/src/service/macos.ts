@@ -51,12 +51,18 @@ export function launchdPlist(o: LaunchdOptions): string {
     '  </dict>',
     '  <key>RunAtLoad</key>',
     '  <true/>',
+    // Restart after a crash only: server-host turns the exits that a restart cannot fix (bad arguments,
+    // data folder locked, moved to Enterprise) into 0, so launchd does not retry them forever.
     '  <key>KeepAlive</key>',
-    '  <true/>',
+    '  <dict>',
+    '    <key>SuccessfulExit</key>',
+    '    <false/>',
+    '  </dict>',
     '  <key>ThrottleInterval</key>',
-    '  <integer>5</integer>',
+    '  <integer>10</integer>',
+    // stdout repeats the server's own daily-rotated logs/server.log; launchd never rotates this file.
     '  <key>StandardOutPath</key>',
-    `  ${s(posix.join(o.logDir, 'service.out.log'))}`,
+    '  <string>/dev/null</string>',
     '  <key>StandardErrorPath</key>',
     `  ${s(posix.join(o.logDir, 'service.err.log'))}`,
     '</dict>',
@@ -104,9 +110,11 @@ function runtimeCopyLines(r: { from: string; to: string }): string[] {
     `chmod -N ${shQuote(parent)}`,
     `chmod 755 ${shQuote(parent)}`,
     `rm -rf ${to}`,
-    // Source ACLs can grant ordinary users write access even after chown/chmod.
-    // Keep extended attributes and quarantine metadata, but never copy those ACLs.
+    // Source ACLs can grant ordinary users write access even after chown/chmod: never copy them.
     `ditto --noacl ${shQuote(r.from)} ${to}`,
+    // A downloaded app carries the quarantine flag; on this unnotarized copy Gatekeeper refuses every
+    // launchd start ("cannot be opened" over and over). The user already opened and approved the app.
+    `xattr -dr com.apple.quarantine ${to} 2>/dev/null || true`,
     `chown -R root:wheel ${to}`,
     `chmod -RN ${to}`,
     `chmod -R go-w ${to}`,
@@ -166,6 +174,28 @@ export function macUninstallScript(o: MacUninstallOptions): string {
     ...dataMoveCommands('darwin', o.dataDir, o.moveTo, null),
     `if [ -d ${shQuote(o.moveTo)} ]; then assert_no_link_up ${shQuote(o.moveTo)}; chown -R ${shQuote(o.owner)} ${shQuote(o.moveTo)}; fi`,
     `echo 'Service removed.'`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * sh script (run as root): the service data folder (with its logs) is root-only, so Finder cannot open it.
+ * Copy the logs into a new mktemp folder, give it to the user and print its path. Root writes only into
+ * the folder mktemp just created, never into one the user could have prepared or linked.
+ */
+export function macCopyLogsScript(o: {
+  logDir: string;
+  tempPrefix: string;
+  owner: string;
+}): string {
+  return [
+    '#!/bin/bash',
+    'set -euo pipefail',
+    `out=$(mktemp -d ${shQuote(`/private/tmp/${o.tempPrefix}.XXXXXX`)})`,
+    `if [ -d ${shQuote(o.logDir)} ]; then ditto --noacl ${shQuote(o.logDir)} "$out"; fi`,
+    `chown -R ${shQuote(o.owner)} "$out"`,
+    'chmod 700 "$out"',
+    'echo "$out"',
     '',
   ].join('\n');
 }

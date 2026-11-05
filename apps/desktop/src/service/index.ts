@@ -3,12 +3,13 @@
 import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
-import { join, posix } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { exec as sudoExec } from '@vscode/sudo-prompt';
 import { servicePortFile, serviceRunDir } from '../paths.js';
 import { activeProduct, type Product } from '../product.js';
 import {
   macControlScript,
+  macCopyLogsScript,
   macInstallScript,
   macResetAdminScript,
   macUninstallScript,
@@ -39,6 +40,8 @@ export interface ServiceManager {
   start(): Promise<void>;
   stop(): Promise<void>;
   resetAdmin(): Promise<string>;
+  /** macOS: copies the root-only service logs into a folder the user can open; returns its path. */
+  copyLogs?(): Promise<string>;
 }
 
 export interface ServiceDeps {
@@ -107,6 +110,8 @@ export function serviceCommand(
   };
   if (d.cloudflaredBinary && exists(d.cloudflaredBinary))
     env.WATI_CLOUDFLARED = d.cloudflaredBinary;
+  // server-host then ends exits a restart cannot fix with 0, which the launchd job does not restart
+  if (platform === 'darwin') env.WATI_SERVICE_MANAGER = 'launchd';
   const cmd = {
     exe: d.execPath,
     args: [
@@ -130,6 +135,31 @@ export function serviceCommand(
         macRuntimeBundle(d.appBundle, d.product ?? activeProduct()),
       )
     : cmd;
+}
+
+/**
+ * Opens the logs folder. The macOS service keeps its logs in a root-only folder that Finder cannot open,
+ * so its copyLogs() copy (made after the admin prompt) is opened instead.
+ */
+export async function openLogsFolder(o: {
+  serviceMode: boolean;
+  dataDir: string;
+  machineDataDir: string;
+  service: Pick<ServiceManager, 'copyLogs'>;
+  openPath: (path: string) => Promise<unknown>;
+  exists: (path: string) => boolean;
+  log: (s: string) => void;
+}): Promise<void> {
+  if (o.serviceMode && o.service.copyLogs) {
+    try {
+      await o.openPath(await o.service.copyLogs());
+    } catch (err) {
+      o.log(`could not copy the service logs: ${String(err)}`);
+    }
+    return;
+  }
+  const dir = join(o.serviceMode ? o.machineDataDir : o.dataDir, 'logs');
+  await o.openPath(o.exists(dir) ? dir : dirname(dir));
 }
 
 /** The administrator prompt was refused (or never shown): the elevated script did not run at all. */
@@ -340,6 +370,16 @@ export function createServiceManager(platform: NodeJS.Platform, deps: ServiceDep
       },
       async stop() {
         log(await runElevated(macControlScript({ label: LAUNCHD_LABEL, action: 'stop' })));
+      },
+      async copyLogs() {
+        const out = await runElevated(
+          macCopyLogsScript({
+            logDir,
+            tempPrefix: `${product.appDirName}-logs`,
+            owner: userInfo().username,
+          }),
+        );
+        return out.split('\n').pop()?.trim() ?? '';
       },
       async resetAdmin() {
         requirePackagedRuntime();

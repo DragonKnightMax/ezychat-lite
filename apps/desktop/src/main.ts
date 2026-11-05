@@ -60,7 +60,12 @@ import { sameInboxOrigin } from './inbox-ipc.js';
 import { UpgradeInstaller } from './upgrade/controller.js';
 import { UPGRADE_PRELOAD_ARG, registerUpgradeIpc } from './upgrade/ipc.js';
 import { createInstallerLauncher } from './upgrade/launch.js';
-import { createServiceManager, type ServiceManager, type ServiceState } from './service/index.js';
+import {
+  createServiceManager,
+  openLogsFolder as openLogs,
+  type ServiceManager,
+  type ServiceState,
+} from './service/index.js';
 import { createTray } from './tray.js';
 import { closeAction } from './window-close.js';
 import { GitHubUpdateChecker } from './update-checker.js';
@@ -776,10 +781,16 @@ async function main(): Promise<void> {
       }),
     resetAdmin,
     openMain: () => showMain(),
-    openLogsFolder: () => {
-      const dir = join(mode === 'client' ? machineDataDir() : dataDir, 'logs');
-      void shell.openPath(existsSync(dir) ? dir : dirname(dir));
-    },
+    openLogsFolder: () =>
+      void openLogs({
+        serviceMode: mode === 'client',
+        dataDir,
+        machineDataDir: machineDataDir(),
+        service,
+        openPath: shell.openPath.bind(shell),
+        exists: existsSync,
+        log,
+      }),
     setKeepInTray: (keep) => {
       // Persist first: a failed save throws to the status page, which then shows the unchanged value.
       try {

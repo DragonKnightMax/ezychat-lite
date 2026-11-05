@@ -5,8 +5,10 @@ import { createServer, type AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 import {
+  applyLaunchdExitCodes,
   applyRuntimeVersion,
   isShutdownMessage,
+  launchdExitCode,
   pickFreePort,
   PORT_TRIES,
   portIsFree,
@@ -259,5 +261,60 @@ describe('isShutdownMessage', () => {
     expect(isShutdownMessage({ data: SHUTDOWN_MESSAGE })).toBe(true);
     expect(isShutdownMessage('other')).toBe(false);
     expect(isShutdownMessage(null)).toBe(false);
+  });
+});
+
+describe('launchdExitCode', () => {
+  it('reports exits a restart cannot fix as success, so launchd does not restart them forever', () => {
+    // 2 bad arguments, 3 data folder locked, 4 data folder moved to Enterprise
+    for (const code of [2, 3, 4]) expect(launchdExitCode(code)).toBe(0);
+  });
+  it('keeps crashes and clean exits as they are', () => {
+    for (const code of [0, 1, 5, 137]) expect(launchdExitCode(code)).toBe(code);
+    expect(launchdExitCode(undefined)).toBeUndefined();
+  });
+});
+
+describe('applyLaunchdExitCodes', () => {
+  const fake = () => {
+    const seen: (number | undefined)[] = [];
+    const proc = {
+      exit: ((code?: number) => seen.push(code)) as unknown as (code?: number) => never,
+    };
+    return { proc, seen };
+  };
+  it('under launchd turns a locked data folder into a clean exit', () => {
+    const { proc, seen } = fake();
+    applyLaunchdExitCodes(proc, { WATI_SERVICE_MANAGER: 'launchd' });
+    proc.exit(3);
+    proc.exit(1);
+    expect(seen).toEqual([0, 1]);
+  });
+  it('leaves the exit codes alone elsewhere', () => {
+    const { proc, seen } = fake();
+    applyLaunchdExitCodes(proc, {});
+    proc.exit(3);
+    expect(seen).toEqual([3]);
+  });
+});
+
+describe('startArgs under launchd', () => {
+  it('applies the launchd exit codes before the server starts', async () => {
+    const seen: (number | undefined)[] = [];
+    const proc = {
+      exit: ((code?: number) => seen.push(code)) as unknown as (code?: number) => never,
+    };
+    await startArgs(
+      ['--data', '/nowhere', '--port', '7420'],
+      () => undefined,
+      async (p) => p,
+      () => {},
+      proc,
+      {
+        WATI_SERVICE_MANAGER: 'launchd',
+      },
+    );
+    proc.exit(3);
+    expect(seen).toEqual([0]);
   });
 });

@@ -209,6 +209,7 @@ describe('macOS update helper safety', () => {
     expect(script).toContain('CFBundleShortVersionString');
     expect(script).toContain('chmod -RN');
     expect(script).toContain('Runtime link escapes the app');
+    expect(script).toContain('xattr -dr com.apple.quarantine "$new_main"');
     expect(script.indexOf('ditto --noacl "$app" "$backup_main"')).toBeLessThan(
       script.indexOf("write_state 'ready'"),
     );

@@ -132,7 +132,10 @@ export async function startArgs(
   readSetting: (dataDir: string, key: string) => unknown = readSettingFromDb,
   pick: (port: number, host: string) => Promise<number> = (port, host) => pickFreePort(port, host),
   log: (line: string) => void = (line) => process.stdout.write(`${line}\n`),
+  proc: { exit: (code?: number) => never } = process,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ args: string[]; port: number | null }> {
+  applyLaunchdExitCodes(proc, env);
   const prepared = prepareServerArgs(rest, (d) => {
     const v = readSetting(d, 'port');
     return isValidPort(v) ? v : null;
@@ -156,6 +159,25 @@ export function readSettingFromDb(dataDir: string, key: string): unknown {
   } finally {
     db.close();
   }
+}
+
+/**
+ * Exit codes of the server CLI that a restart cannot fix: 2 bad arguments, 3 data folder locked by another
+ * server, 4 data folder moved to Enterprise. The launchd job restarts only after an unsuccessful exit
+ * (KeepAlive SuccessfulExit false), so these leave as 0 instead of restarting every few seconds forever.
+ */
+export function launchdExitCode(code: number | undefined): number | undefined {
+  return code === 2 || code === 3 || code === 4 ? 0 : code;
+}
+
+/** Under launchd, ends the exits a restart cannot fix with 0 (see launchdExitCode). */
+export function applyLaunchdExitCodes(
+  proc: { exit: (code?: number) => never },
+  env: NodeJS.ProcessEnv,
+): void {
+  if (env.WATI_SERVICE_MANAGER !== 'launchd') return;
+  const exit = proc.exit.bind(proc);
+  proc.exit = (code?: number) => exit(launchdExitCode(code));
 }
 
 export function isShutdownMessage(m: unknown): boolean {

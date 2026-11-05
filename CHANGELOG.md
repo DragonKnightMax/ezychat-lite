@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A Mac running EzyChat no longer falls asleep on its own.** While EzyChat answers chats, the Mac stays
   awake, so customers and AI replies are not left waiting. The screen can still turn off, and closing the lid
   still puts the Mac to sleep.
+- **The background service works on a Mac downloaded from the website.** Turning on "Run as background
+  service" showed "cannot be opened" again and again and the service never started. It now starts.
+- **A Mac background service that cannot start stops retrying.** If the data folder is in use or was moved
+  to EzyChat Enterprise, the service now stops instead of restarting every few seconds, and its log no
+  longer grows without limit.
+- **Open logs works for the Mac background service.** It asks for your password and opens a copy of the
+  service logs.
 - **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
   second of saving the new password could show the password page again.
 - **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with
