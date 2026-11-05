@@ -65,4 +65,22 @@ describe('useSwipeReply', () => {
     call(result.current.handlers, 'onPointerUp');
     expect(onReply).toHaveBeenCalledTimes(1);
   });
+
+  it('remembers that the last touch was a long press or a swipe, not a tap', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useSwipeReply(vi.fn(), vi.fn()));
+    expect(result.current.wasGesture()).toBe(false);
+    call(result.current.handlers, 'onPointerDown', ev('touch', 10));
+    act(() => vi.advanceTimersByTime(600));
+    expect(result.current.wasGesture()).toBe(true);
+    // a plain tap clears it
+    call(result.current.handlers, 'onPointerDown', ev('touch', 10));
+    call(result.current.handlers, 'onPointerUp');
+    expect(result.current.wasGesture()).toBe(false);
+    // a sideways swipe counts too, even a short one
+    call(result.current.handlers, 'onPointerDown', ev('touch', 10));
+    call(result.current.handlers, 'onPointerMove', ev('touch', 30));
+    call(result.current.handlers, 'onPointerUp');
+    expect(result.current.wasGesture()).toBe(true);
+  });
 });

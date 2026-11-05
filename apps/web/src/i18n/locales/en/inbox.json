@@ -319,6 +319,12 @@
     "you": "You",
     "contact": "Contact",
     "quotedMessage": "Quoted message",
+    "quoteJump": {
+      "go": "Go to the quoted message",
+      "unavailable": "The original message isn't available",
+      "tooFar": "The original message is too far back to show here",
+      "failed": "Couldn't open the original message. Try again."
+    },
     "notSent": "Not sent",
     "voiceNote": "Voice note",
     "quote": {

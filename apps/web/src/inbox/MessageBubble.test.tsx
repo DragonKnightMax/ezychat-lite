@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -218,6 +218,89 @@ describe('MessageBubble quote author', () => {
   it('keeps the sender name in group chats', () => {
     render(<MessageBubble message={reply} showSender outboundLabel={null} quoted={original} />);
     expect(screen.getByText('Farah Catering Co')).toBeTruthy();
+  });
+});
+
+describe('MessageBubble quote jump', () => {
+  const original: Message = { ...groupMessage, id: 'WA-9', senderName: 'Farah', body: 'Price?' };
+  const reply: Message = {
+    ...groupMessage,
+    id: 'WA-10',
+    fromMe: true,
+    body: 'ok',
+    quotedId: 'WA-9',
+  };
+
+  it('the quote is a named button that asks for its original, loaded or not', async () => {
+    const onOpenQuote = vi.fn();
+    const { rerender } = render(
+      <MessageBubble
+        message={reply}
+        showSender
+        outboundLabel={null}
+        quoted={original}
+        onOpenQuote={onOpenQuote}
+      />,
+    );
+    const quote = screen.getByRole('button', { name: /Go to the quoted message.*Farah.*Price\?/ });
+    await userEvent.click(quote);
+    expect(onOpenQuote).toHaveBeenCalledWith('WA-9');
+    // not loaded yet: still a button (the inbox loads older messages to find it)
+    rerender(
+      <MessageBubble
+        message={reply}
+        showSender
+        outboundLabel={null}
+        quoted={null}
+        onOpenQuote={onOpenQuote}
+      />,
+    );
+    quote.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onOpenQuote).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: /Quoted message/ })).toBeTruthy();
+  });
+
+  it('without a handler the quote stays plain text; highlighted marks the bubble', () => {
+    const view = render(
+      <MessageBubble
+        message={reply}
+        showSender
+        outboundLabel={null}
+        quoted={original}
+        highlighted
+      />,
+    );
+    expect(screen.queryByTestId('quote-jump')).toBeNull();
+    expect(screen.getByText('Price?')).toBeTruthy();
+    expect(
+      view.container.querySelector('[data-highlighted="true"]')?.getAttribute('data-message-id'),
+    ).toBe('WA-10');
+  });
+
+  it('a long press on the quote (touch) opens the press-and-hold bar, not the original', () => {
+    vi.useFakeTimers();
+    try {
+      const onOpenQuote = vi.fn();
+      render(
+        <MessageBubble
+          message={{ ...reply, fromMe: false }}
+          showSender
+          outboundLabel={null}
+          quoted={original}
+          onOpenQuote={onOpenQuote}
+          onReply={vi.fn()}
+        />,
+      );
+      const quote = screen.getByTestId('quote-jump');
+      fireEvent.pointerDown(quote, { pointerType: 'touch', clientX: 5, clientY: 5, pointerId: 1 });
+      act(() => vi.advanceTimersByTime(600));
+      fireEvent.pointerUp(quote, { pointerType: 'touch', pointerId: 1 });
+      fireEvent.click(quote);
+      expect(onOpenQuote).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

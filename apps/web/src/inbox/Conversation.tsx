@@ -51,6 +51,7 @@ import { ConversationHeader } from './ConversationHeader';
 import { chatTitle } from './chat-title';
 import { MessageList } from './MessageList';
 import { quotedAuthor, quotedPreview } from './MessageBubble';
+import { useQuoteJump } from './useQuoteJump';
 import { NotesPanel } from './NotesPanel';
 import { GroupPanel } from './GroupPanel';
 import { useNavigationGuardRef } from './navigation-guard';
@@ -300,6 +301,11 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
   const loadOlder = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const { target: jumpTarget, open: jumpToQuote } = useQuoteJump(jid, messagesById, {
+    hasNextPage: !!hasNextPage,
+    fetchNextPage: () => fetchNextPage(),
+  });
+  const openQuote = useCallback((id: string) => void jumpToQuote(id), [jumpToQuote]);
 
   if (chatQ.isPending) {
     return (
@@ -433,6 +439,8 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
           reactDisabledReason={blocked || queued ? t('message.reactions.notConnected') : null}
           contactName={contactName}
           changes={changes}
+          onOpenQuote={openQuote}
+          jumpTo={jumpTarget}
         />
         <div className="safe-bottom border-t bg-surface">
           <TypingIndicator entries={typing[jid] ?? []} meId={me?.id ?? null} />

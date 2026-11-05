@@ -93,6 +93,17 @@ export const MessageListResponse = z.object({
 });
 export type MessageListResponse = z.infer<typeof MessageListResponse>;
 
+/**
+ * Where a quoted message sits in its chat (`GET /chats/:jid/messages/:id/locate`): `found` is false
+ * when it is not stored in this chat or is hidden for the team; `newer` counts the visible messages
+ * after it, so the inbox knows how many older pages to load before it can scroll there.
+ */
+export const MessageLocateResponse = z.object({
+  found: z.boolean(),
+  newer: z.number().int().nonnegative(),
+});
+export type MessageLocateResponse = z.infer<typeof MessageLocateResponse>;
+
 /** Most members one message may tag (@mention). */
 export const MAX_MESSAGE_MENTIONS = 50;
 

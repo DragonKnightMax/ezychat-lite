@@ -50,6 +50,7 @@ import {
   type LoginBody,
   type Message,
   type MessageListResponse,
+  type MessageLocateResponse,
   type Note,
   type PatchUserBody,
   type QuickReply,
@@ -555,6 +556,11 @@ export function useMessages(jid: string | null | undefined) {
     getNextPageParam: (last) => last.nextBefore,
     enabled: !!jid,
   });
+}
+
+/** Where a quoted message sits in its chat (`found: false`: not in our records for this chat). */
+export function locateMessage(jid: string, id: string): Promise<MessageLocateResponse> {
+  return api<MessageLocateResponse>(`/chats/${enc(jid)}/messages/${enc(id)}/locate`);
 }
 
 /** Flatten MessagesData into ascending order. */

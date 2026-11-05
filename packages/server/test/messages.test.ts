@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MessageListResponse, MessageSchema } from '@ezychat/shared';
+import { MessageListResponse, MessageLocateResponse, MessageSchema } from '@ezychat/shared';
 import { FAKE_RUN } from '@ezychat/wa';
 import { makeTestApp, type TestApp } from './helpers.js';
 import { authHeaders, createUserAndLogin } from './auth-helpers.js';
@@ -99,6 +99,51 @@ describe('messages routes', () => {
     const p2 = MessageListResponse.parse(r.json());
     expect(p2.messages.map((m) => m.body)).toEqual(['m0', 'm1']);
     expect(p2.nextBefore).toBeNull();
+  });
+
+  it('locates a quoted message in its chat: how many newer messages, never another chat or a hidden one', async () => {
+    const { cookie } = await createUserAndLogin(t);
+    await seed(5);
+    const other = '60188888888@s.whatsapp.net';
+    await getMessages(t.ctx).ingest(
+      {
+        id: 'OTHER-1',
+        chatJid: other,
+        senderJid: other,
+        senderName: 'Other',
+        fromMe: false,
+        type: 'text',
+        body: 'elsewhere',
+        quotedId: null,
+        timestamp: 1_700_000_100_000,
+        media: null,
+      },
+      'live',
+    );
+    const locate = async (jid: string, id: string) => {
+      const r = await t.app.inject({
+        method: 'GET',
+        url: `/api/chats/${enc(jid)}/messages/${enc(id)}/locate`,
+        headers: { cookie },
+      });
+      return r;
+    };
+    let r = await locate(JID, 'IN-1');
+    expect(r.statusCode).toBe(200);
+    expect(MessageLocateResponse.parse(r.json())).toEqual({ found: true, newer: 3 });
+    expect((await locate(JID, 'IN-4')).json()).toEqual({ found: true, newer: 0 });
+    // never stored, or stored in another chat: not available here
+    expect((await locate(JID, 'NOPE')).json()).toEqual({ found: false, newer: 0 });
+    expect((await locate(JID, 'OTHER-1')).json()).toEqual({ found: false, newer: 0 });
+    // hidden for the team ("delete for me"): not available, and not counted for the others
+    t.ctx.db.prepare("UPDATE messages SET hidden_at = 1 WHERE id = 'IN-3'").run();
+    expect((await locate(JID, 'IN-3')).json()).toEqual({ found: false, newer: 0 });
+    expect((await locate(JID, 'IN-1')).json()).toEqual({ found: true, newer: 2 });
+    // an unknown chat answers 404, like every per-chat route
+    r = await locate('60100000000@s.whatsapp.net', 'IN-1');
+    expect(r.statusCode).toBe(404);
+    r = await t.app.inject({ method: 'GET', url: `/api/chats/${enc(JID)}/messages/IN-1/locate` });
+    expect(r.statusCode).toBe(401);
   });
 
   it('send text via FakeWaAdapter ends with status sent and the WA id', async () => {

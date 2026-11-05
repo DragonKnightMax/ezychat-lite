@@ -57,6 +57,10 @@ export interface MessageBubbleProps {
   directory?: Directory;
   /** Direct chats: the customer's name as the header shows it (used in quotes). */
   contactName?: string;
+  /** Tap the quote to scroll to the original message (loads older pages when needed). */
+  onOpenQuote?(quotedId: string): void;
+  /** Briefly marks the bubble after a jump from a quote. */
+  highlighted?: boolean;
   /** Edit and delete (⋮ menu; under Reply in the press-and-hold bar on touch). */
   changes?: MessageChangeProps;
 }
@@ -186,6 +190,8 @@ export function MessageBubble({
   reactDisabledReason = null,
   contactName,
   changes,
+  onOpenQuote,
+  highlighted = false,
 }: MessageBubbleProps) {
   const { t } = useTranslation(['inbox', 'common']);
   // Deleted for everyone: no reply, reaction or copy (WhatsApp shows only the placeholder).
@@ -224,6 +230,19 @@ export function MessageBubble({
     (m.senderJid ? formatJid(m.senderJid) || t('chatListItem.unknownContact') : null);
   // Group messages: the sender's own customer profile (from their direct chat), when set.
   const profile = !out ? (m.senderProfile ?? null) : null;
+
+  const quoteContent = quoted ? (
+    <>
+      <span className="block font-semibold text-primary">
+        {quotedAuthor(quoted, t, contactName)}
+      </span>
+      <span className="line-clamp-2 block break-words text-muted-foreground">
+        {quotedPreview(quoted, t)}
+      </span>
+    </>
+  ) : (
+    <span className="block italic text-muted-foreground">{t('message.quotedMessage')}</span>
+  );
 
   // Touch screens reply by swipe or long-press, so the button is visually hidden there but stays a
   // real control for screen readers, switch access and keyboards (it shows when focused).
@@ -316,8 +335,9 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-1.5 px-2 py-0.5 sm:px-4',
+        'group relative flex items-center gap-1.5 px-2 py-0.5 sm:px-4 motion-safe:transition-colors motion-safe:duration-700',
         out ? 'justify-end' : 'justify-start',
+        highlighted && 'bg-primary/10',
         // room for the reaction badge that hangs under the bubble
         reactions.length > 0 && 'mb-4',
       )}
@@ -339,13 +359,16 @@ export function MessageBubble({
         {...swipe.handlers}
         style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
         className={cn(
-          'relative min-w-0 max-w-[85%] touch-pan-y rounded-2xl px-3 py-1.5 text-foreground shadow-sm sm:max-w-[70%]',
+          'relative min-w-0 max-w-[85%] touch-pan-y rounded-2xl outline-none px-3 py-1.5 text-foreground shadow-sm sm:max-w-[70%]',
           out
             ? 'rounded-br-md border border-primary/15 bg-outbound text-outbound-foreground'
             : 'rounded-bl-md border bg-surface',
           m.status === 'failed' && 'border-danger/50',
         )}
         data-message-id={m.id}
+        data-highlighted={highlighted ? 'true' : undefined}
+        // focus target after a jump from a quote (never a tab stop)
+        tabIndex={-1}
       >
         {!out && showSender && profile ? (
           <Popover>
@@ -374,20 +397,27 @@ export function MessageBubble({
             {outboundLabel}
           </p>
         )}
-        {m.quotedId && (
-          <div className="mb-1 rounded-md border-l-4 border-primary bg-muted/70 px-2 py-1 text-xs">
-            {quoted ? (
-              <>
-                <p className="font-semibold text-primary">{quotedAuthor(quoted, t, contactName)}</p>
-                <p className="line-clamp-2 break-words text-muted-foreground">
-                  {quotedPreview(quoted, t)}
-                </p>
-              </>
-            ) : (
-              <p className="italic text-muted-foreground">{t('message.quotedMessage')}</p>
-            )}
-          </div>
-        )}
+        {m.quotedId &&
+          (onOpenQuote ? (
+            <Button
+              type="button"
+              variant="ghost"
+              data-testid="quote-jump"
+              title={t('message.quoteJump.go')}
+              onClick={() => {
+                // a long press or swipe on touch is not a tap on the quote
+                if (!swipe.wasGesture()) onOpenQuote(m.quotedId!);
+              }}
+              className="mb-1 block h-auto w-full whitespace-normal rounded-md border-l-4 border-primary bg-muted/70 px-2 py-1 text-left text-xs font-normal hover:bg-muted"
+            >
+              <span className="sr-only">{t('message.quoteJump.go')}: </span>
+              {quoteContent}
+            </Button>
+          ) : (
+            <div className="mb-1 rounded-md border-l-4 border-primary bg-muted/70 px-2 py-1 text-xs">
+              {quoteContent}
+            </div>
+          ))}
         {flagged && <SafetyNotice safety={flagged} hasFile={hasMedia} />}
         {hasMedia && (
           <div className="mb-1">

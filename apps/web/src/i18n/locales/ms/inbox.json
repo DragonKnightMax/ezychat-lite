@@ -316,6 +316,12 @@
     "you": "Anda",
     "contact": "Kenalan",
     "quotedMessage": "Mesej dipetik",
+    "quoteJump": {
+      "go": "Pergi ke mesej yang dipetik",
+      "unavailable": "Mesej asal tidak tersedia",
+      "tooFar": "Mesej asal terlalu lama untuk ditunjukkan di sini",
+      "failed": "Tidak dapat membuka mesej asal. Cuba lagi."
+    },
     "notSent": "Tidak dihantar",
     "voiceNote": "Nota suara",
     "quote": {

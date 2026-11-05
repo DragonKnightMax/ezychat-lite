@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Tap a quote to see the original.** In a conversation, click or tap the quoted part of a reply (from a customer
+  or a teammate, in direct chats and groups) to scroll to the message it answers, which is highlighted for a
+  moment. Older messages load by themselves when the original is further back. When the original is not in
+  EzyChat (it came before WhatsApp was linked, or was removed for the team), a short note says so instead.
 - **SQL Account connector (beta).** Your AI agent can now answer from SQL Account (eStream): stock and selling
   prices for everyone, and each customer's own invoices, quotations, sales orders and delivery orders, and (once you
   turn it on) what they still owe, said exactly as recorded in your accounts. It works

@@ -18,6 +18,8 @@ export function useSwipeReply(onReply: (() => void) | undefined, onLongPress?: (
   const [offset, setOffset] = useState(0);
   const start = useRef<{ x: number; y: number; id: number; horizontal: boolean } | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The last touch was a long press or a swipe: the click it may leave behind is not a tap.
+  const gestured = useRef(false);
 
   const clearHold = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
@@ -36,11 +38,13 @@ export function useSwipeReply(onReply: (() => void) | undefined, onLongPress?: (
         onPointerDown(e) {
           if (e.pointerType !== 'touch') return;
           start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: false };
+          gestured.current = false;
           clearHold();
           holdTimer.current = setTimeout(() => {
             holdTimer.current = null;
             start.current = null;
             setOffset(0);
+            gestured.current = true;
             (onLongPress ?? onReply)();
           }, LONG_PRESS_MS);
         },
@@ -62,6 +66,7 @@ export function useSwipeReply(onReply: (() => void) | undefined, onLongPress?: (
         },
         onPointerUp() {
           const fire = start.current?.horizontal && offset >= SWIPE_TRIGGER_PX;
+          if (start.current?.horizontal) gestured.current = true;
           reset();
           if (fire) onReply();
         },
@@ -69,5 +74,8 @@ export function useSwipeReply(onReply: (() => void) | undefined, onLongPress?: (
       }
     : {};
 
-  return { offset, handlers };
+  /** Whether the last touch was a long press or a swipe (its trailing click is ignored). */
+  const wasGesture = () => gestured.current;
+
+  return { offset, handlers, wasGesture };
 }

@@ -8,6 +8,7 @@ import type {
   MessageEditedBy,
   MessageEditsResponse,
   MessageListQuery,
+  MessageLocateResponse,
   MessageReaction,
   MessageStatus,
   MessageTemplate,
@@ -71,6 +72,11 @@ export const GROUP_DELIVERY_ERROR = 'Some members may not have received this';
 
 export interface MessageService {
   list(jid: string, q: MessageListQuery): { messages: Message[]; nextBefore: string | null };
+  /**
+   * Finds a stored message in this chat for "jump to the quoted message": never another chat's
+   * message and never one hidden for the team (`found: false`).
+   */
+  locate(jid: string, id: string): MessageLocateResponse;
   /**
    * Stores a message WhatsApp delivered through `inboxId` (default inbox 1): chat key and message
    * id get the inbox suffix (keys.ts), so the same customer or group in two inboxes stays apart.
@@ -986,6 +992,12 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
         messages: presentAll([...page].reverse()),
         nextBefore: more && oldest ? encodeBefore(oldest.timestamp, oldest.id) : null,
       };
+    },
+
+    locate(jid, id) {
+      const row = repo.get(id);
+      if (!row || row.chat_jid !== jid || row.hidden_at != null) return { found: false, newer: 0 };
+      return { found: true, newer: repo.countNewer(jid, row.timestamp, row.id) };
     },
 
     async ingest(m, source, inboxId = PRIMARY_INBOX_ID) {

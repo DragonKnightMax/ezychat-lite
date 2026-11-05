@@ -9,6 +9,7 @@ import {
   SendTextBody,
   type Message,
   type MessageEditsResponse,
+  type MessageLocateResponse,
   type SendReactionResponse,
 } from '@ezychat/shared';
 import { audit } from '../db/audit.js';
@@ -42,6 +43,14 @@ export default async function messagesRoutes(app: FastifyInstance, ctx: AppConte
     if (!chats.get(jid)) throw errors.notFound('Chat');
     const q = parse(MessageListQuery, req.query);
     return messages.list(jid, q);
+  });
+
+  // "Jump to the quoted message": where the original sits in this chat (inbox access via :jid).
+  app.get('/chats/:jid/messages/:id/locate', async (req): Promise<MessageLocateResponse> => {
+    const jid = chatJidParam(ctx, req);
+    if (!chats.get(jid)) throw errors.notFound('Chat');
+    const { id } = parse(IdParams, req.params);
+    return messages.locate(jid, id);
   });
 
   app.post('/chats/:jid/messages', async (req, reply) => {

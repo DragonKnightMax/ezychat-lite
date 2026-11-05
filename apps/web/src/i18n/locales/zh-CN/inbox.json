@@ -316,6 +316,12 @@
     "you": "你",
     "contact": "联系人",
     "quotedMessage": "引用的消息",
+    "quoteJump": {
+      "go": "跳转到引用的消息",
+      "unavailable": "原消息不可用",
+      "tooFar": "原消息太久远，无法在此显示",
+      "failed": "无法打开原消息，请重试。"
+    },
     "notSent": "未发送",
     "voiceNote": "语音消息",
     "quote": {

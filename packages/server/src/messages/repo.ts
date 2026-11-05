@@ -246,6 +246,17 @@ export class MessageRepo {
       .all(chatJid, limit) as MessageRow[];
   }
 
+  /** How many visible messages of a chat come after (ts,id), in `pageDesc` order. */
+  countNewer(chatJid: string, ts: number, id: string): number {
+    const r = this.db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM messages WHERE chat_jid = ? AND hidden_at IS NULL
+         AND (timestamp > ? OR (timestamp = ? AND id > ?))`,
+      )
+      .get(chatJid, ts, ts, id) as { n: number };
+    return r.n;
+  }
+
   /** The newest message of a chat the team still sees (not hidden), for the chat list preview. */
   newestVisible(chatJid: string): MessageRow | null {
     return (
