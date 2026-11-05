@@ -41,6 +41,10 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   sheets_agent_settings: { merged: true },
   sheets_leads: { merged: true },
   sheets_activity: { merged: true },
+  drive_agent_settings: { merged: true },
+  drive_saved_files: { merged: true },
+  drive_folders: { merged: true },
+  drive_activity: { merged: true },
   connector_connections: { merged: true },
   connector_agent_settings: { merged: true },
   connector_activity: { merged: true },
@@ -140,7 +144,10 @@ function reseal(blob: unknown, input: MergeInput): string | null {
 function googleAccount(
   db: DB,
   box: SecretBox | null,
-  key: 'google_calendar_tokens' | 'google_sheets_tokens' = 'google_calendar_tokens',
+  key:
+    | 'google_calendar_tokens'
+    | 'google_sheets_tokens'
+    | 'google_drive_tokens' = 'google_calendar_tokens',
 ): string | null {
   if (!box) return null;
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
@@ -340,6 +347,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
   // ── Connectors: connections (target wins), per-agent settings, Google Calendar settings ────
   let sameGoogle = false;
   let sameSheets = false;
+  let sameDrive = false;
   phase(() => {
     const addConnection = inserter(target, 'connector_connections');
     const has = target.prepare('SELECT 1 FROM connector_connections WHERE connector_id = ?');
@@ -380,6 +388,21 @@ export function mergeTables(input: MergeInput): MergeOutcome {
         const agentId = maps.agent(s.agent_id);
         if (agentId !== null) addSheets({ ...s, agent_id: agentId });
       }
+    }
+    // Google Drive: the folder, the picked files and EzyChat's sub-folders belong to Lite's Google
+    // account (same rule).
+    const liteDrive = googleAccount(lite, input.liteSecret, 'google_drive_tokens');
+    sameDrive =
+      liteDrive !== null &&
+      liteDrive === googleAccount(target, input.targetSecret, 'google_drive_tokens');
+    if (sameDrive) {
+      const addDrive = inserter(target, 'drive_agent_settings');
+      for (const s of rows(lite, 'SELECT * FROM drive_agent_settings')) {
+        const agentId = maps.agent(s.agent_id);
+        if (agentId !== null) addDrive({ ...s, agent_id: agentId });
+      }
+      const addFolder = inserter(target, 'drive_folders', { verb: 'INSERT OR IGNORE' });
+      for (const f of rows(lite, 'SELECT * FROM drive_folders')) addFolder(f);
     }
   });
 
@@ -545,6 +568,21 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     byChatAndAgent('calendar_activity', false);
     if (sameSheets) byChatAndAgent('sheets_leads', true);
     byChatAndAgent('sheets_activity', false);
+    // Saved files: only when the message came across (the duplicate guard keys on it).
+    if (sameDrive) {
+      const addSaved = inserter(target, 'drive_saved_files', {
+        omit: ['id'],
+        verb: 'INSERT OR IGNORE',
+      });
+      for (const r of rows(lite, 'SELECT * FROM drive_saved_files ORDER BY id')) {
+        const chat = maps.chat(r.chat_jid as string);
+        const message = maps.message(r.message_id as string);
+        const agentId = maps.agent(r.agent_id);
+        if (chat && message && agentId !== null)
+          addSaved({ ...r, chat_jid: chat, message_id: message, agent_id: agentId });
+      }
+    }
+    byChatAndAgent('drive_activity', false);
     byChatAndAgent('connector_activity', false);
     byChatAndAgent('connector_calls', false);
     byChatAndAgent('connector_values', false);

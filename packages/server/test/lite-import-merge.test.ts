@@ -314,13 +314,20 @@ describe('mergeLiteInbox', () => {
         agent_id: agentId,
         chat_jid: `${LITE_CHAT}#3`,
       });
-      // Google Sheets likewise: no settings or lead records, activity kept
-      expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_agent_settings').get()).toEqual({ n: 0 });
-      expect(db.prepare('SELECT COUNT(*) AS n FROM sheets_leads').get()).toEqual({ n: 0 });
-      expect(db.prepare('SELECT agent_id, chat_jid FROM sheets_activity').get()).toEqual({
-        agent_id: agentId,
-        chat_jid: `${LITE_CHAT}#3`,
-      });
+      // Google Sheets and Drive likewise: no settings or records, activity kept
+      for (const table of [
+        'sheets_agent_settings',
+        'sheets_leads',
+        'drive_agent_settings',
+        'drive_folders',
+        'drive_saved_files',
+      ])
+        expect(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get(), table).toEqual({ n: 0 });
+      for (const table of ['sheets_activity', 'drive_activity'])
+        expect(db.prepare(`SELECT agent_id, chat_jid FROM ${table}`).get(), table).toEqual({
+          agent_id: agentId,
+          chat_jid: `${LITE_CHAT}#3`,
+        });
 
       // Safety finding follows its message
       const item = db
@@ -471,6 +478,27 @@ describe('mergeLiteInbox', () => {
       expect(after.prepare('SELECT paused FROM ai_chat_state').get()).toEqual({ paused: 1 });
     } finally {
       after.close();
+    }
+  });
+
+  it('brings Google Drive settings, folders and saved files only with the same Google account', async () => {
+    const t = seedTarget({ driveAccount: 'Owner@Example.com' });
+    const lite = seedLite({ driveAccount: 'owner@example.com' });
+    await merge(t.dir, lite.dir);
+    const db = open(t.dir);
+    try {
+      expect(db.prepare('SELECT COUNT(*) AS n FROM drive_agent_settings').get()).toEqual({ n: 1 });
+      expect(db.prepare('SELECT parent_id, name, folder_id FROM drive_folders').get()).toEqual({
+        parent_id: 'folder1',
+        name: 'Jay',
+        folder_id: 'sub1',
+      });
+      // The duplicate guard keeps pointing at the same message under its new key.
+      expect(
+        db.prepare('SELECT chat_jid, message_id, file_id FROM drive_saved_files').all(),
+      ).toEqual([{ chat_jid: `${LITE_CHAT}#3`, message_id: 'M1#3', file_id: 'file1' }]);
+    } finally {
+      db.close();
     }
   });
 
@@ -728,6 +756,10 @@ describe('mergeLiteInbox refusals and rollback', () => {
       'ALTER TABLE ai_group_chats DROP COLUMN listen; ALTER TABLE ai_group_chats DROP COLUMN agent_id;',
     );
     db.exec('DROP TABLE avatars;'); // and 033 (profile photos)
+    // and 034 (Google Drive connector)
+    db.exec(
+      'DROP TABLE drive_agent_settings; DROP TABLE drive_saved_files; DROP TABLE drive_folders; DROP TABLE drive_activity;',
+    );
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

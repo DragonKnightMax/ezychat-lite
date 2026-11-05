@@ -5,10 +5,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
   DEFAULT_BOOKING_SETTINGS,
+  DEFAULT_DRIVE_SETTINGS,
   DEFAULT_SHEETS_SETTINGS,
   googleSheetUrl,
   spreadsheetIdFromLink,
   type GoogleSheetsStatus,
+  type DriveActivity,
+  type DriveAgentSettings,
+  type DrivePickerBody,
+  type DrivePickerProgress,
+  type GoogleDriveStatus,
   type SheetsActivity,
   type SheetsAgentSettings,
   type SheetsPickerProgress,
@@ -62,7 +68,8 @@ export const status = (
   ...patch,
 });
 
-export const sheetsStatus = (state: GoogleSheetsStatus['state']): GoogleSheetsStatus => ({
+/** A Google connector's sign-in status (Sheets, Drive: the same shape). */
+const signInStatus = (state: GoogleSheetsStatus['state']): GoogleSheetsStatus => ({
   state,
   account:
     state === 'connected' || state === 'expired' || state === 'unavailable'
@@ -71,6 +78,11 @@ export const sheetsStatus = (state: GoogleSheetsStatus['state']): GoogleSheetsSt
   connectedAt: null,
   problemSince: null,
 });
+export const sheetsStatus = signInStatus;
+export const driveStatus = (state: GoogleDriveStatus['state']): GoogleDriveStatus =>
+  signInStatus(state);
+
+export const DRIVE_FOLDER = { id: 'folder-claims-0000000001', name: 'Customer claims' };
 
 export const SHEET_ID = 'kopiapong-prices-000000000000000000';
 export const SHEET: SpreadsheetInfo = {
@@ -221,6 +233,15 @@ export interface World {
    * saved spreadsheet as `spreadsheets` holds it. `'busy'` answers 429 rate_limited.
    */
   sheetRefresh: (SpreadsheetInfo | 'busy')[];
+  /** Google Drive: its own sign-in, settings per agent, activity and picker answers. */
+  drive: GoogleDriveStatus;
+  driveProgress: GoogleCalendarConnectProgress[];
+  driveSettings: Record<number, DriveAgentSettings>;
+  driveActivity: DriveActivity[];
+  /** Answers to the Drive picker polls, in order (the last one repeats). */
+  drivePicker: DrivePickerProgress[];
+  /** Bodies of `POST …/google-drive/picker`. */
+  drivePickerBodies: DrivePickerBody[];
   agents: AiAgentSummary[];
   bookings: Record<number, BookingSettings>;
   activity: CalendarActivity[];
@@ -258,6 +279,12 @@ export function world(patch: Partial<World> = {}): World {
     spreadsheets: { [SHEET_ID]: SHEET },
     pickerProgress: [{ status: 'done', sheet: SHEET }],
     sheetRefresh: [],
+    drive: driveStatus('disconnected'),
+    driveProgress: [{ status: 'done', error: null }],
+    driveSettings: {},
+    driveActivity: [],
+    drivePicker: [{ status: 'done', folder: DRIVE_FOLDER, files: [] }],
+    drivePickerBodies: [],
     agents: [agent(1, 'Aina')],
     bookings: {},
     activity: [],
@@ -423,6 +450,54 @@ function sheetsRoute(w: World, method: string, path: string, init?: RequestInit)
   return null;
 }
 
+/** A fake request's JSON body as text. */
+const bodyText = (init?: RequestInit) => (typeof init?.body === 'string' ? init.body : '{}');
+
+/** The Google Drive sign-in routes of the fake server (`rest` after the connector's path). */
+function driveSignIn(w: World, method: string, rest: string): Response | null {
+  if (rest === '') return json(w.drive);
+  if (rest === '/connect' && method === 'POST')
+    return json({
+      requestId: 'req-d',
+      authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth?d=1',
+    });
+  if (rest.startsWith('/connect/')) {
+    const next = w.driveProgress.length > 1 ? w.driveProgress.shift()! : w.driveProgress[0]!;
+    if (next.status === 'done') w.drive = driveStatus('connected');
+    return json(next);
+  }
+  if (rest === '/disconnect' && method === 'POST') {
+    w.drive = driveStatus('disconnected');
+    return json(w.drive);
+  }
+  return null;
+}
+
+/** The Google Drive routes of the fake server. */
+function driveRoute(w: World, method: string, path: string, init?: RequestInit): Response | null {
+  if (!path.startsWith('/connectors/google-drive')) return null;
+  const rest = path.slice('/connectors/google-drive'.length);
+  const signIn = driveSignIn(w, method, rest);
+  if (signIn) return signIn;
+  if (rest === '/picker' && method === 'POST') {
+    w.drivePickerBodies.push(JSON.parse(bodyText(init)) as DrivePickerBody);
+    return json({
+      requestId: `dpick-${w.drivePickerBodies.length}`,
+      pickerUrl: 'http://127.0.0.1:7420/api/connectors/google-drive/picker-page?token=t',
+    });
+  }
+  if (rest.startsWith('/picker/'))
+    return json(w.drivePicker.length > 1 ? w.drivePicker.shift()! : w.drivePicker[0]!);
+  const agentMatch = /^\/agents\/(\d+)$/.exec(rest);
+  if (agentMatch) {
+    const id = Number(agentMatch[1]);
+    if (method === 'PUT') w.driveSettings[id] = JSON.parse(bodyText(init)) as DriveAgentSettings;
+    return json(w.driveSettings[id] ?? DEFAULT_DRIVE_SETTINGS);
+  }
+  if (rest === '/activity') return json({ activity: w.driveActivity });
+  return null;
+}
+
 export function stubServer(w: World) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -440,6 +515,8 @@ export function stubServer(w: World) {
     if (mcp) return mcp;
     const sheets = sheetsRoute(w, method, path, init);
     if (sheets) return sheets;
+    const drive = driveRoute(w, method, path, init);
+    if (drive) return drive;
     if (path === '/connectors/google-calendar') return json(w.google);
     if (path === '/connectors/google-calendar/connect' && method === 'POST')
       return json({

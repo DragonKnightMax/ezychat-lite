@@ -154,6 +154,30 @@ export interface GoogleAccountTexts {
 }
 
 /**
+ * The account card texts of a Google connector whose catalog keys follow one pattern
+ * (`connectors.<prefix>.description`, `what1`–`what3`, …): Google Sheets `gs`, Google Drive `gd`.
+ */
+export function googleAccountTexts(
+  t: (key: string) => string,
+  prefix: 'gs' | 'gd',
+): GoogleAccountTexts {
+  const k = (name: string) => t(`connectors.${prefix}.${name}`);
+  return {
+    description: k('accountDescription'),
+    what: [k('what1'), k('what2'), k('what3')],
+    connect: k('connect'),
+    connectHint: k('connectHint'),
+    expiredBody: k('expiredBody'),
+    unavailableTitle: k('unavailableTitle'),
+    unavailableBody: k('unavailableBody'),
+    perAgent: k('perAgent'),
+    disconnectTitle: k('disconnectTitle'),
+    disconnectBody: k('disconnectBody'),
+    disconnected: k('disconnected'),
+  };
+}
+
+/**
  * The Google account one core connector uses (one per install): connect, its state, the problem
  * banners and Disconnect. `children` adds what only that connector shows while signed in (Google
  * Calendar's calendars); `actions` sits next to Disconnect.

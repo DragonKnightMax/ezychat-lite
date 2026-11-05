@@ -50,6 +50,8 @@ initializers.push(initGoogleCalendar);
 
 import { initGoogleSheets } from './connectors/google-sheets/service.js';
 initializers.push(initGoogleSheets);
+import { initGoogleDrive } from './connectors/google-drive/service.js';
+initializers.push(initGoogleDrive);
 
 import { initConnectorList } from './connectors/list/service.js';
 initializers.push(initConnectorList);

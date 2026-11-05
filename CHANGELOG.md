@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Google Drive connector (Beta).** Admin → Connectors → Google Drive: sign in with Google and choose a folder for each
+  AI agent. With **Save files** on, the agent saves photos and documents people send in a chat into that folder (named
+  by date and time, never a file WhatsApp Safety locked, up to 25 MB). With **Read files**, it answers from the Drive
+  files you pick (Google Docs, Sheets, PDF, Word, text). The agent's instructions say what to save or read, and when.
+  EzyChat sees only the folder and files you choose.
+
 ### Fixed
 
 - **An update blocked by antivirus software no longer breaks EzyChat on Windows.** When an antivirus program stopped

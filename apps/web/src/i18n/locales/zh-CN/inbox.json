@@ -285,6 +285,7 @@
     "aiToolUsed": "AI 查询了 {{title}} · {{source}}",
     "internalNote": "内部备注",
     "sheetRowAdded": "AI 已在 {{tab}} 中添加一行 · {{source}}",
+    "driveFileSaved": "AI 已将文件保存到 Google Drive · {{source}}",
     "calendarChecked": "AI 查看了空闲时间 · {{source}}",
     "calendarBooked": "AI 预约了 {{when}} · {{source}}",
     "calendarBookedNoTime": "AI 预约了一个时间 · {{source}}",

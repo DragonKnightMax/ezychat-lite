@@ -22,6 +22,7 @@ export const TIP_TOPICS = [
   'safetyAi',
   'autoBlock',
   'lockedFiles',
+  'driveFiles',
   'reportNumber',
   'usageStats',
 ] as const;
@@ -63,6 +64,7 @@ export const TIPS: Readonly<Record<TipTopic, TipShape>> = {
   safetyAi: { steps: 0 },
   autoBlock: { steps: 0 },
   lockedFiles: { steps: 0 },
+  driveFiles: { steps: 0 },
   reportNumber: { steps: 3 },
   usageStats: { steps: 3 },
 };

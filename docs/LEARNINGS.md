@@ -12,6 +12,10 @@ into AGENTS.md.
 
 - Before you call a PR a break of an owner rule, read that rule in `origin/main`'s `AGENTS.md`: memory notes and older
   checkouts lag rule changes ("No tracking in Lite" became "Anonymous usage stats only" with #285).
+- A new connector modelled on an existing one fails SonarCloud's 3 % new-code duplication gate (tests count too) when
+  its tool wrapper, account-card texts, picker waiting card or route-test setup are copied: put each in one shared helper
+  (`connectors/tool-run.ts`, `googleAccountTexts`, `PickerWaiting`, `connectorTestApp`) and move the older connector onto
+  it in the same PR. Read the duplicated blocks with `api/duplications/show?key=<project>:<path>&pullRequest=<n>`.
 - `.partial()` keeps a zod `.default()`: a PATCH schema built from a response schema with a defaulted field fills that
   field on every patch. Re-declare such fields `.optional()` in the patch body (e.g. `SettingsPatchBody.usageStats`).
 - SonarCloud fails the security rating on a literal bidi control character in source (S6389: write `\u202e`, not the
@@ -966,6 +970,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - A third-party browser widget that needs outside scripts (Google's file picker) never goes into the app window: its
   CSP stays `script-src 'self'`. Serve it on its own host-only page with a CSP limited to that vendor, guarded by a
   one-time token, and hand it an access token once (`connectors/google-sheets/picker-page.ts`).
+- Google `drive.file` grants only what the app created and each item picked in the picker: a picked folder lets the
+  app create inside it, but its existing files stay 404 until each is picked. Design "read files" as files the admin
+  picks; reading a whole folder needs a restricted scope (security assessment), so never assume it.
 - Stop a Playwright run with its servers: killing only `playwright` leaves the e2e web servers on 7497/7498 holding the
   ports, and the next `npm run e2e` hangs at "WebServer" without a test result. Check `ps` for old `cli.ts --port` processes.
 - A destructive elevated step (remove a service, move data) can still be checked on the owner's live PC: keep
@@ -1161,6 +1168,15 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - A connector tool that writes into a customer-visible business system (a sheet row, a calendar event) must store the
   customer's text as data, never as something the other system runs: Google Sheets `append` with
   `valueInputOption=RAW` (USER_ENTERED would run `=HYPERLINK(…)`), and pin it with a test that writes `=…`.
+- A connector tool that acts on a chat's file lets the model choose a **label** of files the server listed (this chat's
+  inbound files, its senders), never a message id, link or path from the model; the server maps the label back and
+  re-checks Safety, size and duplicates (`connectors/google-drive/tools.ts`).
+- A new `AiToolUsedPayload` field must also be copied in `chats/service.ts#addAiToolUsed`, which builds the stored
+  payload field by field; otherwise the chat line silently loses it.
+- Test media with a spoofed name (right-to-left override, `…\u202egpj.exe`) is rated High by WhatsApp Safety at ingest:
+  use plain file names in fixtures unless the test is about Safety (then assert `levelOf`, no mock).
+- Parallel feature sessions pick the same next migration number: before naming `0NN_*.sql`, check the open PRs'
+  `db/migrations/` too; the PR that merges second renumbers its file (and its tests that drop tables by number).
 - A Lite → Enterprise import test that fakes "an older Lite" by dropping the newest tables must be extended with every
   new migration's tables, or it fails with "table already exists" (`lite-import-merge.test.ts`).
 - A fixed rule in `CORE_RULES` that says the admin's rules "never override" it silently beats the admin: the model
@@ -1395,7 +1411,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   item: use `flatMap` so the helper keeps the filter. A deleted group message broke every live group AI turn.
 - A draft prompt that tells the model to use a value (a group member's name) must put that value in the fact-check
   `sources`, or the number check drops correct drafts ("Kopi88 Ali"). Group prompts send no customer details.
-- A connector gives access (which tabs, which tools), the agent's instructions say when and why: never hard-code a use case (leads, claims) into connector code; tool descriptions are built per turn from the allowed tabs and their live first rows.
+- Connectors are use-case agnostic (owner rule, `docs/connector-design.md`): a connector page holds only access (resource, one switch per capability), the agent's instructions say when, why and what for. No use-case settings on a connector page (file types, folder schemes, example instructions, "leads"/"claims"); tool names and descriptions are generic and built per turn from the agent's allowed resources; guards cover safety only.
 - A provider mode whose request format is undocumented for a content type (ChatGPT backend and PDFs) gets a text fallback, never a guessed part type.
 
 ## Desktop and web UI

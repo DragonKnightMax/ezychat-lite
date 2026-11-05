@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
-import { authHeaders } from './auth-helpers.js';
-import type { TestApp } from './helpers.js';
+import { listAgents } from '../src/ai/agents.js';
+import { authHeaders, createUserAndLogin } from './auth-helpers.js';
+import { makeTestApp, type TestApp } from './helpers.js';
 
 /** One core Google connector's sign-in paths (Google Calendar, Google Sheets). */
 export interface GooglePaths {
@@ -19,6 +20,12 @@ export const SHEETS_PATHS: GooglePaths = {
   connect: '/api/connectors/google-sheets/connect',
   consent: '/api/dev/fake-google-sheets/consent',
   callback: '/api/connectors/google-sheets/callback',
+};
+
+export const DRIVE_PATHS: GooglePaths = {
+  connect: '/api/connectors/google-drive/connect',
+  consent: '/api/dev/fake-google-drive/consent',
+  callback: '/api/connectors/google-drive/callback',
 };
 
 /** Runs the whole sign-in on the fake: connect, the consent page's Allow or Cancel, Google's redirect. */
@@ -87,4 +94,73 @@ export async function expectCallbackHostOnly(t: TestApp, url: string) {
   expect(
     (await t.app.inject({ method: 'GET', url, headers: { host: '192.168.1.2:7420' } })).statusCode,
   ).toBe(403);
+}
+
+/** A test app with an admin, a team member (agent role) and one AI agent "Aina". */
+export async function connectorTestApp() {
+  const t = await makeTestApp();
+  const admin = await createUserAndLogin(t, { role: 'admin' });
+  const agent = await createUserAndLogin(t, { role: 'agent' });
+  t.ctx.services.ai!.saveMember(
+    { displayName: 'Aina', enabled: false, instructions: '' },
+    { userId: admin.user.id, ip: null },
+  );
+  return { t, admin: admin.cookie, agent: agent.cookie, agentId: listAgents(t.ctx.db)[0]!.id };
+}
+
+/** Signed-in requests for one test app. */
+export function connectorRequests(t: TestApp) {
+  return {
+    get: (url: string, cookie: string) => t.app.inject({ method: 'GET', url, headers: { cookie } }),
+    post: (url: string, cookie: string, payload: unknown = {}) =>
+      t.app.inject({
+        method: 'POST',
+        url,
+        headers: authHeaders(cookie),
+        payload: payload as object,
+      }),
+    put: (url: string, cookie: string, payload: unknown) =>
+      t.app.inject({
+        method: 'PUT',
+        url,
+        headers: authHeaders(cookie),
+        payload: payload as object,
+      }),
+  };
+}
+
+/**
+ * A Google file picker's page, script and token answer only this computer (never the LAN or the
+ * tunnel); the real page has its own CSP (Google's picker only) and no inline script.
+ */
+export async function expectPickerHostOnly(
+  t: TestApp,
+  base: string,
+  token: string,
+  fakePage: string,
+) {
+  for (const path of [
+    fakePage,
+    `${base}/picker-page?token=${token}`,
+    `${base}/picker-config?token=${token}`,
+    `${base}/picker.js`,
+  ]) {
+    const lan = await t.app.inject({ method: 'GET', url: path, remoteAddress: '192.168.1.20' });
+    expect(lan.statusCode, path).not.toBe(200);
+    const tunnel = await t.app.inject({
+      method: 'GET',
+      url: path,
+      headers: { 'cf-connecting-ip': '203.0.113.9' },
+    });
+    expect(tunnel.statusCode, path).not.toBe(200);
+  }
+  const page = await t.app.inject({ method: 'GET', url: `${base}/picker-page?token=${token}` });
+  expect(page.statusCode).toBe(200);
+  expect(page.headers['content-security-policy']).toContain(
+    "script-src 'self' https://apis.google.com",
+  );
+  expect(page.body).not.toMatch(/<script>/);
+  const script = await t.app.inject({ method: 'GET', url: `${base}/picker.js` });
+  expect(script.headers['content-type']).toContain('javascript');
+  return script.body;
 }

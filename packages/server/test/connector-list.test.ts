@@ -80,7 +80,7 @@ describe('connector list', () => {
     });
     await s.refresh();
     expect(server.calls).toEqual([]);
-    expect(ConnectorGallery.parse(s.gallery()).connectors.length).toBe(15);
+    expect(ConnectorGallery.parse(s.gallery()).connectors).toHaveLength(16);
     expect(s.entry('google-calendar')?.kind).toBe('builtin');
     expect(s.entry('hitpay')?.kind).toBe('coming_soon');
     expect(s.entry('custom-mcp')).toBeNull();
@@ -92,6 +92,7 @@ describe('connector list', () => {
     expect(entries.map((e) => e.id)).toEqual([
       'google-calendar',
       'google-sheets',
+      'google-drive',
       'hitpay',
       'shopify',
       'autocount',
@@ -124,6 +125,7 @@ describe('connector list', () => {
     expect(entries.filter((e) => e.stage === 'beta').map((e) => e.id)).toEqual([
       'google-calendar',
       'google-sheets',
+      'google-drive',
     ]);
   });
 

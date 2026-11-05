@@ -1572,7 +1572,13 @@
       "none": "No connector yet.",
       "browse": "Browse connectors",
       "sheetsReads": "Reads {{tabs}}",
-      "sheetsAdds": "Adds rows to {{tabs}}"
+      "sheetsAdds": "Adds rows to {{tabs}}",
+      "driveNoFolder": "No folder chosen",
+      "driveSaves": "Saves files",
+      "driveReads_one": "Reads {{count}} file",
+      "driveReads_other": "Reads {{count}} files",
+      "driveSavesAndReads_one": "Saves files and reads {{count}} file",
+      "driveSavesAndReads_other": "Saves files and reads {{count}} files"
     },
     "settingsPointerTitle": "Connectors",
     "settingsPointer": "Google Calendar and other systems your AI agents use are in Admin → Connectors.",
@@ -1584,7 +1590,13 @@
       "readRows": "Answer questions from the sheet",
       "readRowsHint": "Looks up prices, stock or other facts in your tab before it answers.",
       "addLead": "Save interested customers (leads)",
-      "addLeadHint": "Adds a customer who wants to buy as one row, so your team can follow up."
+      "addLeadHint": "Adds a customer who wants to buy as one row, so your team can follow up.",
+      "save": "Save a file",
+      "saveHint": "Saves a file someone sent in this chat into the agent's folder.",
+      "find": "Find a file",
+      "findHint": "Finds the right file among the files you picked.",
+      "read": "Read a file",
+      "readHint": "Reads a Google Doc, Sheet, PDF, Word or text file you picked and answers from it."
     },
     "items": {
       "google-calendar": {
@@ -1604,6 +1616,14 @@
         "short": "Answer from your price list, and save interested customers as leads.",
         "long": "Keep prices, stock or a FAQ in a Google Sheet and let your AI agent read it. If you allow it, the AI also adds each new lead as a row. Sign in with Google, then choose the sheet.",
         "privacy": "{{product}} can open only the spreadsheets you choose, reads only the tab you pick and writes only the lead rows it adds: date, the customer’s name, WhatsApp number, email and a short line on what they want. No chat history goes to Google. The sign-in is stored encrypted on this computer."
+      },
+      "google-drive": {
+        "name": "Google Drive",
+        "short": "Save files from chats; read files you pick.",
+        "long": "AI agents can save files people send on WhatsApp into a Google Drive folder you choose, and read the Drive files you pick. Each agent's instructions say what to save or read, and when.",
+        "privacy": "{{product}} can open only the folder and files you choose in Google's own window, and the files it saves itself. The rest of your Drive stays private.",
+        "privacy2": "The AI saves only files a customer sent in that chat, never files from other chats, and never a file WhatsApp Safety locked.",
+        "privacy3": "Activity keeps who and when only. File contents and names stay in your Drive."
       }
     },
     "gc": {
@@ -1968,6 +1988,98 @@
       "row_added": "{{agent}} added a row to {{tab}} for {{customer}}",
       "row_addedGroup": "{{agent}} added a row to {{tab}} for {{customer}} in {{group}}",
       "looked_upTab": "{{agent}} looked up {{tab}} for {{customer}}"
+    },
+    "gd": {
+      "accountDescription": "The Google account {{product}} uses for Google Drive. One account for the whole team; it can be different from the one for Google Calendar or Sheets.",
+      "what1": "Let AI agents save files people send in chats",
+      "what2": "Let AI agents read Drive files you pick",
+      "what3": "You choose the folder and files; nothing else is shared",
+      "connect": "Connect Google Drive",
+      "connectHint": "Google opens in your browser. Nothing to copy or paste. You can disconnect at any time.",
+      "connectedToast": "Google Drive connected",
+      "expiredBody": "Until you sign in again, the AI does not save or read files; it hands those chats to your team.",
+      "unavailableTitle": "Can't reach Google Drive",
+      "unavailableBody": "{{product}} tries again on its own. Meanwhile the AI hands file chats to your team.",
+      "perAgent": "Choose each AI agent's folder and files in Settings.",
+      "disconnectTitle": "Disconnect Google Drive?",
+      "disconnectBody": "The AI stops saving and reading files at once. Files already saved stay in your Drive. Settings are kept for when you connect again.",
+      "disconnected": "Google Drive disconnected"
+    },
+    "drive": {
+      "notConnected": "Connect Google Drive first",
+      "notConnectedHint": "Then choose a folder for each AI agent.",
+      "paused": {
+        "expired": "Paused: sign in to Google again",
+        "unavailable": "Paused: can't reach Google Drive"
+      },
+      "pausedBody": "{{name}} does not save or read files until it works again and hands file chats to your team.",
+      "folder": {
+        "title": "Folder",
+        "description": "Where {{name}} saves files and where you pick files for it to read.",
+        "none": "No folder chosen yet.",
+        "choose": "Choose a folder",
+        "change": "Choose another folder",
+        "changeHint": "Choosing another folder removes the picked files.",
+        "open": "Open in Google Drive",
+        "onlyChosen": "{{product}} sees only what you choose here."
+      },
+      "needFolder": "Choose a folder first.",
+      "save": {
+        "title": "Save files",
+        "description": "{{name}} may save files people send in a chat into this folder.",
+        "rule1": "Only a file someone sent in that chat, never one from another chat.",
+        "rule2": "Never a file WhatsApp Safety locked.",
+        "rule3": "Up to {{mb}} MB a file. Each file is saved once.",
+        "rule4": "{{product}} names the file by date and time, not by the sender's file name."
+      },
+      "read": {
+        "title": "Read files",
+        "description": "{{name}} answers questions from the files you pick here.",
+        "none": "No files yet. Add the files {{name}} may read.",
+        "add": "Add files",
+        "remove": "Remove {{file}}",
+        "hint": "Google Docs, Sheets, PDF, Word and text files, up to {{max}}. Files saved from chats are never read.",
+        "full": "That is the most: {{max}} files. Remove one to add another.",
+        "cantRead": "The AI can't read this kind of file."
+      },
+      "kind": {
+        "doc": "Google Doc",
+        "sheet": "Google Sheet",
+        "pdf": "PDF",
+        "word": "Word",
+        "text": "Text"
+      },
+      "when": {
+        "note": "What {{name}} saves or reads, and when, comes from its instructions.",
+        "open": "Edit {{name}}'s instructions"
+      },
+      "picking": "Waiting for Google's file picker…",
+      "pickingFolder": "Choose the folder in the window that opened. This page updates by itself.",
+      "pickingFiles": "Choose the files in the window that opened. This page updates by itself.",
+      "pickBlocked": "Your browser blocked the window. Open the file picker to continue.",
+      "openPicker": "Open the file picker",
+      "pickSameComputer": "The file picker works only in a browser on the computer that runs {{product}}.",
+      "pickError": {
+        "cancelled": "Nothing was chosen.",
+        "failed": "{{product}} could not open what you chose. Choose it again.",
+        "expired": "The file picker took too long. Try again."
+      },
+      "discard": "Discard",
+      "saveButton": "Save",
+      "saved": "Google Drive settings saved"
+    },
+    "driveAct": {
+      "hint": "Who and when. File names and contents stay in your Drive.",
+      "emptyHint": "Saves and reads show here.",
+      "saved": "{{agent}} saved a file from {{customer}}",
+      "read": "{{agent}} read a file for {{customer}}",
+      "failed": "{{agent}} could not reach Google Drive for {{customer}} and handed over",
+      "skipped": {
+        "safety": "{{agent}} did not save a locked file from {{customer}}",
+        "size": "{{agent}} did not save a file from {{customer}}: too large",
+        "unavailable": "{{agent}} did not save a file from {{customer}}: it couldn't be downloaded"
+      },
+      "inGroup": "{{line}} in {{group}}"
     }
   },
   "reports": {

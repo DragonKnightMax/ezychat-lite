@@ -1563,7 +1563,13 @@
       "none": "Belum ada penyambung.",
       "browse": "Lihat penyambung",
       "sheetsReads": "Membaca {{tabs}}",
-      "sheetsAdds": "Menambah baris ke {{tabs}}"
+      "sheetsAdds": "Menambah baris ke {{tabs}}",
+      "driveNoFolder": "Tiada folder dipilih",
+      "driveSaves": "Menyimpan fail",
+      "driveReads_one": "Membaca {{count}} fail",
+      "driveReads_other": "Membaca {{count}} fail",
+      "driveSavesAndReads_one": "Menyimpan fail dan membaca {{count}} fail",
+      "driveSavesAndReads_other": "Menyimpan fail dan membaca {{count}} fail"
     },
     "settingsPointerTitle": "Penyambung",
     "settingsPointer": "Google Calendar dan sistem lain yang digunakan oleh ejen AI anda ada di Pentadbir → Penyambung.",
@@ -1575,7 +1581,13 @@
       "readRows": "Jawab soalan daripada helaian",
       "readRowsHint": "Mencari harga, stok atau fakta lain dalam tab anda sebelum menjawab.",
       "addLead": "Simpan pelanggan berminat (prospek)",
-      "addLeadHint": "Menambah pelanggan yang mahu membeli sebagai satu baris, supaya pasukan anda boleh membuat susulan."
+      "addLeadHint": "Menambah pelanggan yang mahu membeli sebagai satu baris, supaya pasukan anda boleh membuat susulan.",
+      "save": "Simpan fail",
+      "saveHint": "Menyimpan fail yang dihantar dalam sembang ini ke folder ejen.",
+      "find": "Cari fail",
+      "findHint": "Mencari fail yang betul antara fail yang anda pilih.",
+      "read": "Baca fail",
+      "readHint": "Membaca Google Doc, Sheet, PDF, Word atau fail teks yang anda pilih dan menjawab daripadanya."
     },
     "items": {
       "google-calendar": {
@@ -1595,6 +1607,14 @@
         "short": "Jawab daripada senarai harga anda, dan simpan pelanggan berminat sebagai prospek.",
         "long": "Simpan harga, stok atau soalan lazim dalam Google Sheet dan biarkan ejen AI anda membacanya. Jika anda benarkan, AI juga menambah setiap prospek baharu sebagai satu baris. Log masuk dengan Google, kemudian pilih helaian itu.",
         "privacy": "{{product}} hanya boleh membuka hamparan yang anda pilih, hanya membaca tab yang anda pilih dan hanya menulis baris prospek yang ditambahnya: tarikh, nama pelanggan, nombor WhatsApp, e-mel dan satu baris ringkas tentang kehendak mereka. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit di komputer ini."
+      },
+      "google-drive": {
+        "name": "Google Drive",
+        "short": "Simpan fail daripada sembang; baca fail pilihan anda.",
+        "long": "Ejen AI boleh menyimpan fail yang dihantar di WhatsApp ke folder Google Drive pilihan anda, dan membaca fail Drive yang anda pilih. Arahan setiap ejen menentukan apa yang disimpan atau dibaca, dan bila.",
+        "privacy": "{{product}} hanya boleh membuka folder dan fail yang anda pilih dalam tetingkap Google sendiri, serta fail yang ia simpan sendiri. Selebihnya Drive anda kekal peribadi.",
+        "privacy2": "AI hanya menyimpan fail yang pelanggan hantar dalam sembang itu, bukan fail daripada sembang lain, dan tidak sekali-kali fail yang dikunci oleh Keselamatan WhatsApp.",
+        "privacy3": "Aktiviti hanya menyimpan siapa dan bila. Kandungan dan nama fail kekal dalam Drive anda."
       }
     },
     "gc": {
@@ -1952,6 +1972,98 @@
       "row_added": "{{agent}} menambah baris ke {{tab}} untuk {{customer}}",
       "row_addedGroup": "{{agent}} menambah baris ke {{tab}} untuk {{customer}} dalam {{group}}",
       "looked_upTab": "{{agent}} menyemak {{tab}} untuk {{customer}}"
+    },
+    "gd": {
+      "accountDescription": "Akaun Google yang {{product}} gunakan untuk Google Drive. Satu akaun untuk seluruh pasukan; ia boleh berbeza daripada akaun untuk Google Calendar atau Sheets.",
+      "what1": "Benarkan ejen AI menyimpan fail yang dihantar dalam sembang",
+      "what2": "Benarkan ejen AI membaca fail Drive pilihan anda",
+      "what3": "Anda pilih folder dan fail; tiada yang lain dikongsi",
+      "connect": "Sambung Google Drive",
+      "connectHint": "Google dibuka dalam pelayar anda. Tiada apa untuk disalin atau ditampal. Anda boleh memutuskan sambungan pada bila-bila masa.",
+      "connectedToast": "Google Drive disambung",
+      "expiredBody": "Sehingga anda log masuk semula, AI tidak menyimpan atau membaca fail; ia menyerahkan sembang itu kepada pasukan anda.",
+      "unavailableTitle": "Tidak dapat menghubungi Google Drive",
+      "unavailableBody": "{{product}} mencuba semula sendiri. Sementara itu AI menyerahkan sembang fail kepada pasukan anda.",
+      "perAgent": "Pilih folder dan fail setiap ejen AI dalam Tetapan.",
+      "disconnectTitle": "Putuskan Google Drive?",
+      "disconnectBody": "AI berhenti menyimpan dan membaca fail serta-merta. Fail yang sudah disimpan kekal dalam Drive anda. Tetapan disimpan untuk apabila anda menyambung semula.",
+      "disconnected": "Google Drive diputuskan"
+    },
+    "drive": {
+      "notConnected": "Sambung Google Drive dahulu",
+      "notConnectedHint": "Kemudian pilih folder untuk setiap ejen AI.",
+      "paused": {
+        "expired": "Dijeda: log masuk ke Google semula",
+        "unavailable": "Dijeda: tidak dapat menghubungi Google Drive"
+      },
+      "pausedBody": "{{name}} tidak menyimpan atau membaca fail sehingga ia berfungsi semula dan menyerahkan sembang fail kepada pasukan anda.",
+      "folder": {
+        "title": "Folder",
+        "description": "Tempat {{name}} menyimpan fail dan tempat anda memilih fail untuk dibacanya.",
+        "none": "Belum ada folder dipilih.",
+        "choose": "Pilih folder",
+        "change": "Pilih folder lain",
+        "changeHint": "Memilih folder lain membuang fail yang dipilih.",
+        "open": "Buka dalam Google Drive",
+        "onlyChosen": "{{product}} hanya melihat apa yang anda pilih di sini."
+      },
+      "needFolder": "Pilih folder dahulu.",
+      "save": {
+        "title": "Simpan fail",
+        "description": "{{name}} boleh menyimpan fail yang dihantar dalam sembang ke folder ini.",
+        "rule1": "Hanya fail yang dihantar dalam sembang itu, bukan daripada sembang lain.",
+        "rule2": "Tidak sekali-kali fail yang dikunci oleh Keselamatan WhatsApp.",
+        "rule3": "Sehingga {{mb}} MB setiap fail. Setiap fail disimpan sekali sahaja.",
+        "rule4": "{{product}} menamakan fail mengikut tarikh dan masa, bukan nama fail pengirim."
+      },
+      "read": {
+        "title": "Baca fail",
+        "description": "{{name}} menjawab soalan daripada fail yang anda pilih di sini.",
+        "none": "Belum ada fail. Tambah fail yang boleh dibaca oleh {{name}}.",
+        "add": "Tambah fail",
+        "remove": "Buang {{file}}",
+        "hint": "Google Docs, Sheets, PDF, Word dan fail teks, sehingga {{max}}. Fail yang disimpan daripada sembang tidak sekali-kali dibaca.",
+        "full": "Itu had maksimum: {{max}} fail. Buang satu untuk menambah yang lain.",
+        "cantRead": "AI tidak dapat membaca jenis fail ini."
+      },
+      "kind": {
+        "doc": "Google Doc",
+        "sheet": "Google Sheet",
+        "pdf": "PDF",
+        "word": "Word",
+        "text": "Teks"
+      },
+      "when": {
+        "note": "Apa yang {{name}} simpan atau baca, dan bila, ditentukan oleh arahannya.",
+        "open": "Edit arahan {{name}}"
+      },
+      "picking": "Menunggu pemilih fail Google…",
+      "pickingFolder": "Pilih folder dalam tetingkap yang dibuka. Halaman ini dikemas kini sendiri.",
+      "pickingFiles": "Pilih fail dalam tetingkap yang dibuka. Halaman ini dikemas kini sendiri.",
+      "pickBlocked": "Pelayar anda menyekat tetingkap itu. Buka pemilih fail untuk meneruskan.",
+      "openPicker": "Buka pemilih fail",
+      "pickSameComputer": "Pemilih fail hanya berfungsi dalam pelayar di komputer yang menjalankan {{product}}.",
+      "pickError": {
+        "cancelled": "Tiada apa yang dipilih.",
+        "failed": "{{product}} tidak dapat membuka pilihan anda. Pilih semula.",
+        "expired": "Pemilih fail mengambil masa terlalu lama. Cuba lagi."
+      },
+      "discard": "Buang perubahan",
+      "saveButton": "Simpan",
+      "saved": "Tetapan Google Drive disimpan"
+    },
+    "driveAct": {
+      "hint": "Siapa dan bila. Nama dan kandungan fail kekal dalam Drive anda.",
+      "emptyHint": "Simpanan dan bacaan dipaparkan di sini.",
+      "saved": "{{agent}} menyimpan fail daripada {{customer}}",
+      "read": "{{agent}} membaca fail untuk {{customer}}",
+      "failed": "{{agent}} tidak dapat menghubungi Google Drive untuk {{customer}} dan menyerahkan",
+      "skipped": {
+        "safety": "{{agent}} tidak menyimpan fail berkunci daripada {{customer}}",
+        "size": "{{agent}} tidak menyimpan fail daripada {{customer}}: terlalu besar",
+        "unavailable": "{{agent}} tidak menyimpan fail daripada {{customer}}: tidak dapat dimuat turun"
+      },
+      "inGroup": "{{line}} dalam {{group}}"
     }
   },
   "reports": {

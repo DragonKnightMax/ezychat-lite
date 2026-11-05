@@ -69,6 +69,10 @@ export const CORE_AGENT_TOOL_NAMES: readonly string[] = [
   // Google Sheets connector (connectors/google-sheets/tools.ts)
   'read_sheet_rows',
   'add_sheet_row',
+  // Google Drive connector (connectors/google-drive/tools.ts)
+  'save_file_to_drive',
+  'list_drive_files',
+  'read_drive_file',
   // Offered by older releases; stays reserved.
   'add_lead_row',
 ];

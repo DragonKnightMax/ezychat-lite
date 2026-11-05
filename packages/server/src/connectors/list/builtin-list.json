@@ -122,6 +122,81 @@
     }
   },
   {
+    "id": "google-drive",
+    "schemaVersion": 1,
+    "minAppVersion": "0.0.0",
+    "kind": "builtin",
+    "editions": ["lite", "enterprise"],
+    "builtinId": "google-drive",
+    "name": "Google Drive",
+    "summary": {
+      "en": "Save files from chats; read files you pick.",
+      "ms": "Simpan fail daripada sembang; baca fail pilihan anda.",
+      "zh-CN": "保存聊天中的文件；读取您选择的文件。"
+    },
+    "description": {
+      "en": "Sign in with Google and choose a folder for each AI agent. The agent can save files people send in a chat into that folder, and read the Drive files you pick. Each agent's instructions say what to save or read, and when.",
+      "ms": "Log masuk dengan Google dan pilih folder bagi setiap ejen AI. Ejen boleh menyimpan fail yang dihantar dalam sembang ke folder itu, dan membaca fail Drive yang anda pilih. Arahan setiap ejen menentukan apa yang disimpan atau dibaca, dan bila.",
+      "zh-CN": "使用 Google 登录并为每个 AI 代理选择一个文件夹。代理可以把聊天中收到的文件保存到该文件夹，并读取您选择的 Drive 文件。保存或读取什么、何时进行，由每个代理的指令决定。"
+    },
+    "category": "other",
+    "privacy": {
+      "en": "EzyChat opens only the folder and files you choose in Google's window, and the files it saves. It saves only files sent in that chat, never one WhatsApp Safety locked. The AI never reads back files saved from chats. No chat history goes to Google. The sign-in is stored encrypted on this computer.",
+      "ms": "EzyChat hanya membuka folder dan fail yang anda pilih dalam tetingkap Google, serta fail yang disimpannya. Ia hanya menyimpan fail yang dihantar dalam sembang itu, bukan fail yang dikunci Keselamatan WhatsApp. AI tidak membaca semula fail daripada sembang. Tiada sejarah sembang dihantar ke Google. Log masuk disimpan secara tersulit.",
+      "zh-CN": "EzyChat 只打开您在 Google 窗口中选择的文件夹和文件，以及它自己保存的文件。它只保存在该聊天中收到的文件，绝不保存被 WhatsApp 安全锁定的文件。AI 不会读取从聊天中保存的文件。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
+    },
+    "tools": [
+      {
+        "name": "save_file_to_drive",
+        "title": {
+          "en": "Save files",
+          "ms": "Simpan fail",
+          "zh-CN": "保存文件"
+        },
+        "description": {
+          "en": "Saves a file someone sent in this chat into the agent's folder.",
+          "ms": "Menyimpan fail yang dihantar dalam sembang ini ke folder ejen.",
+          "zh-CN": "把在此聊天中收到的文件保存到代理的文件夹。"
+        },
+        "access": "write"
+      },
+      {
+        "name": "list_drive_files",
+        "title": {
+          "en": "Find a file",
+          "ms": "Cari fail",
+          "zh-CN": "查找文件"
+        },
+        "description": {
+          "en": "Finds the right file among the files you picked.",
+          "ms": "Mencari fail yang betul antara fail yang anda pilih.",
+          "zh-CN": "在您选择的文件中找到合适的文件。"
+        },
+        "access": "read"
+      },
+      {
+        "name": "read_drive_file",
+        "title": {
+          "en": "Read files",
+          "ms": "Baca fail",
+          "zh-CN": "读取文件"
+        },
+        "description": {
+          "en": "Reads a Google Doc, Sheet, PDF, Word or text file you picked and answers from it.",
+          "ms": "Membaca Google Doc, Sheet, PDF, Word atau fail teks yang anda pilih dan menjawab daripadanya.",
+          "zh-CN": "读取您选择的 Google 文档、表格、PDF、Word 或文本文件并据此回答。"
+        },
+        "access": "read"
+      }
+    ],
+    "stage": "beta",
+    "notice": {
+      "en": "Google is still reviewing this connector. When you sign in, Google shows a warning that the app is not verified: click Advanced, then Go to EzyChat, to continue. Your files still go only between your computer and Google.",
+      "ms": "Google masih menyemak penyambung ini. Semasa anda log masuk, Google memaparkan amaran bahawa aplikasi belum disahkan: klik Lanjutan, kemudian Pergi ke EzyChat, untuk teruskan. Fail anda tetap hanya bergerak antara komputer anda dan Google.",
+      "zh-CN": "Google 仍在审核此连接器。登录时，Google 会提示该应用尚未验证：点击“高级”，然后点击“转至 EzyChat”即可继续。您的文件仍只在您的电脑和 Google 之间传输。"
+    }
+  },
+  {
     "id": "hitpay",
     "schemaVersion": 1,
     "minAppVersion": "0.0.0",

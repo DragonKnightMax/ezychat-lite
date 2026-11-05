@@ -95,6 +95,17 @@ describe('describeEvent', () => {
     );
   });
 
+  it('says the AI saved a file to Google Drive', () => {
+    const payload = {
+      title: 'Save a file',
+      sourceLabel: 'Google Drive',
+      drive: { action: 'saved' },
+    };
+    expect(describeEvent(event('ai_tool_used', 3, payload), dir)).toBe(
+      'AI saved a file to Google Drive · Google Drive',
+    );
+  });
+
   it('names Google Calendar checks and bookings with the booked time', () => {
     const source = { title: 'Check free times', sourceLabel: 'Google Calendar' };
     expect(

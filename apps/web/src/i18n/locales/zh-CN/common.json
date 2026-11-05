@@ -188,6 +188,10 @@
       "title": "锁定的文件放在哪里？",
       "body": "放在 EzyChat 自己的文件夹，并改名使其无法运行。只有管理员可以解锁或删除。"
     },
+    "driveFiles": {
+      "title": "为什么要选择文件？",
+      "body": "Google 只允许 {{product}} 打开您在 Google 窗口中选择的文件夹和文件，以及它自己保存的文件。您 Drive 中的其他文件保持私密。"
+    },
     "reportNumber": {
       "title": "如何向 WhatsApp 举报",
       "body": "WhatsApp 只接受来自 WhatsApp 应用的举报。",

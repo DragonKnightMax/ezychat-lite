@@ -1562,7 +1562,13 @@
       "none": "尚无连接器。",
       "browse": "浏览连接器",
       "sheetsReads": "读取 {{tabs}}",
-      "sheetsAdds": "向 {{tabs}} 添加行"
+      "sheetsAdds": "向 {{tabs}} 添加行",
+      "driveNoFolder": "未选择文件夹",
+      "driveSaves": "保存文件",
+      "driveReads_one": "读取 {{count}} 个文件",
+      "driveReads_other": "读取 {{count}} 个文件",
+      "driveSavesAndReads_one": "保存文件并读取 {{count}} 个文件",
+      "driveSavesAndReads_other": "保存文件并读取 {{count}} 个文件"
     },
     "settingsPointerTitle": "连接器",
     "settingsPointer": "Google Calendar 及 AI 代理使用的其他系统位于 管理 → 连接器。",
@@ -1574,7 +1580,13 @@
       "readRows": "根据表格回答问题",
       "readRowsHint": "回答前先在您的工作表中查找价格、库存或其他信息。",
       "addLead": "保存有意向的客户（潜在客户）",
-      "addLeadHint": "把想购买的客户添加为一行，方便您的团队跟进。"
+      "addLeadHint": "把想购买的客户添加为一行，方便您的团队跟进。",
+      "save": "保存文件",
+      "saveHint": "把在此聊天中收到的文件保存到助手的文件夹。",
+      "find": "查找文件",
+      "findHint": "在您选择的文件中找到合适的文件。",
+      "read": "读取文件",
+      "readHint": "读取您选择的 Google 文档、表格、PDF、Word 或文本文件并据此回答。"
     },
     "items": {
       "google-calendar": {
@@ -1594,6 +1606,14 @@
         "short": "根据您的价目表回答，并把有意向的客户保存为潜在客户。",
         "long": "把价格、库存或常见问题放在 Google 表格中，让 AI 代理读取。如果您允许，AI 还会把每个新的潜在客户添加为一行。使用 Google 登录，然后选择表格。",
         "privacy": "{{product}} 只能打开您选择的电子表格，只读取您选的工作表，只写入它添加的潜在客户行：日期、客户姓名、WhatsApp 号码、电子邮件，以及一句简短的需求说明。聊天记录不会发送到 Google。登录信息加密保存在这台电脑上。"
+      },
+      "google-drive": {
+        "name": "Google Drive",
+        "short": "保存聊天中的文件；读取您选择的文件。",
+        "long": "AI 助手可以把在 WhatsApp 中收到的文件保存到您选择的 Google Drive 文件夹，并读取您选择的 Drive 文件。保存或读取什么、何时进行，由每个助手的指令决定。",
+        "privacy": "{{product}} 只能打开您在 Google 自己的窗口中选择的文件夹和文件，以及它自己保存的文件。您 Drive 中的其他内容保持私密。",
+        "privacy2": "AI 只保存客户在该聊天中发送的文件，绝不保存其他聊天的文件，也绝不保存被 WhatsApp 安全锁定的文件。",
+        "privacy3": "活动只记录谁和何时。文件内容和名称保留在您的 Drive 中。"
       }
     },
     "gc": {
@@ -1949,6 +1969,98 @@
       "row_added": "{{agent}} 为 {{customer}} 向 {{tab}} 添加了一行",
       "row_addedGroup": "{{agent}} 在 {{group}} 中为 {{customer}} 向 {{tab}} 添加了一行",
       "looked_upTab": "{{agent}} 为 {{customer}} 查询了 {{tab}}"
+    },
+    "gd": {
+      "accountDescription": "{{product}} 用于 Google Drive 的 Google 账号。整个团队使用一个账号；它可以与 Google 日历或表格使用的账号不同。",
+      "what1": "让 AI 助手保存聊天中收到的文件",
+      "what2": "让 AI 助手读取您选择的 Drive 文件",
+      "what3": "由您选择文件夹和文件；不会共享其他内容",
+      "connect": "连接 Google Drive",
+      "connectHint": "Google 会在浏览器中打开，无需复制或粘贴。您可以随时断开连接。",
+      "connectedToast": "已连接 Google Drive",
+      "expiredBody": "在您重新登录之前，AI 不会保存或读取文件，并会把这些聊天交给您的团队。",
+      "unavailableTitle": "无法连接 Google Drive",
+      "unavailableBody": "{{product}} 会自动重试。在此期间，AI 会把涉及文件的聊天交给您的团队。",
+      "perAgent": "在“设置”中为每个 AI 助手选择文件夹和文件。",
+      "disconnectTitle": "断开 Google Drive？",
+      "disconnectBody": "AI 会立即停止保存和读取文件。已保存的文件仍保留在您的 Drive 中。设置会保留，以便您再次连接。",
+      "disconnected": "已断开 Google Drive"
+    },
+    "drive": {
+      "notConnected": "请先连接 Google Drive",
+      "notConnectedHint": "然后为每个 AI 助手选择文件夹。",
+      "paused": {
+        "expired": "已暂停：请重新登录 Google",
+        "unavailable": "已暂停：无法连接 Google Drive"
+      },
+      "pausedBody": "在恢复之前，{{name}} 不会保存或读取文件，并会把涉及文件的聊天交给您的团队。",
+      "folder": {
+        "title": "文件夹",
+        "description": "{{name}} 保存文件的位置，也是您为它选择可读文件的位置。",
+        "none": "尚未选择文件夹。",
+        "choose": "选择文件夹",
+        "change": "选择其他文件夹",
+        "changeHint": "选择其他文件夹会移除已选的文件。",
+        "open": "在 Google Drive 中打开",
+        "onlyChosen": "{{product}} 只能看到您在这里选择的内容。"
+      },
+      "needFolder": "请先选择文件夹。",
+      "save": {
+        "title": "保存文件",
+        "description": "{{name}} 可以把聊天中收到的文件保存到此文件夹。",
+        "rule1": "只保存在该聊天中收到的文件，绝不保存其他聊天的文件。",
+        "rule2": "绝不保存被 WhatsApp 安全锁定的文件。",
+        "rule3": "每个文件最大 {{mb}} MB。每个文件只保存一次。",
+        "rule4": "{{product}} 按日期和时间命名文件，而不是用发送者的文件名。"
+      },
+      "read": {
+        "title": "读取文件",
+        "description": "{{name}} 会根据您在这里选择的文件回答问题。",
+        "none": "还没有文件。添加 {{name}} 可以读取的文件。",
+        "add": "添加文件",
+        "remove": "移除 {{file}}",
+        "hint": "Google 文档、表格、PDF、Word 和文本文件，最多 {{max}} 个。绝不读取从聊天中保存的文件。",
+        "full": "已达上限：{{max}} 个文件。移除一个后才能添加。",
+        "cantRead": "AI 无法读取这类文件。"
+      },
+      "kind": {
+        "doc": "Google 文档",
+        "sheet": "Google 表格",
+        "pdf": "PDF",
+        "word": "Word",
+        "text": "文本"
+      },
+      "when": {
+        "note": "{{name}} 保存或读取什么、何时进行，由它的指令决定。",
+        "open": "编辑 {{name}} 的指令"
+      },
+      "picking": "正在等待 Google 文件选择器…",
+      "pickingFolder": "请在打开的窗口中选择文件夹。此页面会自动更新。",
+      "pickingFiles": "请在打开的窗口中选择文件。此页面会自动更新。",
+      "pickBlocked": "浏览器拦截了窗口。请打开文件选择器继续。",
+      "openPicker": "打开文件选择器",
+      "pickSameComputer": "文件选择器只能在运行 {{product}} 的电脑上的浏览器中使用。",
+      "pickError": {
+        "cancelled": "没有选择任何内容。",
+        "failed": "{{product}} 无法打开您选择的内容。请重新选择。",
+        "expired": "文件选择器等待时间过长。请重试。"
+      },
+      "discard": "放弃",
+      "saveButton": "保存",
+      "saved": "Google Drive 设置已保存"
+    },
+    "driveAct": {
+      "hint": "只记录谁和何时。文件名称和内容保留在您的 Drive 中。",
+      "emptyHint": "保存和读取记录会显示在这里。",
+      "saved": "{{agent}} 保存了 {{customer}} 发送的文件",
+      "read": "{{agent}} 为 {{customer}} 读取了文件",
+      "failed": "{{agent}} 无法为 {{customer}} 连接 Google Drive，已转交团队",
+      "skipped": {
+        "safety": "{{agent}} 没有保存 {{customer}} 发送的被锁定文件",
+        "size": "{{agent}} 没有保存 {{customer}} 发送的文件：文件太大",
+        "unavailable": "{{agent}} 没有保存 {{customer}} 发送的文件：无法下载"
+      },
+      "inGroup": "{{line}}（{{group}}）"
     }
   },
   "reports": {
