@@ -133,6 +133,11 @@ into AGENTS.md.
   cancel) and mark the seeded replies sent. In the cloud container run shot scripts with
   `PW_CHROMIUM` set to the browser binary (`/opt/pw-browsers/chromium-<rev>/chrome-linux64/chrome`; the
   `/opt/pw-browsers/chromium` folder alone fails to launch; no Edge there).
+- Mock seeds that place a message at a clock time ("yesterday 8:30") must compute it in the business zone
+  (`ai_timezone`, UTC+8), not with `setHours`: the cloud container runs in UTC, so a local-time seed shows 16:30 in
+  the Asia/Kuala_Lumpur screenshots. Browser-side seeds may use local time (the shot context sets `timezoneId`).
+- Merging two confirmed sibling mocks (same baseline): `git merge-file <ours> <base> <theirs>` per changed file;
+  catalog JSON conflicts are usually both sides appending keys at one spot, so keep both and re-check `JSON.parse`.
 - Mock shot scripts: wait for a locator, never `waitForLoadState('networkidle')` (the Socket.IO connection keeps
   the page busy, so every step burns the 30 s timeout). The setup wizard's step lives in React state: creating the
   first admin through `/api/setup/admin` drops the page straight into the inbox, so walk the account step in the UI
