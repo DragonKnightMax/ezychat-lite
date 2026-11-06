@@ -1525,6 +1525,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Desktop and web UI
 
+- A web push `badge` must be a white shape on a transparent background (`public/badge-96.png`): Android draws it from
+  the alpha only, so a full-colour app icon becomes a white square. `notification-badge.test.ts` checks it.
 - A list or panel component whose tests render it without an auth provider reads the signed-in user from the props it
   already gets (`directory.me`), not from `useAuth()`: a new hook there breaks every existing test with "No
   QueryClient set".

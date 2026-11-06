@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Phone notifications show the EzyChat parrot again.** On Android, EzyChat notifications showed a plain white
+  square as their small icon. They now show the parrot.
 - **Partner connectors keep free-form fields.** A partner tool that takes a map of names to values (for example the
   columns of a Notion page in Notion's `notion-create-pages` and `notion-update-page`) lost every entry, so a new page
   had no title and a database row had no fields. Such maps now reach the partner, bounded (100 keys, 10,000 characters

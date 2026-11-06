@@ -58,6 +58,7 @@ const PACKAGES = [
       'dist-lib/sw-routes.ts',
       'dist-lib/public/icon-192.png',
       'dist-lib/public/icon-512.png',
+      'dist-lib/public/badge-96.png',
       'dist-lib/public/favicon.ico',
       'dist-lib/public/apple-touch-icon.png',
       'dist-lib/public/share-app.svg',

@@ -77,7 +77,8 @@ self.addEventListener('push', (event) => {
     body: data.body ?? '',
     tag: data.tag,
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    // Android draws the badge from its alpha only: a full-colour icon becomes a white square.
+    badge: '/badge-96.png',
     data: { url: data.url ?? '/' },
   };
   event.waitUntil(self.registration.showNotification(title, options));

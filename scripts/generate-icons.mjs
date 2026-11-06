@@ -18,6 +18,7 @@ const assets = [
   ['app-icon-512.png', 'apps/web/public/icon-512.png'],
   ['app-icon-maskable-512.png', 'apps/web/public/icon-maskable-512.png'],
   ['apple-touch-icon.png', 'apps/web/public/apple-touch-icon.png'],
+  ['notification-badge-96.png', 'apps/web/public/badge-96.png'],
   ['app-icon.ico', 'apps/web/public/favicon.ico'],
 ];
 
