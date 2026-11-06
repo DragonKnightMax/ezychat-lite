@@ -237,6 +237,22 @@ export function refusalText(
 
 const MAX_DEPTH = 8;
 
+/**
+ * Bounds of a free-form map (a schema object without fixed fields: `additionalProperties`, or
+ * cut at the schema's depth limit) and of everything inside one. A value past a bound refuses the
+ * call: the model's data is never cut and sent half.
+ */
+export const MAP_LIMITS = {
+  /** Keys per map. */
+  keys: 100,
+  /** Characters of each key. */
+  keyChars: 200,
+  /** Characters of each string inside a map. */
+  stringChars: 10_000,
+  /** Items of each array inside a map. */
+  arrayItems: 100,
+} as const;
+
 function typeOk(type: unknown, value: unknown): boolean {
   const types = Array.isArray(type) ? type : type === undefined ? [] : [type];
   if (!types.length) return true;
@@ -254,40 +270,76 @@ function typeOk(type: unknown, value: unknown): boolean {
 
 class InvalidArgs extends Error {}
 
+const isNode = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
+
 /**
  * The model's arguments checked against the partner's bounded input schema (mcp.ts
- * boundedInputSchema): keys the schema does not name are dropped at every level, so an extra or
- * aliased key never reaches the partner past the guards; a wrong type, a value outside an enum or
- * a missing required field refuses the call (null).
+ * boundedInputSchema): keys the schema does not name are dropped at every level with fixed fields,
+ * so an extra or aliased key never reaches the partner past the guards; a free-form map keeps its
+ * keys within MAP_LIMITS. A wrong type, a value outside an enum, a missing required field or a map
+ * past its bounds refuses the call (null).
  */
 export function cleanArgs(
   schema: Record<string, unknown>,
   args: unknown,
 ): Record<string, unknown> | null {
-  const walk = (node: Record<string, unknown>, value: unknown, depth: number): unknown => {
+  const walk = (
+    node: Record<string, unknown>,
+    value: unknown,
+    depth: number,
+    inMap: boolean,
+  ): unknown => {
     if (depth > MAX_DEPTH || !typeOk(node.type, value)) throw new InvalidArgs();
     if (Array.isArray(node.enum) && !node.enum.some((option) => option === value))
       throw new InvalidArgs();
+    if (inMap && typeof value === 'string' && value.length > MAP_LIMITS.stringChars)
+      throw new InvalidArgs();
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      const props = node.properties as Record<string, Record<string, unknown>> | undefined;
-      // An object cut at the schema's depth limit keeps its content (no guard path is that deep).
-      if (!props) return value;
       const record = value as Record<string, unknown>;
+      const props = node.properties as Record<string, Record<string, unknown>> | undefined;
+      if (!props) return cleanMap(node, record, depth);
       const out: Record<string, unknown> = {};
       for (const [key, child] of Object.entries(props))
         if (Object.hasOwn(record, key) && record[key] !== undefined)
-          out[key] = walk(child, record[key], depth + 1);
+          out[key] = walk(child, record[key], depth + 1, inMap);
       for (const key of Array.isArray(node.required) ? (node.required as string[]) : [])
         if (!Object.hasOwn(out, key)) throw new InvalidArgs();
       return out;
     }
-    if (Array.isArray(value) && node.items && typeof node.items === 'object')
-      return value.map((item) => walk(node.items as Record<string, unknown>, item, depth + 1));
+    if (Array.isArray(value)) {
+      if (inMap && value.length > MAP_LIMITS.arrayItems) throw new InvalidArgs();
+      const items = isNode(node.items) ? node.items : inMap ? {} : null;
+      if (items) return value.map((item) => walk(items, item, depth + 1, inMap));
+    }
     return value;
+  };
+  // A map keeps its keys (bounded); each value is checked against the value schema, or only
+  // bounded when any value is allowed.
+  const cleanMap = (
+    node: Record<string, unknown>,
+    record: Record<string, unknown>,
+    depth: number,
+  ) => {
+    const entries = Object.entries(record).filter(([, v]) => v !== undefined);
+    if (entries.length > MAP_LIMITS.keys) throw new InvalidArgs();
+    const valueNode = isNode(node.additionalProperties) ? node.additionalProperties : {};
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of entries) {
+      if (!key || key.length > MAP_LIMITS.keyChars) throw new InvalidArgs();
+      // An own property even for "__proto__": the key is data, never the object's prototype.
+      Object.defineProperty(out, key, {
+        value: walk(valueNode, item, depth + 1, true),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    }
+    return out;
   };
   if (!args || typeof args !== 'object' || Array.isArray(args)) return null;
   try {
-    return walk(schema, args, 0) as Record<string, unknown>;
+    return walk(schema, args, 0, false) as Record<string, unknown>;
   } catch {
     return null;
   }

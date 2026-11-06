@@ -133,6 +133,9 @@ export const SCHEMA_LIMITS = {
   toolChars: 8_000,
 } as const;
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
+
 const SIMPLE_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array']);
 
 function boundedNode(raw: unknown, depth: number): Record<string, unknown> {
@@ -156,13 +159,17 @@ function boundedNode(raw: unknown, depth: number): Record<string, unknown> {
   if (depth >= SCHEMA_LIMITS.depth) return out;
   if (out.type === 'object' || node.properties) {
     out.type ??= 'object';
-    const props =
-      node.properties && typeof node.properties === 'object' && !Array.isArray(node.properties)
-        ? Object.entries(node.properties as Record<string, unknown>).slice(
-            0,
-            SCHEMA_LIMITS.properties,
-          )
-        : [];
+    const props = isRecord(node.properties)
+      ? Object.entries(node.properties).slice(0, SCHEMA_LIMITS.properties)
+      : [];
+    // A free-form map (no fixed fields, `additionalProperties` true or a schema), e.g. a Notion
+    // page's column name → value: keep it a map (no `properties`), so guards.ts cleanArgs keeps
+    // its keys within MAP_LIMITS and checks each value against the value schema.
+    const extra = node.additionalProperties;
+    if (!props.length && (extra === true || isRecord(extra))) {
+      out.additionalProperties = extra === true ? true : boundedNode(extra, depth + 1);
+      return out;
+    }
     out.properties = Object.fromEntries(
       props.map(([name, child]) => [name.slice(0, 64), boundedNode(child, depth + 1)]),
     );
@@ -178,8 +185,9 @@ function boundedNode(raw: unknown, depth: number): Record<string, unknown> {
 }
 
 /**
- * A bounded copy of a tool's live input schema: only type, properties, required, items, enum
- * and a short description per field, at most 20 fields per object and 4 levels deep. Null when
+ * A bounded copy of a tool's live input schema: only type, properties, required, items, enum,
+ * a free-form map's additionalProperties and a short description per field, at most 20 fields per
+ * object and 4 levels deep. Null when
  * even the bounded copy is too large (the tool is then left out of the turn).
  */
 export function boundedInputSchema(schema: unknown): Record<string, unknown> | null {

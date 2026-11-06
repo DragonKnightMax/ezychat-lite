@@ -1214,6 +1214,12 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   admin switch allows USER_ENTERED, escape every value that is not the AI's own allowed formula with a leading `'`,
   auto-filled ones too (a WhatsApp push name can be `=IMPORTXML(…)`), and check formulas fail closed (URL anywhere,
   blocked function names and name parts), with a test per escape path.
+- A schema bounder that copies only `properties` turns a free-form map (`type: object` + `additionalProperties`
+  true/schema, no fixed fields; zod `z.record`, e.g. Notion page properties) into an empty object, and the argument
+  cleaner then drops every key silently. Keep maps as maps with their own bounds (keys, key/string length, list
+  items, depth; past a bound refuse, never cut), validate values against the value schema, keep fixed-field levels
+  closed, write map keys with `defineProperty` (`__proto__` is data), and test the bounder and cleaner together on a
+  real partner's schema shape (`connectors/mcp/mcp.ts#boundedNode`, `guards.ts#cleanArgs`).
 - A connector tool that acts on a chat's file lets the model choose a **label** of files the server listed (this chat's
   inbound files, its senders), never a message id, link or path from the model; the server maps the label back and
   re-checks Safety, size and duplicates (`connectors/google-drive/tools.ts`).

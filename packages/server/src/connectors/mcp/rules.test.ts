@@ -11,7 +11,15 @@ import {
   fillUrl,
   headerNameProblem,
 } from './credentials.js';
-import { argAt, cleanArgs, customerGave, fitsSetting, localTime, refusalText } from './guards.js';
+import {
+  argAt,
+  cleanArgs,
+  customerGave,
+  fitsSetting,
+  localTime,
+  MAP_LIMITS,
+  refusalText,
+} from './guards.js';
 import {
   boundedInputSchema,
   capText,
@@ -554,5 +562,153 @@ describe('OAuth state', () => {
     expect(pending.get(late.requestId)).toBeNull();
     pending.forget('c');
     pending.clear();
+  });
+});
+
+describe('free-form object maps (additionalProperties)', () => {
+  // The shape of Notion's notion-create-pages: page `properties` is a map of column name → value.
+  const notion = {
+    type: 'object',
+    properties: {
+      parent: {
+        type: 'object',
+        properties: { database_id: { type: 'string' } },
+        additionalProperties: false,
+      },
+      pages: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            properties: {
+              type: 'object',
+              description: 'Page properties: column name → value',
+              additionalProperties: { type: ['string', 'number', 'null'] },
+            },
+            content: { type: 'string' },
+          },
+        },
+      },
+    },
+    required: ['pages'],
+  };
+
+  it('keeps the map keys of a Notion-like create call', () => {
+    const schema = boundedInputSchema(notion)!;
+    const args = cleanArgs(schema, {
+      parent: { database_id: 'db1', alias: 'dropped' },
+      pages: [
+        { properties: { title: 'Order 42', Qty: 3, Notes: null }, content: 'Hi', extra: 'x' },
+      ],
+      extra: 'dropped',
+    });
+    expect(args).toEqual({
+      parent: { database_id: 'db1' },
+      pages: [{ properties: { title: 'Order 42', Qty: 3, Notes: null }, content: 'Hi' }],
+    });
+  });
+
+  it('bounds the map in the schema and keeps fixed levels closed', () => {
+    expect(
+      boundedInputSchema({
+        type: 'object',
+        properties: {
+          any: { type: 'object', additionalProperties: true },
+          typed: {
+            type: 'object',
+            additionalProperties: { type: 'string', description: 'x'.repeat(500), default: 'y' },
+          },
+          // Fixed fields win: extra keys stay dropped at this level.
+          mixed: {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            additionalProperties: true,
+          },
+          closed: { type: 'object', additionalProperties: false },
+        },
+      }),
+    ).toEqual({
+      type: 'object',
+      properties: {
+        any: { type: 'object', additionalProperties: true },
+        typed: {
+          type: 'object',
+          additionalProperties: { type: 'string', description: 'x'.repeat(200) },
+        },
+        mixed: { type: 'object', properties: { a: { type: 'string' } } },
+        closed: { type: 'object', properties: {} },
+      },
+      additionalProperties: false,
+    });
+    const schema = boundedInputSchema({
+      type: 'object',
+      properties: {
+        mixed: {
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          additionalProperties: true,
+        },
+        closed: { type: 'object', additionalProperties: false },
+      },
+    })!;
+    expect(cleanArgs(schema, { mixed: { a: 'x', b: 'y' }, closed: { c: 1 } })).toEqual({
+      mixed: { a: 'x' },
+      closed: {},
+    });
+  });
+
+  it('checks each map value against the value schema', () => {
+    const schema = boundedInputSchema(notion)!;
+    const page = (properties: unknown) => ({ pages: [{ properties }] });
+    expect(cleanArgs(schema, page({ title: { nested: true } }))).toBeNull();
+    expect(cleanArgs(schema, page({ title: ['a'] }))).toBeNull();
+    expect(cleanArgs(schema, page('not a map'))).toBeNull();
+    expect(cleanArgs(schema, page({}))).toEqual(page({}));
+    // A key named like the prototype stays plain data.
+    const odd = cleanArgs(schema, page(JSON.parse('{"__proto__":"x","a":1}')));
+    const props = (odd!.pages as Array<{ properties: Record<string, unknown> }>)[0]!.properties;
+    expect(Object.getPrototypeOf(props)).toBe(Object.prototype);
+    expect(Object.keys(props)).toEqual(['__proto__', 'a']);
+    expect(JSON.stringify(props)).toBe('{"__proto__":"x","a":1}');
+  });
+
+  it('refuses a map past its bounds, never cuts it', () => {
+    const schema = boundedInputSchema({
+      type: 'object',
+      properties: { data: { type: 'object', additionalProperties: true } },
+    })!;
+    const keys = (n: number) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, i]));
+    expect(cleanArgs(schema, { data: keys(MAP_LIMITS.keys) })).toEqual({
+      data: keys(MAP_LIMITS.keys),
+    });
+    expect(cleanArgs(schema, { data: keys(MAP_LIMITS.keys + 1) })).toBeNull();
+    // Undefined values are left out and do not count.
+    expect(cleanArgs(schema, { data: { a: 1, b: undefined } })).toEqual({ data: { a: 1 } });
+    expect(cleanArgs(schema, { data: { ['k'.repeat(MAP_LIMITS.keyChars + 1)]: 1 } })).toBeNull();
+    expect(cleanArgs(schema, { data: { '': 1 } })).toBeNull();
+    const long = 's'.repeat(MAP_LIMITS.stringChars);
+    expect(cleanArgs(schema, { data: { a: long } })).toEqual({ data: { a: long } });
+    expect(cleanArgs(schema, { data: { a: `${long}s` } })).toBeNull();
+    // Nested values inside a free map are bounded too (strings, arrays, maps, depth).
+    expect(cleanArgs(schema, { data: { a: { b: [`${long}s`] } } })).toBeNull();
+    expect(
+      cleanArgs(schema, {
+        data: { a: Array.from({ length: MAP_LIMITS.arrayItems + 1 }, () => 1) },
+      }),
+    ).toBeNull();
+    expect(cleanArgs(schema, { data: { a: { b: keys(MAP_LIMITS.keys + 1) } } })).toBeNull();
+    expect(cleanArgs(schema, { data: { a: [{ b: 1 }, 'c'] } })).toEqual({
+      data: { a: [{ b: 1 }, 'c'] },
+    });
+    let deep: Record<string, unknown> = { leaf: 1 };
+    for (let i = 0; i < 10; i++) deep = { n: deep };
+    expect(cleanArgs(schema, { data: deep })).toBeNull();
+    // Strings outside a map keep no size cap (a page's content may be long).
+    const text = boundedInputSchema({
+      type: 'object',
+      properties: { content: { type: 'string' } },
+    })!;
+    expect(cleanArgs(text, { content: `${long}s` })).toEqual({ content: `${long}s` });
   });
 });

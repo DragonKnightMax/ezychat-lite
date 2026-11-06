@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   customer's photo or read the text of a PDF or Word file in a chat, with the new `get_message_file` tool. It only
   reaches chats you can open, never gets a download link, and never gets a file WhatsApp Safety locked.
 
+### Fixed
+
+- **Partner connectors keep free-form fields.** A partner tool that takes a map of names to values (for example the
+  columns of a Notion page in Notion's `notion-create-pages` and `notion-update-page`) lost every entry, so a new page
+  had no title and a database row had no fields. Such maps now reach the partner, bounded (100 keys, 10,000 characters
+  per text, 100 items per list) and checked against the partner's value type; every guard still applies to their
+  values. A connection saved before this release picks it up after **Test connection**.
+
 ## [0.1.78] - 2026-11-06
 
 ### Added
