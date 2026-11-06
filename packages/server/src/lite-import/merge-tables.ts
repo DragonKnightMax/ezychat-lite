@@ -14,6 +14,7 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   users: { merged: true },
   inboxes: { merged: true },
   inbox_members: { merged: true },
+  member_chats: { merged: true },
   ai_agents: { merged: true },
   ai_documents: { merged: true },
   ai_setup_versions: { merged: true },
@@ -632,6 +633,23 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     byChatAndAgent('connector_calls', false);
     byChatAndAgent('connector_values', false);
     byChatAndAgent('sql_account_activity', false);
+  });
+
+  // ── Limited chat access (after the chats exist) ──────────────────────────────────────────
+  phase(() => {
+    // Limited chat access: an added agent limited to chosen chats keeps them (a matched user keeps the
+    // target's own choice, so rows are copied only for a user the target also limits).
+    const addMemberChat = inserter(target, 'member_chats', { verb: 'INSERT OR IGNORE' });
+    const scopeOf = target.prepare('SELECT chat_scope FROM users WHERE id = ?');
+    const chatExists = target.prepare('SELECT 1 FROM chats WHERE jid = ?');
+    for (const m of rows(lite, 'SELECT * FROM member_chats')) {
+      const user = maps.user(m.user_id);
+      const chat = maps.chat(m.chat_jid as string);
+      if (user === null || !chat || !chatExists.get(chat)) continue;
+      const scope = scopeOf.get(user) as { chat_scope: string } | undefined;
+      if (scope?.chat_scope !== 'chosen') continue;
+      addMemberChat({ ...m, user_id: user, chat_jid: chat, added_by: maps.user(m.added_by) });
+    }
   });
 
   // ── WhatsApp Safety findings ─────────────────────────────────────────────────────────────

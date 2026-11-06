@@ -212,6 +212,11 @@ export function mergeChat(
     mergeConnectorRows(db, from, to);
     // WhatsApp Safety findings follow their messages (no foreign key).
     db.prepare('UPDATE safety_items SET chat_jid = ? WHERE chat_jid = ?').run(to, from);
+    // An agent limited to chosen chats keeps the chat under its new key (no foreign key either).
+    db.prepare(
+      'INSERT OR IGNORE INTO member_chats (user_id, chat_jid, added_by, added_at) SELECT user_id, ?, added_by, added_at FROM member_chats WHERE chat_jid = ?',
+    ).run(to, from);
+    db.prepare('DELETE FROM member_chats WHERE chat_jid = ?').run(from);
     // Scheduled tasks of AI agents send to the surviving chat (no foreign key).
     db.prepare('UPDATE ai_scheduled_tasks SET chat_jid = ? WHERE chat_jid = ?').run(to, from);
     if (isAiMember(db, assigneeDropped)) {

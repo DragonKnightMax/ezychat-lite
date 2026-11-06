@@ -8,7 +8,7 @@ import { audit } from '../db/audit.js';
 import { clientIp } from '../http/client-ip.js';
 import { PRIMARY_INBOX_ID } from '../inboxes/keys.js';
 import { OFFLINE, waStatusFor } from '../inboxes/service.js';
-import { canOpen, scopeFor } from '../inboxes/access.js';
+import { canOpen, visibleInboxIds } from '../inboxes/access.js';
 import { capabilitiesOf } from '../inboxes/types.js';
 
 export { waStatusFor };
@@ -91,7 +91,7 @@ export function registerWaActions(
 export default async function waRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/wa/status', { preHandler: requireUser(ctx) }, async (req) => {
     const user = req.user!;
-    if (!canOpen(scopeFor(ctx, user), PRIMARY_INBOX_ID)) return { ...OFFLINE };
+    if (!canOpen(visibleInboxIds(ctx, user), PRIMARY_INBOX_ID)) return { ...OFFLINE };
     return waStatusFor(ctx.wa.status, user.role === 'admin');
   });
   registerWaActions(app, ctx, '/wa', () => ({ wa: ctx.wa, inboxId: PRIMARY_INBOX_ID }));

@@ -3,6 +3,7 @@ import { BotMessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAskEzy, type AskEzyRequest } from './AskEzyContext';
+import { useChosenChatsOnly } from '../auth/chat-scope';
 
 /** Opens Ask Ezy. `compact` shows only the icon (phone headers); the label stays for screen readers. */
 export function AskEzyButton({
@@ -18,6 +19,8 @@ export function AskEzyButton({
 }) {
   const { t } = useTranslation('inbox');
   const { openPanel } = useAskEzy();
+  // Ask Ezy reads across chats: hidden for an agent limited to chosen chats
+  if (useChosenChatsOnly()) return null;
   return (
     <Button
       variant={variant}

@@ -70,6 +70,8 @@ interface UserRow {
   /** The AI agent of an AI member (`ai_agents.id`, joined); null for people and deleted agents. */
   ai_agent_id?: number | null;
   ai_deleted_at?: number | null;
+  /** 'chosen': an agent limited to chosen chats (migration 037). */
+  chat_scope?: string;
 }
 
 /** Users with their AI agent id. A deleted agent's user has no `ai_agents` row. */
@@ -94,6 +96,9 @@ export function rowToUser(r: UserRow): User {
     disabled: r.disabled_at !== null,
     createdAt: r.created_at,
     locale: isLocale(r.locale) ? r.locale : null,
+    ...(r.chat_scope === 'chosen' && r.role === 'agent' && r.kind === 'human'
+      ? { chatScope: 'chosen' as const }
+      : {}),
   };
 }
 

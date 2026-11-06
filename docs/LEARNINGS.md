@@ -10,6 +10,9 @@ into AGENTS.md.
 
 ## Working method
 
+- Do not edit, rename or check out files while a full `npm test` / `test:coverage` run is in progress: tests that
+  migrate a data dir mid-run see two schema versions ("duplicate column") and the result proves nothing. Run it again
+  on the final tree before reporting it.
 - Before you call a PR a break of an owner rule, read that rule in `origin/main`'s `AGENTS.md`: memory notes and older
   checkouts lag rule changes ("No tracking in Lite" became "Anonymous usage stats only" with #285).
 - A new connector modelled on an existing one fails SonarCloud's 3 % new-code duplication gate (tests count too) when
@@ -261,7 +264,7 @@ into AGENTS.md.
 
 ## Git, GitHub and CI
 
-- Parallel feature PRs that add a migration must agree on numbers up front: `migrate.test.ts` rejects a gap or duplicate, so the PR that merges second renumbers, stays red on that test until the first lands, then merges `main` and extends the lite-import "older Lite" drop list with the first PR's tables. Two mocks cloned from one baseline merge as a two-way rename (AU/UA/DD for every file): restore each folder from its own branch, then apply the five-folder retention.
+- Parallel feature PRs that add a migration must agree on numbers up front: `migrate.test.ts` rejects a gap or duplicate, so the PR that merges second renumbers, stays red on that test until the first lands, then merges `main` and extends the lite-import "older Lite" drop list with the first PR's tables; conflicts in `chats/merge.ts` (each feature's `chat_jid` table) and `CHANGELOG.md` keep both sides. Two mocks cloned from one baseline merge as a two-way rename (AU/UA/DD for every file): restore each folder from its own branch, then apply the five-folder retention.
 
 - A PR whose CI never starts (no workflow run for the branch) usually has a merge conflict (`mergeable_state: dirty`):
   `pull_request` runs need the merge commit. Merge main, then re-run e2e and the Dev Build check on the new head,
@@ -330,7 +333,7 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   the same job on the previous commit and on `main`, comment once, re-run the failed job once when the run
   has finished; a second failure is real.
 - SonarCloud's gate fails a PR on script code too: run tools through `resolveTool` (`build-summary.mjs`), never a
-  bare `execFileSync('git' | 'gh')` (PATH lookup, Security B), and give every `.sort()` a compare function (Reliability D). Where the order is a protocol's (SigV4 canonical
+  bare `execFileSync('git' | 'gh')` (PATH lookup, Security B), and give every `.sort()` in any code (server and web too, even of string ids) a compare function (Reliability D). Where the order is a protocol's (SigV4 canonical
   names and query keys are byte order), pass an explicit code-unit comparator, not the `localeCompare` Sonar suggests.
 - The release review is the final merge check and reads only GitHub REST and git (cloud sessions block
   GraphQL; review threads come from `pulls/<n>/ccr/review_threads` there): no `GH_PATH` wrapper. GitHub's
@@ -1007,6 +1010,11 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Security
 
+- A narrower access level (e.g. an agent limited to chosen chats) fails closed through the old checks: make `scopeFor`
+  return an empty inbox scope for it **before** any shortcut (Lite single inbox), so every existing `canOpen` caller
+  denies, then add one per-chat check (`canOpenChat`) for the places that open one chat, and one recipient function
+  (`usersWhoCanOpenChat`) for every notification path. Grep every `scopeFor`/`canOpen`/`usersWhoCanOpen` caller and
+  decide each one explicitly (status banners and templates needed `visibleInboxIds`).
 - Data a device keeps for one user (saved queries, service worker photo/file caches) is cleared on every way a session
   ends, not only the sign-out button: the `session:revoked` socket event and a 401 from `/api/me` too
   (`startQueryPersistence` `clearCaches`). Test each path.
@@ -1491,6 +1499,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Desktop and web UI
 
+- A list or panel component whose tests render it without an auth provider reads the signed-in user from the props it
+  already gets (`directory.me`), not from `useAuth()`: a new hook there breaks every existing test with "No
+  QueryClient set".
 - The persisted query cache (`api/query-persist.ts`) saves with a delay, so a reload can restore state from before the last mutation: never persist state a route guard acts on in a transitional form (e.g. `mustChangePassword`), and when an e2e step reloads right after a mutation and lands on an old page, suspect the restored copy first.
 
 - Every round trip counts over a slow tunnel (~0.7 s each): the live connection reloads every query when it joins,

@@ -15,11 +15,13 @@ export default async function usersRoutes(app: FastifyInstance, ctx: AppContext)
   const inboxes = getInboxService(ctx);
   app.addHook('preHandler', requireAdmin(ctx));
 
-  // agents carry the inboxes they may open when the build allows several ([] for none)
-  app.get('/users', async () => ({
+  // agents carry the inboxes they may open when the build allows several ([] for none), and an
+  // agent limited to chosen chats carries those chats (assignment offers them only there)
+  app.get('/users', async (req) => ({
     users: auth.listUsers().map((u) => {
       const inboxIds = inboxes.usersListInboxIds(u);
-      return inboxIds ? { ...u, inboxIds } : u;
+      const chatJids = inboxes.directoryChatJids(u, req.user!);
+      return { ...u, ...(inboxIds ? { inboxIds } : {}), ...(chatJids ? { chatJids } : {}) };
     }),
   }));
 

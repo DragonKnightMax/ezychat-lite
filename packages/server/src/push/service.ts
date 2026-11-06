@@ -11,9 +11,8 @@ import {
 } from '@ezychat/shared';
 import type { AppContext } from '../context.js';
 import { t } from '../i18n/messages.js';
-import { usersWhoCanOpen } from '../inboxes/access.js';
+import { usersWhoCanOpenChat } from '../inboxes/access.js';
 import { PRIMARY_INBOX_ID } from '../inboxes/keys.js';
-import { inboxOfKeyOrNull } from '../inboxes/service.js';
 import { chatWaitingAfterHandoff } from '../reports/report.js';
 import { loadOrCreateVapid, type VapidDetails } from './vapid.js';
 
@@ -265,14 +264,13 @@ export function createPushService(ctx: AppContext, deps: PushDeps = {}): PushSer
   }
 
   /**
-   * Who hears about a chat: everyone who may open its inbox while it is unassigned, else the
-   * assignee only while they still may open it (an agent who lost the inbox hears nothing).
+   * Who hears about a chat: everyone who may open it while it is unassigned (its inbox's people, plus
+   * the agents limited to chosen chats who chose it), else the assignee only while they still may
+   * open it (an agent who lost the inbox or the chat hears nothing).
    */
   const recipients = (chat: Chat): number[] => {
     // the key is the source of truth for the inbox (and a malformed one reaches nobody)
-    const inboxId = inboxOfKeyOrNull(chat.jid);
-    if (inboxId === null) return [];
-    const allowed = usersWhoCanOpen(ctx, inboxId);
+    const allowed = usersWhoCanOpenChat(ctx, chat.jid);
     if (chat.assignedTo == null) return allowed;
     return q.activeUser.get(chat.assignedTo) && allowed.includes(chat.assignedTo)
       ? [chat.assignedTo]

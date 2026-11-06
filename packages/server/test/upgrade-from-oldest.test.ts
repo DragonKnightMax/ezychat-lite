@@ -136,6 +136,11 @@ describe('upgrade from the oldest data folder', { timeout: 30_000 }, () => {
     expect(t.ctx.settings.get('fix_english_upgraded', null)).toBe(true);
     // 027: every existing agent keeps answering direct chats.
     expect(listAgents(t.ctx.db).every((agent) => agent.answerDirect)).toBe(true);
+    // 037: every existing user keeps seeing all chats; nobody is limited to chosen chats.
+    expect(
+      t.ctx.db.prepare("SELECT COUNT(*) AS n FROM users WHERE chat_scope != 'all'").get(),
+    ).toEqual({ n: 0 });
+    expect(t.ctx.db.prepare('SELECT COUNT(*) AS n FROM member_chats').get()).toEqual({ n: 0 });
 
     // The linked WhatsApp session is left exactly as it was: no relink after an update.
     expect(readFileSync(join(dir, 'wa-auth', 'creds.json'), 'utf8')).toBe(CREDS);

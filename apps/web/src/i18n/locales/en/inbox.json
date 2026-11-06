@@ -51,7 +51,11 @@
       "search": "No chats match “{{query}}”.",
       "resolvedTitle": "No resolved chats",
       "resolvedDescription": "No resolved chats here.",
-      "tag": "No chats are tagged “{{tag}}”."
+      "tag": "No chats are tagged “{{tag}}”.",
+      "chosen": {
+        "title": "No chats yet",
+        "description": "An admin has not given you any open chats yet. They show up here as soon as one is added."
+      }
     }
   },
   "chatListItem": {
@@ -629,7 +633,8 @@
     "cancel": "Cancel",
     "start": "Start chat",
     "startFailed": "Couldn’t start the chat",
-    "listLabel": "Group members"
+    "listLabel": "Group members",
+    "chosenChatsOnly": "You can only open the chats an admin chose for you."
   },
   "gettingStarted": {
     "title": "Getting started",

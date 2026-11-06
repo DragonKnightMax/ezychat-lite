@@ -11,13 +11,14 @@ import { DesktopUpdateNotice } from '@/components/app/DesktopUpdates';
 import { DevBuildBadge } from '@/components/app/DevBuildBadge';
 import { extensionRoutes, useWebExtensions } from './extensions';
 import { useAuth } from './auth/AuthProvider';
+import { chosenChatsOnly } from './auth/chat-scope';
 import { AskEzyProvider } from './askezy/AskEzyContext';
 import { AskEzyPanel } from './askezy/AskEzyPanel';
 
 /** Ask Ezy: the panel exists only for a signed-in user, on every signed-in page. */
 function SignedInAskEzy() {
   const { user } = useAuth();
-  if (!user) return null;
+  if (!user || chosenChatsOnly(user)) return null;
   return (
     <ErrorBoundary>
       <AskEzyPanel />

@@ -2939,5 +2939,28 @@
         "ready": "Sedia"
       }
     }
+  },
+  "limitedChats": {
+    "label": "Sembang yang ahli ini boleh lihat",
+    "all": {
+      "title": "Semua sembang",
+      "hint": "Setiap sembang dalam peti masuk yang boleh mereka buka, seperti sekarang."
+    },
+    "chosen": {
+      "title": "Hanya sembang yang dipilih",
+      "hint": "Hanya sembang terus dan kumpulan yang anda pilih di bawah. Gunakan untuk ejen luar atau ejen sokongan."
+    },
+    "count_one": "{{count}} sembang dipilih",
+    "count_other": "{{count}} sembang dipilih",
+    "none": "Belum ada sembang dipilih: ahli ini tidak melihat sebarang sembang sehingga anda menambahnya.",
+    "chosenLabel": "Sembang dipilih",
+    "remove": "Buang {{name}}",
+    "add": "Tambah {{name}}",
+    "addLabel": "Tambah sembang",
+    "addPlaceholder": "Cari sembang dan kumpulan",
+    "noMatch": "Tiada sembang lain yang sepadan.",
+    "note_zero": "Tiada sembang dipilih",
+    "note_one": "Hanya {{count}} sembang dipilih",
+    "note_other": "Hanya {{count}} sembang dipilih"
   }
 }

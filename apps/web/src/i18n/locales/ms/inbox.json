@@ -51,7 +51,11 @@
       "search": "Tiada sembang sepadan dengan “{{query}}”.",
       "resolvedTitle": "Tiada sembang selesai",
       "resolvedDescription": "Tiada sembang selesai di sini.",
-      "tag": "Tiada sembang dengan tag “{{tag}}”."
+      "tag": "Tiada sembang dengan tag “{{tag}}”.",
+      "chosen": {
+        "title": "Belum ada sembang",
+        "description": "Pentadbir belum memberi anda sebarang sembang terbuka. Ia muncul di sini sebaik sahaja ditambah."
+      }
     }
   },
   "chatListItem": {
@@ -625,7 +629,8 @@
     "cancel": "Batal",
     "start": "Mulakan perbualan",
     "startFailed": "Tidak dapat memulakan perbualan",
-    "listLabel": "Ahli kumpulan"
+    "listLabel": "Ahli kumpulan",
+    "chosenChatsOnly": "Anda hanya boleh membuka sembang yang dipilih oleh pentadbir untuk anda."
   },
   "gettingStarted": {
     "title": "Bermula",

@@ -105,6 +105,34 @@ export type UpdateInboxBody = z.infer<typeof UpdateInboxBody>;
 export const SetUserInboxesBody = z.object({ inboxIds: z.array(InboxId) });
 export type SetUserInboxesBody = z.infer<typeof SetUserInboxesBody>;
 
+/** Most chats one agent may be limited to (`PUT /api/users/:id/chats`). */
+export const MAX_MEMBER_CHATS = 2000;
+
+/** "Chats this member can see" of one agent: every chat of their inboxes, or only chosen chats. */
+export const MemberChatScope = z.enum(['all', 'chosen']);
+export type MemberChatScope = z.infer<typeof MemberChatScope>;
+
+/** One chosen chat as `GET /api/users/:id/chats` lists it. */
+export const MemberChatSchema = z.object({
+  jid: z.string(),
+  name: z.string(),
+  type: z.enum(['dm', 'group']),
+});
+export type MemberChat = z.infer<typeof MemberChatSchema>;
+
+export const MemberChatsResponse = z.object({
+  scope: MemberChatScope,
+  chats: z.array(MemberChatSchema),
+});
+export type MemberChatsResponse = z.infer<typeof MemberChatsResponse>;
+
+/** Replaces the agent's choice; `scope: 'all'` drops every chosen chat. */
+export const SetMemberChatsBody = z.object({
+  scope: MemberChatScope,
+  chats: z.array(z.string().min(1).max(256)).max(MAX_MEMBER_CHATS).default([]),
+});
+export type SetMemberChatsBody = z.infer<typeof SetMemberChatsBody>;
+
 /** Socket `inbox:status`: the connection status of one inbox. */
 export const InboxStatusPayload = z.object({ inboxId: InboxId, status: WaStatusSchema });
 export type InboxStatusPayload = z.infer<typeof InboxStatusPayload>;
@@ -124,6 +152,11 @@ export const DirectoryUserSchema = z.object({
   /** An AI agent with "Answer direct chats" off: never offered for a direct chat (the server refuses). */
   aiNoDirect: z.boolean().optional(),
   inboxIds: z.union([z.literal('all'), z.array(InboxId)]),
+  /**
+   * An agent limited to chosen chats: the chosen chats the viewer may open too (assignment offers
+   * them only there). Absent = not limited.
+   */
+  chatJids: z.array(z.string()).optional(),
 });
 export type DirectoryUser = z.infer<typeof DirectoryUserSchema>;
 

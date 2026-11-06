@@ -257,6 +257,34 @@ it('explains an empty tag filter and offers to show all open chats', () => {
   expect(onResetFilters).toHaveBeenCalledOnce();
 });
 
+it('tells an agent limited to chosen chats who gives them chats when none is open', () => {
+  chats([]);
+  const me = {
+    id: 5,
+    username: 'ravi',
+    displayName: 'Ravi',
+    role: 'agent' as const,
+    chatScope: 'chosen' as const,
+    mustChangePassword: false,
+    disabled: false,
+    createdAt: 0,
+    locale: null,
+  };
+  render(list({ directory: buildDirectory(me, false, []) }));
+  expect(screen.getByText('No chats yet')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Show all open chats' })).toBeNull();
+  // a tag filter still says what it filtered on
+  cleanup();
+  render(
+    list({
+      directory: buildDirectory(me, false, []),
+      filters: { assigned: 'any', status: 'open', tag: 'VIP' },
+      onResetFilters: vi.fn(),
+    }),
+  );
+  expect(screen.getByText('No chats are tagged “VIP”.')).toBeTruthy();
+});
+
 function inbox(id: number, name: string, tone: Inbox['tone'], removed = false): Inbox {
   return {
     id,

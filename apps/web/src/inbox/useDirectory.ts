@@ -12,7 +12,12 @@ import { i18n } from '@/i18n';
  */
 export type DirectoryEntry = Omit<DirectoryUser, 'inboxIds'> & {
   inboxIds?: DirectoryUser['inboxIds'];
+  /** 'chosen': an agent limited to chosen chats (`chatJids`, as far as the viewer may know them). */
+  chatScope?: User['chatScope'];
 };
+
+/** An agent limited to chosen chats opens only those (never a whole inbox). */
+const limited = (u: DirectoryEntry) => u.chatScope === 'chosen' || u.chatJids !== undefined;
 
 /**
  * The member may open chats of this inbox (admins and the AI member open every inbox). A row without
@@ -36,7 +41,7 @@ export interface Directory {
    * that answers this inbox (no other AI agent: the server refuses it). `direct`: a direct chat, which
    * a group-only agent (`aiNoDirect`) never takes.
    */
-  assignableFor(inboxId: number, opts?: { direct?: boolean }): DirectoryEntry[];
+  assignableFor(inboxId: number, opts?: { direct?: boolean; chatJid?: string }): DirectoryEntry[];
   /** Display name for a user id ("You" for the current user when `youLabel`). */
   nameOf(id: number | null | undefined, opts?: { youLabel?: boolean }): string | null;
 }
@@ -54,14 +59,21 @@ export function buildDirectory(
 ): Directory {
   const multiInbox = opts.multiInbox ?? false;
   const inboxAgents = opts.inboxAgents ?? new Map<number, number | null>();
-  const mayAssign = (u: DirectoryEntry, inboxId: number) =>
+  const mayAssign = (u: DirectoryEntry, inboxId: number, chatJid?: string) =>
     u.kind === 'ai'
       ? u.aiAgentId !== undefined && inboxAgents.get(inboxId) === u.aiAgentId
-      : canOpenInbox(u, inboxId, multiInbox);
+      : limited(u) && u.role !== 'admin'
+        ? chatJid !== undefined && (u.chatJids ?? []).includes(chatJid)
+        : canOpenInbox(u, inboxId, multiInbox);
   const byId = new Map<number, DirectoryEntry>();
   for (const u of list ?? []) byId.set(u.id, u);
   // Keep the directory's inbox list for the signed-in user (`/api/me` does not carry it).
-  if (me) byId.set(me.id, { ...me, inboxIds: me.inboxIds ?? byId.get(me.id)?.inboxIds });
+  if (me)
+    byId.set(me.id, {
+      ...me,
+      inboxIds: me.inboxIds ?? byId.get(me.id)?.inboxIds,
+      chatJids: me.chatJids ?? byId.get(me.id)?.chatJids,
+    });
   const assignable = [...byId.values()]
     .filter((u) => !u.disabled && !u.aiDeleted)
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -70,8 +82,8 @@ export function buildDirectory(
     isAdmin,
     byId,
     assignable,
-    assignableFor: (inboxId, { direct = false } = {}) =>
-      assignable.filter((u) => mayAssign(u, inboxId) && !(direct && u.aiNoDirect)),
+    assignableFor: (inboxId, { direct = false, chatJid } = {}) =>
+      assignable.filter((u) => mayAssign(u, inboxId, chatJid) && !(direct && u.aiNoDirect)),
     nameOf(id, opts) {
       if (id == null) return null;
       if (opts?.youLabel && me && id === me.id) return i18n.t('inbox:directory.you');

@@ -8,7 +8,7 @@ import { errors, parse } from '../http/errors.js';
 import { getChats } from '../wa-bridge/index.js';
 import { profilePhotoLookup } from '../http/profile-images.js';
 import { avatarStore, sendAvatar } from '../avatars/http.js';
-import { scopeFor } from '../inboxes/access.js';
+import { chosenChats, scopeFor } from '../inboxes/access.js';
 import { chatWaState, requireChatAccess } from '../inboxes/service.js';
 
 export const JidParams = z.object({ jid: z.string().min(3).max(256) });
@@ -51,6 +51,9 @@ export default async function chatsRoutes(app: FastifyInstance, ctx: AppContext)
 
   app.get('/chats', async (req) => {
     const q = parse(ChatListQuery, req.query);
+    const chosen = chosenChats(ctx, req.user!);
+    // an agent limited to chosen chats: those chats only (list, search, tag filter)
+    if (chosen) return chats.list(q, req.user!.id, { chatJids: [...chosen], inbox: q.inbox });
     const scope = scopeFor(ctx, req.user!);
     // every inbox (removed ones too) for admins; an agent's own active inboxes otherwise
     const inboxIds = scope === 'all' ? undefined : [...scope];

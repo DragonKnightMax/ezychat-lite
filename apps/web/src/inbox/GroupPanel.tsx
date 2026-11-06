@@ -30,6 +30,7 @@ import { ChatAvatar } from './ChatAvatar';
 import { GroupAdminBar, MemberAdminActions } from './GroupAdmin';
 import { GroupAiRow } from './GroupAiRow';
 import { PanelHeader } from './PanelHeader';
+import { useChosenChatsOnly } from '../auth/chat-scope';
 
 /** Rows rendered at a time; large groups show more on request instead of rendering all at once. */
 export const MEMBER_PAGE = 100;
@@ -278,6 +279,8 @@ function MemberDetail({
   const { t } = useTranslation('inbox');
   const about = useMemberAbout(groupJid, member.isMe ? null : (member.lid ?? member.jid));
   const start = useStartMemberChat(groupJid);
+  // an agent limited to chosen chats opens no chat from a group member (the server refuses it)
+  const chosenOnly = useChosenChatsOnly();
   const [confirming, setConfirming] = useState(false);
   const label = memberLabel(member, t);
   const bareId = !member.name && !member.phone && !member.isMe;
@@ -371,7 +374,11 @@ function MemberDetail({
           ))}
         </dl>
       </section>
-      {member.isMe ? null : member.chatJid ? (
+      {chosenOnly && !member.isMe ? (
+        <p className="text-xs text-muted-foreground" data-testid="chosen-only-no-member-chat">
+          {t('groupInfo.chosenChatsOnly')}
+        </p>
+      ) : member.isMe ? null : member.chatJid ? (
         <>
           <Button
             type="button"

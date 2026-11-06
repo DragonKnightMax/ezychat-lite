@@ -4,7 +4,7 @@ import { SendTemplateBody, type TemplateListResponse } from '@ezychat/shared';
 import { requireUser } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import { errors, parse } from '../http/errors.js';
-import { canOpen, scopeFor } from '../inboxes/access.js';
+import { canOpen, visibleInboxIds } from '../inboxes/access.js';
 import { getMessages } from '../wa-bridge/index.js';
 import { chatJidParam } from './chats.js';
 
@@ -24,7 +24,7 @@ export default async function templateRoutes(app: FastifyInstance, ctx: AppConte
     const { id } = parse(IdParams, req.params);
     const { refresh } = parse(ListQuery, req.query ?? {});
     const row = ctx.inboxes.repo.get(id);
-    if (!row || row.removed_at !== null || !canOpen(scopeFor(ctx, req.user!), id))
+    if (!row || row.removed_at !== null || !canOpen(visibleInboxIds(ctx, req.user!), id))
       throw errors.notFound('Inbox');
     return { templates: await messages.listTemplates(id, refresh === '1') };
   });

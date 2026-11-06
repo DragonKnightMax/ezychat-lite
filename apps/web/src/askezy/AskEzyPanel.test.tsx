@@ -41,6 +41,7 @@ beforeEach(() => {
   sent.length = 0;
   auth.isAdmin = true;
   auth.user.role = 'admin';
+  (auth.user as { chatScope?: string }).chatScope = undefined;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -93,6 +94,14 @@ async function openAndAsk(user: ReturnType<typeof userEvent.setup>, question: st
   const box = await screen.findByRole('textbox');
   await user.type(box, `${question}{Enter}`);
 }
+
+it('hides the Ask Ezy button for an agent limited to chosen chats', () => {
+  auth.isAdmin = false;
+  auth.user.role = 'agent';
+  (auth.user as { chatScope?: string }).chatScope = 'chosen';
+  renderPanel();
+  expect(screen.queryByRole('button', { name: /ask ezy/i })).toBeNull();
+});
 
 describe('AskEzyPanel', () => {
   it('greets an admin with suggestions, streams what Ezy read, and shows every block', async () => {

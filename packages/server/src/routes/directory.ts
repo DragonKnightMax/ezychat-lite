@@ -21,17 +21,21 @@ export default async function directoryRoutes(app: FastifyInstance, ctx: AppCont
   app.get('/users/directory', { preHandler: requireUser(ctx) }, async (req) => ({
     users: getAuth(ctx)
       .listUsers({ includeDeleted: true })
-      .map((u): DirectoryUser => ({
-        id: u.id,
-        displayName: u.displayName,
-        role: u.role,
-        disabled: u.disabled,
-        kind: u.kind,
-        aiRole: u.aiRole,
-        ...(u.aiAgentId ? { aiAgentId: u.aiAgentId } : {}),
-        ...(u.aiDeleted ? { aiDeleted: true } : {}),
-        ...(noDirect(u.aiAgentId) ? { aiNoDirect: true } : {}),
-        inboxIds: inboxes.directoryInboxIds(u, req.user!),
-      })),
+      .map((u): DirectoryUser => {
+        const chatJids = inboxes.directoryChatJids(u, req.user!);
+        return {
+          id: u.id,
+          displayName: u.displayName,
+          role: u.role,
+          disabled: u.disabled,
+          kind: u.kind,
+          aiRole: u.aiRole,
+          ...(u.aiAgentId ? { aiAgentId: u.aiAgentId } : {}),
+          ...(u.aiDeleted ? { aiDeleted: true } : {}),
+          ...(noDirect(u.aiAgentId) ? { aiNoDirect: true } : {}),
+          inboxIds: inboxes.directoryInboxIds(u, req.user!),
+          ...(chatJids ? { chatJids } : {}),
+        };
+      }),
   }));
 }

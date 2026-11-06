@@ -1,6 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { CreateInboxBody, SetUserInboxesBody, UpdateInboxBody } from '@ezychat/shared';
+import {
+  CreateInboxBody,
+  SetMemberChatsBody,
+  SetUserInboxesBody,
+  UpdateInboxBody,
+} from '@ezychat/shared';
 import { requireAdmin, requireUser } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import { clientIp } from '../http/client-ip.js';
@@ -47,4 +52,13 @@ export default async function inboxRoutes(app: FastifyInstance, ctx: AppContext)
     const { inboxIds } = parse(SetUserInboxesBody, req.body);
     return inboxes.setUserInboxes(id, inboxIds, actor(req));
   });
+
+  // Members → Edit → "Chats this member can see" (an agent: all chats or only chosen chats).
+  app.get('/users/:id/chats', { preHandler: adminOnly }, async (req) =>
+    inboxes.memberChats(idOf(req)),
+  );
+
+  app.put('/users/:id/chats', { preHandler: adminOnly }, async (req) =>
+    inboxes.setMemberChats(idOf(req), parse(SetMemberChatsBody, req.body), actor(req)),
+  );
 }

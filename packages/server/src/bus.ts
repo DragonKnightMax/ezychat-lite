@@ -52,6 +52,8 @@ export interface BusEvents {
   'tunnel:status': [TunnelStatus];
   'user:disabled': [number];
   'user:sessions-revoked': [number];
+  /** An agent's "Chats this member can see" changed (userId): live sockets rebuild their rooms. */
+  'member-chats:changed': [number];
   /** userId, new role (live sockets must join/leave the 'admins' room) */
   'user:role-changed': [number, Role];
   /** for push routing */

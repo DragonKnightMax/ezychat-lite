@@ -27,11 +27,15 @@ import { errorMessage } from '../api/client';
 import {
   useCreateUser,
   useInboxes,
+  useMemberChats,
   usePatchUser,
   useResetPassword,
   useRevokeSessions,
+  useSetMemberChats,
   useUsers,
 } from '../api/queries';
+import type { MemberChat } from '@ezychat/shared';
+import { MemberChatsField } from './MemberChatsField';
 import { useAuth } from '../auth/AuthProvider';
 import {
   Banner,
@@ -132,6 +136,9 @@ export function MembersPage() {
   const memberInboxCell = (u: User) =>
     u.kind === 'ai' ? (
       <AgentInboxCell user={u} inboxes={inboxes} />
+    ) : u.chatScope === 'chosen' ? (
+      // the chosen chats decide, not inbox access, while an agent sees only chosen chats
+      <span className="text-sm text-muted-foreground">—</span>
     ) : (
       <InboxAccessCell user={u} inboxes={inboxes} />
     );
@@ -145,7 +152,15 @@ export function MembersPage() {
     {
       key: 'role',
       header: t('members.columns.role'),
-      cell: (u) => (u.kind === 'ai' ? <AiBadge /> : <RoleBadge role={u.role} />),
+      cell: (u) =>
+        u.kind === 'ai' ? (
+          <AiBadge />
+        ) : (
+          <span className="flex flex-col items-start gap-1">
+            <RoleBadge role={u.role} />
+            <ChosenChatsNote user={u} />
+          </span>
+        ),
     },
     { key: 'status', header: t('members.columns.status'), cell: (u) => <StatusBadges user={u} /> },
     ...(multiInbox
@@ -247,6 +262,7 @@ export function MembersPage() {
                   <div className="flex flex-wrap items-center gap-1.5 pl-11">
                     {u.kind === 'ai' ? <AiBadge /> : <RoleBadge role={u.role} />}
                     <StatusBadges user={u} />
+                    {u.kind !== 'ai' && <ChosenChatsNote user={u} />}
                   </div>
                   {multiInbox && <div className="pl-11">{memberInboxCell(u)}</div>}
                   <p className="pl-11 text-xs text-muted-foreground">
@@ -435,6 +451,17 @@ function MemberIdentity({ user, isMe }: { user: User; isMe: boolean }) {
         </p>
       </div>
     </div>
+  );
+}
+
+/** "Only 3 chosen chats" under an agent limited to chosen chats. */
+function ChosenChatsNote({ user }: { user: User }) {
+  const { t } = useTranslation('admin');
+  if (user.role !== 'agent' || user.chatScope !== 'chosen') return null;
+  return (
+    <span className="text-xs text-warning" data-testid="chosen-chats-note">
+      {t('limitedChats.note', { count: user.chatJids?.length ?? 0 })}
+    </span>
   );
 }
 
@@ -761,40 +788,56 @@ function EditMemberDialog({
   const { t } = useTranslation(['admin', 'common']);
   const [displayName, setDisplayName] = useState(user.displayName);
   const [role, setRole] = useState<Role>(user.role);
+  // "Chats this member can see" (agents): the saved choice until the admin changes it here.
+  const human = user.kind !== 'ai';
+  const saved = useMemberChats(user.id, { enabled: human });
+  const setChats = useSetMemberChats();
+  const [draft, setDraft] = useState<{ scope: 'all' | 'chosen'; chats: MemberChat[] } | null>(null);
+  const chatChoice = draft ?? saved.data ?? { scope: 'all' as const, chats: [] };
+  const pending = patch.isPending || setChats.isPending;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const body: { displayName?: string; role?: Role } = {};
     if (displayName.trim() && displayName.trim() !== user.displayName)
       body.displayName = displayName.trim();
     if (role !== user.role) body.role = role;
-    if (Object.keys(body).length === 0) return onClose();
-    patch.mutate(
-      { id: user.id, patch: body },
-      {
-        onSuccess: () => {
-          toast.success(t('members.edit.done'));
-          onClose();
-        },
-      },
-    );
+    // an admin sees every chat: the server clears the choice when the role becomes admin
+    const chats = human && role === 'agent' ? draft : null;
+    if (Object.keys(body).length === 0 && !chats) return onClose();
+    try {
+      if (Object.keys(body).length > 0) await patch.mutateAsync({ id: user.id, patch: body });
+      if (chats)
+        await setChats.mutateAsync({
+          userId: user.id,
+          body: { scope: chats.scope, chats: chats.chats.map((c) => c.jid) },
+        });
+      toast.success(t('members.edit.done'));
+      onClose();
+    } catch {
+      /* the error shows in the dialog */
+    }
   };
 
   return (
     <ResponsiveDialog
       open
-      onOpenChange={(o) => !o && !patch.isPending && onClose()}
+      onOpenChange={(o) => !o && !pending && onClose()}
       title={t('members.edit.title', { name: user.displayName })}
       footer={
         <DialogFooterButtons
           onCancel={onClose}
-          pending={patch.isPending}
+          pending={pending}
           formId="edit-member-form"
           submitLabel={t('common:actions.save')}
         />
       }
     >
-      <form id="edit-member-form" onSubmit={submit} className="flex flex-col gap-4 pb-1">
+      <form
+        id="edit-member-form"
+        onSubmit={(e) => void submit(e)}
+        className="flex flex-col gap-4 pb-1"
+      >
         <Field label={t('members.form.displayName')}>
           {(p) => (
             <Input
@@ -811,7 +854,16 @@ function EditMemberDialog({
           disabled={isMe}
           hint={isMe ? t('members.form.ownRoleHint') : undefined}
         />
-        {patch.error && <Banner tone="danger">{errorMessage(patch.error)}</Banner>}
+        {human && role === 'agent' && (
+          <MemberChatsField
+            scope={chatChoice.scope}
+            chats={chatChoice.chats}
+            onChange={(scope, chats) => setDraft({ scope, chats })}
+          />
+        )}
+        {(patch.error || setChats.error) && (
+          <Banner tone="danger">{errorMessage(patch.error ?? setChats.error)}</Banner>
+        )}
       </form>
     </ResponsiveDialog>
   );

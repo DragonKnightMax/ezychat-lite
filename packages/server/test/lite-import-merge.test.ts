@@ -481,6 +481,34 @@ describe('mergeLiteInbox', () => {
     }
   });
 
+  it('keeps the chosen chats of a Lite agent limited to chosen chats, under the new chat keys', async () => {
+    const t = seedTarget();
+    const lite = seedLite();
+    const ldb = open(lite.dir);
+    const id = (name: string) =>
+      (ldb.prepare('SELECT id FROM users WHERE username = ?').get(name) as { id: number }).id;
+    ldb.prepare("UPDATE users SET chat_scope = 'chosen' WHERE id = ?").run(id('sam'));
+    const add = ldb.prepare(
+      'INSERT INTO member_chats (user_id, chat_jid, added_by, added_at) VALUES (?, ?, ?, ?)',
+    );
+    add.run(id('sam'), LITE_CHAT, id('amy'), NOW);
+    add.run(id('sam'), '60000000@s.whatsapp.net', null, NOW); // no such chat: dropped
+    add.run(id('amy'), LITE_CHAT, null, NOW); // amy sees all chats: a stale row is not copied
+    ldb.close();
+    await merge(t.dir, lite.dir);
+    const db = open(t.dir);
+    try {
+      const rows = db
+        .prepare(
+          `SELECT u.username, u.chat_scope, m.chat_jid FROM member_chats m JOIN users u ON u.id = m.user_id`,
+        )
+        .all();
+      expect(rows).toEqual([{ username: 'sam', chat_scope: 'chosen', chat_jid: `${LITE_CHAT}#3` }]);
+    } finally {
+      db.close();
+    }
+  });
+
   it('imports scheduled tasks switched off, keeps the Scheduled mark and leaves the run history', async () => {
     const t = seedTarget();
     const lite = seedLite();
@@ -804,6 +832,8 @@ describe('mergeLiteInbox refusals and rollback', () => {
     db.exec(
       'DROP TABLE ai_scheduled_runs; DROP TABLE ai_scheduled_tasks; ALTER TABLE messages DROP COLUMN scheduled_task_id;',
     );
+    // and 037 (limited chat access)
+    db.exec('DROP TABLE member_chats; ALTER TABLE users DROP COLUMN chat_scope;');
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

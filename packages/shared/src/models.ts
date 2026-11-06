@@ -38,6 +38,13 @@ export const UserSchema = z.object({
   locale: LocaleSchema.nullable(),
   /** Inboxes an agent may open (admin responses only; admins open every inbox). */
   inboxIds: z.array(z.number().int().positive()).optional(),
+  /**
+   * Which chats an agent sees: 'all' (every chat of their inboxes) or 'chosen' (only the chats an
+   * admin chose, `GET /api/users/:id/chats`). Absent = 'all'; admins and AI members are always 'all'.
+   */
+  chatScope: z.enum(['all', 'chosen']).optional(),
+  /** The chosen chats of an agent limited to chosen chats (admin responses only). */
+  chatJids: z.array(z.string()).optional(),
 });
 export type User = z.infer<typeof UserSchema>;
 

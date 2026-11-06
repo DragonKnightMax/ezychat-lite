@@ -292,19 +292,30 @@ export class ChatRepo {
     limit: number;
     /** Inboxes the caller may open; omitted = every inbox, empty = none. */
     inboxIds?: readonly number[];
+    /** Only these chats (an agent limited to chosen chats); empty = none. */
+    chatJids?: readonly string[];
     /** Narrows to one inbox (the inbox filter). */
     inbox?: number;
   }): ChatRow[] {
-    if (f.inboxIds && f.inboxIds.length === 0) return [];
+    if (f.chatJids && f.chatJids.length === 0) return [];
+    if (f.inboxIds && f.inboxIds.length === 0 && !f.chatJids) return [];
     if (f.inbox !== undefined && f.inboxIds && !f.inboxIds.includes(f.inbox)) return [];
     const where: string[] = [];
     const params: Record<string, unknown> = { limit: f.limit };
     if (f.inbox !== undefined) {
       where.push('c.inbox_id = @inbox');
       params.inbox = f.inbox;
-    } else if (f.inboxIds) {
+    } else if (f.inboxIds && !f.chatJids) {
       where.push('c.inbox_id IN (SELECT value FROM json_each(@inboxIds))');
       params.inboxIds = JSON.stringify(f.inboxIds);
+    }
+    if (f.chatJids) {
+      // chosen chats of active inboxes only (a removed inbox is for admins)
+      where.push(
+        `c.jid IN (SELECT value FROM json_each(@chatJids))
+         AND c.inbox_id IN (SELECT id FROM inboxes WHERE removed_at IS NULL)`,
+      );
+      params.chatJids = JSON.stringify(f.chatJids);
     }
     if (f.status) {
       where.push('c.status = @status');

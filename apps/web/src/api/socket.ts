@@ -199,6 +199,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
     socket.on('wa:status', (s) => qc.setQueryData(qk.wa, s));
     socket.on('inbox:status', (p) => patchInboxStatusInCache(qc, p));
+    socket.on('chats:access', () => {
+      // The chats this user may open changed (an agent limited to chosen chats): reload the list,
+      // every open chat (one no longer theirs now answers 404) and the user's own scope.
+      void qc.invalidateQueries({ queryKey: qk.me });
+      void qc.invalidateQueries({ queryKey: qk.directory });
+      void qc.invalidateQueries({ queryKey: ['chat'] });
+      void qc.invalidateQueries({ queryKey: ['messages'] });
+      refreshChats();
+    });
+
     socket.on('inboxes:changed', () => {
       // An inbox was added, renamed or removed, or who may open it changed: the inbox list, the
       // team's inbox access (assign dropdown) and the chats the user may see all follow.

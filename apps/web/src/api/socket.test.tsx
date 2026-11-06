@@ -427,6 +427,14 @@ it('keeps the inbox list current: a status patches it, a change reloads inboxes,
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inboxes'] });
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['users'] });
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['chats'] }));
+  invalidate.mockClear();
+  // the chats this user may open changed (an agent limited to chosen chats)
+  act(() => socket.listeners.get('chats:access')!());
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['me'] });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['users', 'directory'] });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['chat'] });
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['messages'] });
+  await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['chats'] }));
   qc.clear();
 });
 

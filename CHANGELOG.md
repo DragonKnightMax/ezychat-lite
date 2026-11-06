@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Give an agent only the chats you choose.** In Members → Edit, an agent's new setting **Chats this member can see**
+  is All chats (as before) or **Only chosen chats**, with a list you add direct chats and groups to. Use it for an
+  outside or support agent: they work as usual in those chats, and every other chat stays invisible to them, with no
+  notifications about it. They cannot start new chats or use Ask Ezy.
 - **Scheduled tasks for AI agents.** On an AI agent's page, add a task that sends one message at a set time (every day,
   weekdays or chosen days) to a chat or group you pick, for example today's bookings to the staff group every weekday
   at 8:30. The agent uses its business context and connectors, and sends nothing when there is nothing to tell.

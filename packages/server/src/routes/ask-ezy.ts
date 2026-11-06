@@ -4,7 +4,8 @@ import { AskEzyRequest, type AskEzyEvent, type AskEzyStatus } from '@ezychat/sha
 import { requireAdmin, requireUser } from '../auth/guards.js';
 import type { AppContext } from '../context.js';
 import { clientIp } from '../http/client-ip.js';
-import { errors, parse } from '../http/errors.js';
+import { HttpError, errors, parse } from '../http/errors.js';
+import { chosenChats } from '../inboxes/access.js';
 import { WindowLimiter } from '../http/window-limiter.js';
 import { createAskEzyService } from '../ask-ezy/service.js';
 
@@ -27,6 +28,9 @@ export default async function askEzyRoutes(app: FastifyInstance, ctx: AppContext
   app.post('/ask-ezy', { preHandler: requireUser(ctx) }, async (req, reply) => {
     const body = parse(AskEzyRequest, req.body);
     const user = req.user!;
+    // Ask Ezy reads across chats: never for an agent limited to chosen chats
+    if (chosenChats(ctx, user))
+      throw new HttpError(403, 'chat_scope_limited', 'Ask Ezy is not available for this account');
     const hit = limiter.hit(String(user.id));
     if (!hit.allowed) throw errors.rateLimited(hit.retryAfterSec);
     const cancel = new AbortController();

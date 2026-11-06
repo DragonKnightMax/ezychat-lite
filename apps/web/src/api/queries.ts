@@ -46,6 +46,8 @@ import {
   type DirectoryUser,
   type InboxListResponse,
   type InboxStatusPayload,
+  type MemberChatsResponse,
+  type SetMemberChatsBody,
   type CloudflareCreateBody,
   type LoginBody,
   type Message,
@@ -100,6 +102,7 @@ export const qk = {
   quickReplies: ['quick-replies'] as const,
   users: ['users'] as const,
   directory: ['users', 'directory'] as const,
+  memberChats: (userId: number) => ['users', userId, 'chats'] as const,
   wa: ['wa'] as const,
   inboxes: ['inboxes'] as const,
   tunnel: ['tunnel'] as const,
@@ -948,6 +951,28 @@ export function usePatchUser() {
     mutationFn: ({ id, patch }: { id: number; patch: PatchUserBody }) =>
       api<User>(`/users/${id}`, { method: 'PATCH', body: patch }),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.users }),
+  });
+}
+
+/** Admins: an agent's "Chats this member can see" (`GET /api/users/:id/chats`). */
+export function useMemberChats(userId: number, opts: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: qk.memberChats(userId),
+    queryFn: () => api<MemberChatsResponse>(`/users/${userId}/chats`),
+    enabled: opts.enabled ?? true,
+  });
+}
+
+/** Admins: replaces it (`PUT /api/users/:id/chats`); the members list and assign dropdowns follow. */
+export function useSetMemberChats() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, body }: { userId: number; body: SetMemberChatsBody }) =>
+      api<MemberChatsResponse>(`/users/${userId}/chats`, { method: 'PUT', body }),
+    onSuccess: (data, { userId }) => {
+      qc.setQueryData(qk.memberChats(userId), data);
+      void qc.invalidateQueries({ queryKey: qk.users });
+    },
   });
 }
 

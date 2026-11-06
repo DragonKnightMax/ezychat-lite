@@ -12,6 +12,7 @@ import { ChatListItem } from './ChatListItem';
 import type { Directory } from './useDirectory';
 import { useInboxOfChat } from './useVisibleInboxes';
 import { replyWindowLeft, useNow, useReplyWindowHours } from './reply-window';
+import { chosenChatsOnly } from '../auth/chat-scope';
 
 // Realtime cache updates retain unchanged Chat references. Keep those rows from
 // recalculating labels, dates and avatars when another conversation changes.
@@ -50,6 +51,7 @@ function ChatRowSkeleton() {
 
 export function ChatList({ filters, activeJid, directory, onResetFilters }: ChatListProps) {
   const { t } = useTranslation(['inbox', 'common']);
+  const chosenOnly = chosenChatsOnly(directory.me);
   const { refreshReady } = useRealtime();
   const q = useChats(filters, { holdCached: !refreshReady });
   // One unified list: the server sends only chats of inboxes the user may open.
@@ -116,6 +118,18 @@ export function ChatList({ filters, activeJid, directory, onResetFilters }: Chat
           {q.error instanceof Error ? q.error.message : null}
         </Banner>
       </div>
+    );
+  }
+
+  if (chats.length === 0 && chosenOnly && !filters.q && !filters.tag) {
+    // an agent limited to chosen chats with nothing (open) chosen: say who gives them chats
+    return (
+      <EmptyState
+        className="flex-1"
+        illustration="/illustrations/empty-inbox.png"
+        title={t('chatList.empty.chosen.title')}
+        description={t('chatList.empty.chosen.description')}
+      />
     );
   }
 

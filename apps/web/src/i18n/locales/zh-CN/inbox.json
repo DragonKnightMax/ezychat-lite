@@ -51,7 +51,11 @@
       "search": "没有与“{{query}}”匹配的聊天。",
       "resolvedTitle": "没有已解决的聊天",
       "resolvedDescription": "这里没有已解决的聊天。",
-      "tag": "没有带“{{tag}}”标签的聊天。"
+      "tag": "没有带“{{tag}}”标签的聊天。",
+      "chosen": {
+        "title": "还没有聊天",
+        "description": "管理员尚未为您分配任何未结束的聊天。添加后会立即显示在这里。"
+      }
     }
   },
   "chatListItem": {
@@ -625,7 +629,8 @@
     "cancel": "取消",
     "start": "开始对话",
     "startFailed": "无法开始对话",
-    "listLabel": "群组成员"
+    "listLabel": "群组成员",
+    "chosenChatsOnly": "您只能打开管理员为您选择的聊天。"
   },
   "gettingStarted": {
     "title": "入门",

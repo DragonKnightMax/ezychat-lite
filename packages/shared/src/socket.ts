@@ -65,6 +65,8 @@ export interface ServerToClientEvents {
   'inbox:status': (p: InboxStatusPayload) => void;
   /** An inbox was added, renamed or removed, or its members changed: reload the inbox list. */
   'inboxes:changed': () => void;
+  /** The chats this user may open changed (an agent limited to chosen chats): reload chats. */
+  'chats:access': () => void;
   /** A group was changed in EzyChat or on WhatsApp: refetch its Group info (inbox room only). */
   'group:changed': (p: GroupChangedPayload) => void;
   'tunnel:status': (s: TunnelStatus) => void;

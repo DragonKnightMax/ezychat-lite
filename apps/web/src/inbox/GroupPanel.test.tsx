@@ -227,6 +227,37 @@ describe('GroupPanel', () => {
     expect(screen.getByTestId('where').textContent).toBe('/chats/60162214433%40s.whatsapp.net');
   });
 
+  it('an agent limited to chosen chats sees the number but no Open chat or Message', async () => {
+    mockApi(info(), { '60162214433@s.whatsapp.net': 'Hello.' });
+    const api = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) =>
+        url === '/api/me'
+          ? json({
+              id: 5,
+              username: 'ravi',
+              displayName: 'Ravi',
+              role: 'agent',
+              chatScope: 'chosen',
+              mustChangePassword: false,
+              disabled: false,
+              createdAt: 0,
+              locale: null,
+            })
+          : api(url, init),
+      ),
+    );
+    renderPanel();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Oyen Jarvis/ }));
+    expect(await screen.findByTestId('chosen-only-no-member-chat')).toBeTruthy();
+    const details = screen.getByRole('region', { name: 'WhatsApp details' });
+    expect(within(details).getByText('+60162214433')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Open chat' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Message' })).toBeNull();
+  });
+
   it('says when an About could not be read and lets you retry', async () => {
     mockApi(info());
     const ok = globalThis.fetch;

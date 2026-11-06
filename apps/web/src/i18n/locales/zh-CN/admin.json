@@ -2936,5 +2936,26 @@
         "ready": "就绪"
       }
     }
+  },
+  "limitedChats": {
+    "label": "此成员可以看到的聊天",
+    "all": {
+      "title": "所有聊天",
+      "hint": "可以看到其可访问收件箱中的所有聊天，与现在相同。"
+    },
+    "chosen": {
+      "title": "仅选定的聊天",
+      "hint": "只能看到您在下方选择的私聊和群组。适用于外部或支持客服。"
+    },
+    "count_other": "已选择 {{count}} 个聊天",
+    "none": "尚未选择聊天：在您添加之前，此成员看不到任何聊天。",
+    "chosenLabel": "已选择的聊天",
+    "remove": "移除 {{name}}",
+    "add": "添加 {{name}}",
+    "addLabel": "添加聊天",
+    "addPlaceholder": "搜索聊天和群组",
+    "noMatch": "没有其他匹配的聊天。",
+    "note_zero": "未选择聊天",
+    "note_other": "仅 {{count}} 个选定聊天"
   }
 }

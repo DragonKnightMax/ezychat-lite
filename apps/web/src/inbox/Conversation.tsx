@@ -71,6 +71,7 @@ import {
 } from './reply-window';
 import { DeleteMessageDialog, EditMessageDialog } from './MessageActions';
 import { NO_RIGHTS, messageRights, type MessageChangeProps } from './message-changes';
+import { useChosenChatsOnly } from '../auth/chat-scope';
 
 export interface ConversationProps {
   jid: string;
@@ -90,6 +91,8 @@ const NO_PHRASES: readonly ReplyPhraseListItem[] = [];
 
 export function Conversation({ jid, directory, onBack }: ConversationProps) {
   const { t } = useTranslation(['inbox', 'common']);
+  // Ask Ezy reads across chats: not for an agent limited to chosen chats
+  const chosenOnly = useChosenChatsOnly();
   // Phones get the short placeholder (one line); the "/" quick-reply hint fits from sm.
   const wideComposer = useMediaQuery('(min-width: 640px)');
   const qc = useQueryClient();
@@ -492,7 +495,7 @@ export function Conversation({ jid, directory, onBack }: ConversationProps) {
                     : null
                 }
                 onCancelReply={() => setReplyTo(null)}
-                askEzy={{ chatJid: chat.jid, name: chatTitle(chat, t) }}
+                askEzy={chosenOnly ? null : { chatJid: chat.jid, name: chatTitle(chat, t) }}
                 aiSuggest={
                   suggestState !== 'off'
                     ? {

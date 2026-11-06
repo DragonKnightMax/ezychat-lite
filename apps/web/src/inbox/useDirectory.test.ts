@@ -51,6 +51,32 @@ describe('inbox access in the team directory', () => {
     expect(single.assignableFor(1).map((u) => u.displayName)).toEqual(['Aisyah', 'Mei Ling']);
   });
 
+  it('an agent limited to chosen chats is offered only for those chats, in Lite too', () => {
+    const list = [
+      {
+        id: 2,
+        displayName: 'Ravi',
+        role: 'agent' as const,
+        disabled: false,
+        chatScope: 'chosen' as const,
+        chatJids: ['a@s.whatsapp.net'],
+      },
+      { id: 3, displayName: 'Mei Ling', role: 'agent' as const, disabled: false },
+    ];
+    const dir = buildDirectory(null, true, list);
+    expect(dir.assignableFor(1, { chatJid: 'a@s.whatsapp.net' }).map((u) => u.id)).toEqual([3, 2]);
+    expect(dir.assignableFor(1, { chatJid: 'b@s.whatsapp.net' }).map((u) => u.id)).toEqual([3]);
+    // without a chat key (no chat open) a limited agent is never offered
+    expect(dir.assignableFor(1).map((u) => u.id)).toEqual([3]);
+    // a limited row known only by its scope (no chats the viewer may see) is never offered
+    const bare = buildDirectory(null, true, [{ ...list[0]!, chatJids: undefined }]);
+    expect(bare.assignableFor(1, { chatJid: 'a@s.whatsapp.net' })).toEqual([]);
+    // the signed-in limited agent keeps the chats from the directory row
+    const me = { ...agent, id: 2, chatScope: 'chosen' as const };
+    const mine = buildDirectory(me, false, list);
+    expect(mine.byId.get(2)?.chatJids).toEqual(['a@s.whatsapp.net']);
+  });
+
   it('agents open only their inboxes', () => {
     const u = { id: 2, displayName: 'D', role: 'agent' as const, disabled: false, inboxIds: [1] };
     expect(canOpenInbox(u, 1)).toBe(true);

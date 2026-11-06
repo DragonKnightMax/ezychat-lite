@@ -4,6 +4,8 @@ import {
   type CreateInboxBody,
   type Inbox,
   type InboxListResponse,
+  type MemberChatsResponse,
+  type SetMemberChatsBody,
   type UpdateInboxBody,
   type User,
   type WaStatus,
@@ -15,7 +17,7 @@ import { ChatRepo, type ChatRow } from '../chats/repo.js';
 import { audit } from '../db/audit.js';
 import { HttpError, errors } from '../http/errors.js';
 import { getChats } from '../wa-bridge/index.js';
-import { canOpen, scopeFor } from './access.js';
+import { canOpen, canOpenChat, chosenChats, scopeFor, visibleInboxIds } from './access.js';
 import { PRIMARY_INBOX_ID, inboxOfKey } from './keys.js';
 import type { InboxRow } from './repo.js';
 import { isKnownInboxType } from './types.js';
@@ -77,6 +79,19 @@ export interface InboxService {
    * for a viewer who is not an admin, only those the viewer opens too.
    */
   directoryInboxIds(user: User, viewer: Viewer): 'all' | number[];
+  /**
+   * `GET /users/directory`: for an agent limited to chosen chats, the chosen chats the viewer may
+   * open too (all of them for an admin); undefined for everyone else.
+   */
+  directoryChatJids(user: User, viewer: Viewer): string[] | undefined;
+  /** "Chats this member can see" of one agent (`GET /api/users/:id/chats`, admins). */
+  memberChats(userId: number): MemberChatsResponse;
+  /**
+   * Replaces it (`PUT /api/users/:id/chats`): 400 `not_an_agent` for an admin or AI member, 400
+   * `unknown_chat` for a key that is no chat of an active inbox. The open chats the agent can no
+   * longer open are unassigned; live sockets rebuild their rooms. Audited `user.chat_scope` (ids only).
+   */
+  setMemberChats(userId: number, body: SetMemberChatsBody, actor: InboxActor): MemberChatsResponse;
   /** A new agent joins the only inbox when exactly one is active (Lite, a one-inbox install). */
   onUserCreated(user: User): void;
 }
@@ -120,7 +135,7 @@ export function requireChatAccess(ctx: AppContext, user: Viewer, key: string): C
     throw errors.notFound('Chat'); // a malformed key
   }
   const row = new ChatRepo(ctx.db).get(resolved);
-  if (!row || !canOpen(scopeFor(ctx, user), row.inbox_id)) throw errors.notFound('Chat');
+  if (!row || !canOpenChat(ctx, user, row)) throw errors.notFound('Chat');
   return row;
 }
 
@@ -140,7 +155,8 @@ export function requireMessageAccess(ctx: AppContext, user: Viewer, id: string):
       : undefined);
   if (!row) return;
   const inboxId = inboxOfKeyOrNull(row.chat_jid);
-  if (inboxId === null || !canOpen(scopeFor(ctx, user), inboxId)) throw errors.notFound('Message');
+  if (inboxId === null || !canOpenChat(ctx, user, { jid: row.chat_jid, inbox_id: inboxId }))
+    throw errors.notFound('Message');
 }
 
 /** Connection state of the number a chat key belongs to; null for a removed or unknown inbox. */
@@ -262,8 +278,53 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
     return true;
   };
 
+  /** Open chats assigned to an agent that the agent can no longer open: unassigned, with an event. */
+  const unassignUnopenable = (userId: number, actorId: number | null) => {
+    const user = ctx.services.auth?.getUser(userId) ?? null;
+    if (!user || user.role === 'admin' || user.kind === 'ai') return;
+    const rows = ctx.db
+      .prepare(`SELECT jid, inbox_id FROM chats WHERE assigned_to = ? AND status = 'open'`)
+      .all(userId) as Array<{ jid: string; inbox_id: number }>;
+    const chats = getChats(ctx);
+    let count = 0;
+    for (const row of rows) {
+      if (canOpenChat(ctx, user, row)) continue;
+      chats.patch(row.jid, { assignedTo: null }, actorId, { reason: 'chat_access' });
+      count++;
+    }
+    if (count) log.info({ userId, count }, 'chats unassigned after chat access change');
+  };
+
+  const listMemberChats = (userId: number): MemberChatsResponse => {
+    const row = ctx.db.prepare('SELECT chat_scope FROM users WHERE id = ?').get(userId) as
+      { chat_scope: string } | undefined;
+    const scope = row?.chat_scope === 'chosen' ? 'chosen' : 'all';
+    const jids = (
+      ctx.db
+        .prepare('SELECT chat_jid FROM member_chats WHERE user_id = ? ORDER BY added_at, chat_jid')
+        .all(userId) as Array<{ chat_jid: string }>
+    ).map((r) => r.chat_jid);
+    const chats = getChats(ctx);
+    return {
+      scope,
+      chats: jids.map((jid) => {
+        const chat = chats.get(jid);
+        return { jid, name: chat?.name || jid, type: chat?.type ?? 'dm' };
+      }),
+    };
+  };
+
+  /** An admin sees every chat: a promotion drops the chosen chats (no hidden leftovers). */
+  const clearMemberChats = (userId: number) => {
+    ctx.db.transaction(() => {
+      ctx.db.prepare("UPDATE users SET chat_scope = 'all' WHERE id = ?").run(userId);
+      ctx.db.prepare('DELETE FROM member_chats WHERE user_id = ?').run(userId);
+    })();
+  };
+
   // a demoted admin keeps only the inboxes they are a member of: hand back the others' chats
   ctx.bus.on('user:role-changed', (userId, role) => {
+    if (role === 'admin') clearMemberChats(userId);
     if (role !== 'agent') return;
     const scope = scopeFor(ctx, { id: userId, role, kind: 'human' });
     if (scope === 'all') return;
@@ -280,7 +341,8 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
   const svc: InboxService = {
     list(viewer) {
       const admin = isAdmin(viewer);
-      const scope = scopeFor(ctx, viewer);
+      // an agent limited to chosen chats sees the inboxes of those chats (names, connection state)
+      const scope = visibleInboxIds(ctx, viewer);
       const rows = admin ? repo.list() : repo.active().filter((r) => canOpen(scope, r.id));
       const maxInboxes = connections.maxInboxes();
       return {
@@ -463,6 +525,80 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
         return undefined;
       const active = new Set(repo.active().map((r) => r.id));
       return repo.userInboxIds(user.id).filter((id) => active.has(id));
+    },
+
+    memberChats(userId) {
+      const user = ctx.services.auth?.getUser(userId) ?? null;
+      if (!user) throw errors.notFound('User');
+      return listMemberChats(userId);
+    },
+
+    setMemberChats(userId, body, actor) {
+      const user = ctx.services.auth?.getUser(userId) ?? null;
+      if (!user) throw errors.notFound('User');
+      if (user.role !== 'agent' || user.kind === 'ai')
+        throw new HttpError(400, 'not_an_agent', 'Only an agent can be limited to chosen chats');
+      const chats = getChats(ctx);
+      const chatRepo = new ChatRepo(ctx.db);
+      const jids: string[] = [];
+      if (body.scope === 'chosen')
+        for (const key of body.chats) {
+          let jid: string;
+          try {
+            jid = chats.resolveJid(key);
+          } catch {
+            throw new HttpError(400, 'unknown_chat', 'Unknown chat');
+          }
+          const row = chatRepo.get(jid);
+          const inbox = row ? repo.get(row.inbox_id) : undefined;
+          if (!row || !inbox || inbox.removed_at !== null)
+            throw new HttpError(400, 'unknown_chat', 'Unknown chat');
+          if (!jids.includes(jid)) jids.push(jid);
+        }
+      const before = listMemberChats(userId);
+      const was = new Set(before.chats.map((c) => c.jid));
+      const now = Date.now();
+      ctx.db.transaction(() => {
+        ctx.db.prepare('UPDATE users SET chat_scope = ? WHERE id = ?').run(body.scope, userId);
+        ctx.db
+          .prepare(
+            `DELETE FROM member_chats WHERE user_id = ?
+             AND chat_jid NOT IN (SELECT value FROM json_each(?))`,
+          )
+          .run(userId, JSON.stringify(jids));
+        const insert = ctx.db.prepare(
+          'INSERT OR IGNORE INTO member_chats (user_id, chat_jid, added_by, added_at) VALUES (?, ?, ?, ?)',
+        );
+        jids.forEach((jid, i) => insert.run(userId, jid, actor.userId, now + i));
+      })();
+      unassignUnopenable(userId, actor.userId);
+      audit(ctx.db, {
+        userId: actor.userId,
+        action: 'user.chat_scope',
+        ip: actor.ip,
+        meta: {
+          targetId: userId,
+          before: before.scope,
+          after: body.scope,
+          added: jids.filter((j) => !was.has(j)),
+          removed: [...was].filter((j) => !jids.includes(j)),
+        },
+      });
+      ctx.bus.emit('member-chats:changed', userId);
+      return listMemberChats(userId);
+    },
+
+    directoryChatJids(user, viewer) {
+      const chosen = chosenChats(ctx, user);
+      if (!chosen) return undefined;
+      const repoChats = new ChatRepo(ctx.db);
+      return [...chosen]
+        .filter((jid) => {
+          if (isAdmin(viewer)) return true;
+          const row = repoChats.get(jid);
+          return !!row && canOpenChat(ctx, viewer, row);
+        })
+        .sort((a, b) => a.localeCompare(b));
     },
 
     directoryInboxIds(user, viewer) {

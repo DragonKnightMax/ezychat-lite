@@ -17,9 +17,10 @@ import type { AppContext } from '../context.js';
 import { createGroupAdminService, type GroupAdminService } from '../groups/admin.js';
 import { createGroupService, type GroupService } from '../groups/service.js';
 import { clientIp } from '../http/client-ip.js';
-import { parse } from '../http/errors.js';
+import { HttpError, parse } from '../http/errors.js';
 import { profilePhotoLookup } from '../http/profile-images.js';
 import { avatarStore, memberAvatarKey, sendAvatar } from '../avatars/http.js';
+import { chosenChats } from '../inboxes/access.js';
 import { chatWaState } from '../inboxes/service.js';
 import { chatJidParam } from './chats.js';
 
@@ -47,7 +48,18 @@ export default async function groupRoutes(app: FastifyInstance, ctx: AppContext)
   const admin = (ctx.services.groupAdmin ??= createGroupAdminService(ctx, groups));
   const photos = avatarStore(ctx);
 
-  app.get('/chats/:jid/members', async (req) => groups.info(chatJidParam(ctx, req)));
+  app.get('/chats/:jid/members', async (req) => {
+    const info = await groups.info(chatJidParam(ctx, req));
+    // an agent limited to chosen chats gets a member's direct chat only when it is one of theirs
+    const chosen = chosenChats(ctx, req.user!);
+    if (!chosen) return info;
+    return {
+      ...info,
+      members: info.members.map((m) =>
+        m.chatJid && !chosen.has(m.chatJid) ? { ...m, chatJid: null } : m,
+      ),
+    };
+  });
 
   app.get('/chats/:jid/members/:member/about', async (req) => {
     const { member } = parse(MemberParams, req.params);
@@ -69,6 +81,9 @@ export default async function groupRoutes(app: FastifyInstance, ctx: AppContext)
 
   app.post('/chats/:jid/members/:member/chat', async (req) => {
     const { member } = parse(MemberParams, req.params);
+    // starting or opening a chat from a group member would reach chats outside the chosen ones
+    if (chosenChats(ctx, req.user!))
+      throw new HttpError(403, 'chat_scope_limited', 'Only the chosen chats can be opened');
     const chatJid = await groups.startChat(chatJidParam(ctx, req), member, {
       userId: req.user!.id,
       ip: clientIp(req),

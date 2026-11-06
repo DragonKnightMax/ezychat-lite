@@ -2969,5 +2969,28 @@
         "ready": "Ready"
       }
     }
+  },
+  "limitedChats": {
+    "label": "Chats this member can see",
+    "all": {
+      "title": "All chats",
+      "hint": "Every chat of the inboxes they can open, as today."
+    },
+    "chosen": {
+      "title": "Only chosen chats",
+      "hint": "Only the direct chats and groups you choose below. Use it for outside or support agents."
+    },
+    "count_one": "{{count}} chat chosen",
+    "count_other": "{{count}} chats chosen",
+    "none": "No chats chosen yet: this member sees no chats until you add some.",
+    "chosenLabel": "Chosen chats",
+    "remove": "Remove {{name}}",
+    "add": "Add {{name}}",
+    "addLabel": "Add chats",
+    "addPlaceholder": "Search chats and groups",
+    "noMatch": "No other chats match.",
+    "note_zero": "No chats chosen",
+    "note_one": "Only {{count}} chosen chat",
+    "note_other": "Only {{count}} chosen chats"
   }
 }
