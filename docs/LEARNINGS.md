@@ -1364,6 +1364,11 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   sets look the same and the test proves nothing.
 - Features that connect outside AI tools are vendor-neutral in name and copy ("AI assistants", MCP),
   never one provider's name; state which clients a given auth method actually supports.
+- An MCP tool that returns MCP content (an image) sets `content` in its `ToolRun`; keep it out of `INBOX_TOOLS` (Ask
+  Ezy reuses those as AI SDK tools and only passes JSON). Safety checks run before the type check, so a
+  `cantInspect` ZIP or a High file answers "locked", never "not supported".
+- `extractKnowledge` refuses > 10 MB, > 100 pages and > 100,000 characters and throws `NO_READABLE_TEXT` for a
+  scan: a reader that wants "no text" as a result matches that constant, never the message wording.
 - A new MCP tool must be added to every exact tool-name list in the tests (`mcp.test.ts` and
   `mcp-ai-setup.test.ts`): grep `server/test` for an existing tool name before pushing.
 - The server applies a token's scope change on the next call, but MCP clients cache `tools/list` until

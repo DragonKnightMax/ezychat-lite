@@ -595,7 +595,13 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
 - AI assistant access (MCP: `/mcp`, `mcp/route.ts`) is off by default, answers only direct loopback or the
   tunnel, and accepts only a personal access token (`ezc_pat_…`, SHA-256 hashed, owner rechecked as
   an active admin on every call). `/api` never accepts a token, so a token cannot manage tokens.
-  Inbox tools get only `InboxReadPort` (reads) and return media metadata, never links. AI setup
+  Inbox tools get only `InboxReadPort` (reads) and return media metadata, never links;
+  the one exception is `get_message_file` (`mcp/file.ts` `MessageFilePort`, scope `inbox:read`): the content of
+  one message's photo (JPEG/PNG/WebP from the bytes, ≤ 1.5 MB, MCP image content) or the text of its PDF/.docx
+  (`extractKnowledgeIsolated`, ≤ 10 MB, ≤ 20,000 characters, `text: null` for a scan), only in the token owner's
+  inboxes (else "not found"), never a link, never a file Safety rated High or one still awaiting its AI check
+  (fail closed, admins too), pending history media downloaded through `ensureMedia`, 30 a minute per token, audit
+  `mcp.read_file` {tokenId, messageId, kind, size}, never the name or content. It is not offered to Ask Ezy. AI setup
   tools (scope `ai:setup`, every admin token) go only through `AiSetupPort` (`mcp/ai-setup.ts`): they
   may change the AI instructions, hand-off rules and Business context **text** items, never files,
   the connection, key, model or on/off. Every change keeps a version (`ai_setup_versions`, app saves

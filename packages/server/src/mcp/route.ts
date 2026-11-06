@@ -11,6 +11,7 @@ import { ErrorCode } from '@ezychat/shared';
 import { createInboxReadPort } from './inbox.js';
 import { createAiSetupPort } from './ai-setup.js';
 import { createInboxSendPort } from './send.js';
+import { createMessageFilePort } from './file.js';
 import { createMcpServer } from './server.js';
 import { resourceMetadataUrl } from './oauth-routes.js';
 import { MCP_PATH, isMcpEnabled } from './settings.js';
@@ -39,6 +40,8 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
     const aiSetup = createAiSetupPort(ctx);
     // One per server: its per-token send limits must outlive each stateless request.
     const send = createInboxSendPort(ctx);
+    // Also one per server, for its per-token read limit.
+    const files = createMessageFilePort(ctx);
     const log = ctx.log.child({ mod: 'mcp' });
     const ipLimiter = new WindowLimiter({ windowMs: 60_000, max: 120 });
     const failureLimiter = new WindowLimiter({ windowMs: 60_000, max: 10 });
@@ -106,6 +109,7 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
         inbox,
         aiSetup,
         send,
+        files,
         principal,
         log,
         stillValid: () => tokens.stillValid(principal.tokenId),

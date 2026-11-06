@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **AI assistants can open photos, PDFs and Word files from chats.** A connected AI assistant (MCP) can now look at a
+  customer's photo or read the text of a PDF or Word file in a chat, with the new `get_message_file` tool. It only
+  reaches chats you can open, never gets a download link, and never gets a file WhatsApp Safety locked.
+
 ## [0.1.78] - 2026-11-06
 
 ### Added

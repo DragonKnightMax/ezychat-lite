@@ -7,6 +7,8 @@ import { errors } from '../http/errors.js';
 export const AI_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const AI_DOCUMENT_CHARACTERS = 100_000;
 export const AI_KNOWLEDGE_CHARACTERS = 500_000;
+/** The error of a document with no text (a scanned PDF); MCP `get_message_file` answers `text: null`. */
+export const NO_READABLE_TEXT = 'No readable text found. Scanned documents need OCR before upload.';
 
 /** Bound Word archive expansion before the document parser allocates its entries. */
 function checkWordArchive(buffer: Buffer): Promise<void> {
@@ -90,8 +92,7 @@ export async function extractKnowledge(name: string, buffer: Buffer): Promise<st
   } else
     throw errors.validation('Upload a PDF, Word (.docx), Markdown (.md) or text (.txt) document');
   text = text.replace(/\r\n?/g, '\n').trim();
-  if (!text)
-    throw errors.validation('No readable text found. Scanned documents need OCR before upload.');
+  if (!text) throw errors.validation(NO_READABLE_TEXT);
   if (text.length > AI_DOCUMENT_CHARACTERS)
     throw errors.validation('Document text exceeds 100,000 characters');
   return text;

@@ -165,6 +165,23 @@ export const McpGetActivityInput = z.strictObject({
 });
 export type McpGetActivityInput = z.infer<typeof McpGetActivityInput>;
 
+/**
+ * get_message_file: largest stored file it opens (the document reader's own limit), the largest
+ * photo it returns and the longest text it returns.
+ */
+export const MCP_FILE_MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+export const MCP_FILE_MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+export const MCP_FILE_MAX_TEXT_CHARS = 20_000;
+
+export const McpGetMessageFileInput = z.strictObject({
+  messageId: z
+    .string()
+    .min(1)
+    .max(256)
+    .describe('Message id from get_messages (a message with media)'),
+});
+export type McpGetMessageFileInput = z.infer<typeof McpGetMessageFileInput>;
+
 // Send tool (scope `inbox:send`).
 
 /** Longest text the send tool accepts (WhatsApp allows more; replies this long are a model error). */

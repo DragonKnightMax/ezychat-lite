@@ -8,9 +8,11 @@ import { AiSetupError, type AiSetupPort } from './ai-setup.js';
 import type { InboxReadPort } from './inbox.js';
 import { SendError, type InboxSendPort } from './send.js';
 import { SEND_TOOLS } from './send-tool.js';
+import { FILE_TOOLS } from './file-tool.js';
+import type { MessageFilePort } from './file.js';
 import { INBOX_TOOLS, ToolError, type ToolDef } from './tools.js';
 
-const TOOLS: readonly ToolDef[] = [...INBOX_TOOLS, ...SEND_TOOLS, ...AI_SETUP_TOOLS];
+const TOOLS: readonly ToolDef[] = [...INBOX_TOOLS, ...FILE_TOOLS, ...SEND_TOOLS, ...AI_SETUP_TOOLS];
 
 /** Server name shown by MCP clients: the edition's product (EzyChat Lite, EzyChat Enterprise, ...). */
 export function productTitle(edition: string): string {
@@ -20,7 +22,8 @@ export function productTitle(edition: string): string {
 const instructions = (title: string) =>
   `Access to an ${title} WhatsApp team inbox.` +
   ' Read the inbox with get_stats for an ' +
-  'overview, list_chats to find chats, then get_chat and get_messages. AI agent tools ' +
+  'overview, list_chats to find chats, then get_chat and get_messages; get_message_file opens a ' +
+  'photo, PDF or Word file of a message. AI agent tools ' +
   '(list_ai_agents, get_ai_agent_setup, try_ai_reply, update_ai_setup, get_ai_setup_history) let ' +
   'the admin review and refine the instructions, hand-off rules and business context of each AI ' +
   'agent; ' +
@@ -37,6 +40,7 @@ export interface McpServerDeps {
   inbox: InboxReadPort;
   aiSetup: AiSetupPort;
   send: InboxSendPort;
+  files: MessageFilePort;
   principal: ApiPrincipal;
   log: Logger;
   /** Re-checks the token right before a tool runs (revoked/demoted mid-request). */
@@ -69,9 +73,9 @@ async function runTool(tool: ToolDef, args: unknown, deps: McpServerDeps): Promi
     return textResult('This access token is no longer valid.', true);
   }
   try {
-    const { result, count } = await tool.run(args as never, deps);
+    const { result, count, content } = await tool.run(args as never, deps);
     done('ok', count);
-    return textResult(JSON.stringify(result));
+    return content ? { content } : textResult(JSON.stringify(result));
   } catch (err) {
     // Expected failures (validation, limits, unknown items) are shown to the model as they are.
     if (

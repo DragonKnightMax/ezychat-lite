@@ -196,6 +196,7 @@ describe('protocol and tools', () => {
       'get_ai_setup_history',
       'get_ai_setup_version',
       'get_chat',
+      'get_message_file',
       'get_messages',
       'get_stats',
       'list_ai_agents',
