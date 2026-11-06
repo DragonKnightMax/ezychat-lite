@@ -276,6 +276,12 @@ export function setAgentInbox(db: DB, id: number, inboxId: number | null, now = 
     if (!row) throw new AgentError('agent_not_found');
     if (row.direct === 1) assertDirectFree(db, inboxId, id);
     releaseAgentGroups(db, id, now);
+    // Its scheduled tasks name chats of the old inbox: they stop until an admin picks new chats.
+    const before = db.prepare('SELECT inbox_id FROM ai_agents WHERE id = ?').pluck().get(id);
+    if (before !== inboxId)
+      db.prepare(
+        'UPDATE ai_scheduled_tasks SET enabled = 0, updated_at = ? WHERE agent_id = ? AND enabled = 1',
+      ).run(now, id);
     db.prepare('UPDATE ai_agents SET inbox_id = ?, updated_at = ? WHERE id = ?').run(
       inboxId,
       now,

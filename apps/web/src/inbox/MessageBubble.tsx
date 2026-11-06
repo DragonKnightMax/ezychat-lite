@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import {
   AlertCircle,
   Bot,
+  CalendarClock,
   Check,
   CheckCheck,
   Clock,
@@ -397,6 +398,8 @@ export function MessageBubble({
             {outboundLabel}
           </p>
         )}
+        {/* A message an AI agent's scheduled task sent ("Scheduled · <task>"). */}
+        {out && m.scheduledTask && <ScheduledMark task={m.scheduledTask} />}
         {m.quotedId &&
           (onOpenQuote ? (
             <Button
@@ -518,5 +521,21 @@ export function MessageBubble({
       {!out && copyButton}
       {!out && moreMenu}
     </div>
+  );
+}
+
+/** "Scheduled · <task>" above a message a scheduled task sent; just "Scheduled" once it is deleted. */
+function ScheduledMark({ task }: Readonly<{ task: NonNullable<Message['scheduledTask']> }>) {
+  const { t } = useTranslation('inbox');
+  return (
+    <p
+      className="mb-1 flex min-w-0 items-center gap-1 text-[11px] font-medium text-primary"
+      data-testid="scheduled-mark"
+    >
+      <CalendarClock className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">
+        {task.name ? t('message.scheduledNamed', { name: task.name }) : t('message.scheduled')}
+      </span>
+    </p>
   );
 }

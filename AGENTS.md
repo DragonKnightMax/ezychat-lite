@@ -231,6 +231,22 @@ assistant → Ready, `setup/SetupWizard.tsx` + `AiAssistantStep.tsx`). **Tests a
 ChatGPT**: use mock providers; `e2e/ai-member.spec.ts` saves a placeholder key and only exercises states
 that need no model call (Try it with empty context hands off locally).
 
+**Scheduled tasks** (design `docs/features/scheduled-tasks/design.md`, migration 036, `scheduled/` (`repo.ts` is its only
+SQL), routes `/api/ai/agents/:agentId/scheduled-tasks*`, admins). Up to `SCHEDULED_TASKS_MAX` (10) tasks per agent; each
+sends one message at one time on its days (`ai_timezone`, `scheduled/time.ts`) to ONE existing chat or group of the
+agent's inbox (400 `chat_not_in_inbox`), never a new number or a list. `scheduled/service.ts` ticks every 30 s: a slot is
+claimed once (`UNIQUE(task_id, slot)` in `ai_scheduled_runs`) and runs only within 15 minutes of its time; later it is
+recorded `missed`, never caught up; a task created or edited after a slot skips it. Paused (`agent_off`, `access_closed`,
+`ai_disconnected` via `AiService.answerReady`, `wa_disconnected`): the slot waits inside the grace. One
+`AiService.scheduledTurn` (`SCHEDULED_RULES` + `currentSituation.scheduledTask`, look-ups only, `save_file_to_drive`
+removed, Sheets `add_sheet_row` kept, answer or `no_reply`; handoff = skipped `needs_team`, no notification; leak check)
+then `messages.sendText(…, { scheduledTaskId })`: never claims the chat, `messages.scheduled_task_id` gives
+`Message.scheduledTask` ("Scheduled · <task>"), and the send queue asks `scheduled.canSend` instead of the AI's
+`canSend`. Business API window closed → skipped `window_closed`. Run now 3/task/h and 20/admin/h (429 `rate_limited`,
+409 `scheduled_paused`); preview 20/min, nothing sent or stored. Runs keep ids and reasons only (last 100); logs and
+audit `scheduled_task.*` never hold the instruction or text. Lite import copies tasks switched off, no runs. Web:
+`admin/AgentScheduledTasksCard.tsx`, `ScheduledTaskDialog.tsx`, `ScheduledRunsDialog.tsx`, `api/scheduled-tasks.ts`.
+
 **AI in groups** (design `docs/features/ai-groups/design.md`). Off by default: `ai_agents.answer_groups` (agent page
 Groups card) and `ai_group_chats` per group (Group info switch), migration 024; routes `/api/ai/agents/:agentId/groups`,
 `/api/chats/:jid/ai-group`. `ai/groups.ts` answers only a live group message that tags the inbox's own JID/LID

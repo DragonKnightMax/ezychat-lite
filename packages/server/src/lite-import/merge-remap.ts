@@ -18,6 +18,8 @@ export class IdMaps {
   readonly documents = new Map<number, number>();
   readonly phrases = new Map<number, number>();
   readonly safetyItems = new Map<number, number>();
+  /** Lite scheduled task id → its copy (the messages' "Scheduled" mark follows it). */
+  readonly scheduledTasks = new Map<number, number>();
 
   constructor(readonly inboxId: number) {}
 

@@ -39,6 +39,8 @@ export interface MessageRow {
   voice_note?: number;
   /** Access token whose AI assistant sent it through MCP (013); optional so inserts need not name it. */
   sent_via_token_id?: number | null;
+  /** Sent by a scheduled task of an AI agent (036); optional so inserts need not name it. */
+  scheduled_task_id?: number | null;
   /** Sent as an approved template (019): name, language and JSON body values; NULL otherwise. */
   template_name?: string | null;
   template_language?: string | null;
@@ -191,16 +193,17 @@ export class MessageRepo {
         `INSERT OR IGNORE INTO messages (id, chat_jid, sender_jid, sender_name, from_me, sent_by_user_id, type, body,
            media_path, media_mime, media_name, media_status, quoted_id, status, error, timestamp, created_at, client_id,
            wa_remote_jid, voice_note, mentioned_jids, sent_via_token_id, template_name, template_language,
-           template_params)
+           template_params, scheduled_task_id)
          VALUES (@id, @chat_jid, @sender_jid, @sender_name, @from_me, @sent_by_user_id, @type, @body,
            @media_path, @media_mime, @media_name, @media_status, @quoted_id, @status, @error, @timestamp, @created_at, @client_id,
            @wa_remote_jid, @voice_note, @mentioned_jids, @sent_via_token_id, @template_name, @template_language,
-           @template_params)`,
+           @template_params, @scheduled_task_id)`,
       )
       .run({
         ...r,
         voice_note: r.voice_note ?? 0,
         sent_via_token_id: r.sent_via_token_id ?? null,
+        scheduled_task_id: r.scheduled_task_id ?? null,
         template_name: r.template_name ?? null,
         template_language: r.template_language ?? null,
         template_params: r.template_params ?? null,

@@ -45,6 +45,10 @@ initializers.push(initEnrichment);
 import { initPhrases } from './ai/phrases/service.js';
 initializers.push(initPhrases);
 
+// Scheduled tasks of AI agents (docs/features/scheduled-tasks/design.md): after the AI service.
+import { initScheduled } from './scheduled/service.js';
+initializers.push(initScheduled);
+
 import { initGoogleCalendar } from './connectors/google-calendar/service.js';
 initializers.push(initGoogleCalendar);
 

@@ -15,6 +15,7 @@
 // Group agents (--max-agents 2): in a group that reads every message, a message with "Policy no:" and
 // "Amount:" calls add_sheet_row on the tab Claims and repeats what it said; a claim without an amount
 // asks for it; anything else gets no_reply. Check: e2e/devbuild-claims-check.mjs.
+// Scheduled tasks: see mockDecision (SKIP, LEAK); check: e2e/devbuild-scheduled-check.mjs.
 // Data lives in a fresh OS temp folder (prefix ezychat-agents-devbuild-). Checks: e2e/devbuild-agents-check.mjs,
 // e2e/devbuild-suggestions-check.mjs, e2e/devbuild-calendar-check.mjs.
 import { mkdtemp, readFile } from 'node:fs/promises';
@@ -96,6 +97,21 @@ async function mockDecision(prompt: AiPrompt, signal: AbortSignal): Promise<AiDe
   const situation = (
     input as { currentSituation?: { group?: { newMessages?: unknown; messageToAnswer?: string } } }
   ).currentSituation?.group;
+  // A scheduled task's turn: SKIP → nothing to tell; LEAK → repeats the Internal items (the leak
+  // check must stop it); otherwise one message naming the task and the business words it was given.
+  const scheduled = (
+    input as { currentSituation?: { scheduledTask?: { name: string; instruction: string } } }
+  ).currentSituation?.scheduledTask;
+  if (scheduled) {
+    if (scheduled.instruction.includes('SKIP')) return { reply: '', action: 'no_reply' };
+    if (scheduled.instruction.includes('LEAK'))
+      return { reply: input.internalKnowledge, action: 'answer' };
+    const marks = input.businessKnowledge.match(/MARK-[A-Z0-9]+/g) ?? [];
+    return {
+      reply: `Scheduled "${scheduled.name}": ${scheduled.instruction} business=${marks.join(',') || 'none'}`,
+      action: 'answer',
+    };
+  }
   if (situation?.newMessages !== undefined) {
     const text = String(situation.messageToAnswer ?? '');
     const policy = /Policy no:\s*(\S+)/i.exec(text)?.[1];

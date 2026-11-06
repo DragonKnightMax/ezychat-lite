@@ -398,7 +398,9 @@
       "showOriginal": "显示原文（管理员）",
       "hideOriginal": "隐藏原文",
       "noText": "没有文字（仅媒体）"
-    }
+    },
+    "scheduled": "定时",
+    "scheduledNamed": "定时 · {{name}}"
   },
   "media": {
     "types": {

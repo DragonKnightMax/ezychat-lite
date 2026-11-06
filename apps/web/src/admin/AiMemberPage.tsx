@@ -70,6 +70,7 @@ import { AiTryIt } from './AiTryIt';
 import { AgentConnectorsCard } from './connectors/AgentConnectorsCard';
 import { AgentDirectCard } from './AgentDirectCard';
 import { AgentGroupsCard, LITE_INBOX_NAME } from './AgentGroupsCard';
+import { AgentScheduledTasksCard } from './AgentScheduledTasksCard';
 import { AgentResolutionCard } from './AgentResolutionCard';
 import { BusinessTemplateCard } from './BusinessTemplateCard';
 import { businessTemplate, type GalleryTemplate } from './business-templates';
@@ -829,6 +830,12 @@ function AgentEditor({
             name={agent.settings.displayName || t('ai.page.defaultTitle')}
             agentEnabled={agent.agent.enabled}
             inboxName={agentInboxName()}
+          />
+
+          {/* Scheduled tasks: one message at a set time to one chat or group of the inbox. */}
+          <AgentScheduledTasksCard
+            agentId={agent.agent.id}
+            name={agent.settings.displayName || t('ai.page.defaultTitle')}
           />
 
           {/* Every agent is a customer-facing agent for extensions ('sales'). */}

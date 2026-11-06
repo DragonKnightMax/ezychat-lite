@@ -91,7 +91,11 @@ export interface MessageService {
     jid: string,
     body: SendTextBody,
     userId: number,
-    opts?: { viaTokenId?: number },
+    /**
+     * `scheduledTaskId`: an AI agent's scheduled task sends it (the "Scheduled" mark); such a send
+     * never claims or assigns the chat.
+     */
+    opts?: { viaTokenId?: number; scheduledTaskId?: number },
   ): Message;
   /**
    * Sends an approved template (also outside the reply window): the stored message is the filled
@@ -245,10 +249,33 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
    * Rows → Messages, with each inbound group sender's customer profile and every message's
    * reactions (one batched lookup each).
    */
+  /** The "Scheduled · <task>" marks of a page: one query for the task names (null once deleted). */
+  const withScheduledTasks = (rows: MessageRow[], list: Message[]): Message[] => {
+    const ids = [
+      ...new Set(rows.flatMap((r) => (r.scheduled_task_id != null ? [r.scheduled_task_id] : []))),
+    ];
+    if (!ids.length) return list;
+    const names = new Map(
+      (
+        ctx.db
+          .prepare(
+            `SELECT id, name FROM ai_scheduled_tasks WHERE id IN (${ids.map(() => '?').join(',')})`,
+          )
+          .all(...ids) as Array<{ id: number; name: string }>
+      ).map((t) => [t.id, t.name]),
+    );
+    return list.map((m, i) => {
+      const id = rows[i]!.scheduled_task_id;
+      return id == null ? m : { ...m, scheduledTask: { id, name: names.get(id) ?? null } };
+    });
+  };
   const presentAll = (rows: MessageRow[]): Message[] => {
-    const list = withMentionNames(
+    const list = withScheduledTasks(
       rows,
-      rows.map((row) => rowToMessage(row)),
+      withMentionNames(
+        rows,
+        rows.map((row) => rowToMessage(row)),
+      ),
     );
     const presented = reactions.attach(ctx.services.customers?.withSenderProfiles(list) ?? list);
     const edits = changeRepo.editCounts(
@@ -397,7 +424,10 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       !manualRetries.has(job.localId) &&
       row.sent_by_user_id &&
       ctx.services.auth?.getUser(row.sent_by_user_id)?.kind === 'ai' &&
-      !ctx.services.ai?.canSend(job.chatJid, row.sent_by_user_id, job.quotedId)
+      // A scheduled task's message goes out while its task and agent still may send it.
+      !(row.scheduled_task_id != null
+        ? (ctx.services.scheduled?.canSend(row.scheduled_task_id) ?? false)
+        : ctx.services.ai?.canSend(job.chatJid, row.sent_by_user_id, job.quotedId))
     ) {
       throw new Error('AI reply cancelled because chat ownership changed');
     }
@@ -1179,7 +1209,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       const quotedId = checkQuote(jid, body.quotedId);
       const mentions = checkMentions(jid, body.text, body.mentions);
       const t = now();
-      claimOnReply(jid, userId, t);
+      if (opts?.scheduledTaskId === undefined) claimOnReply(jid, userId, t);
       return insertOutgoing({
         id: `local-${body.clientId}`,
         chat_jid: jid,
@@ -1201,6 +1231,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
         client_id: body.clientId,
         wa_remote_jid: replyTarget(jid),
         sent_via_token_id: opts?.viaTokenId ?? null,
+        scheduled_task_id: opts?.scheduledTaskId ?? null,
         // Kept with the message: the queue sends them, and the bubble names the tagged members.
         mentioned_jids: mentions.length ? JSON.stringify(mentions) : '[]',
       });

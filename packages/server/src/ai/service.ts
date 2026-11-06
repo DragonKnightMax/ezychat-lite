@@ -25,6 +25,7 @@ import type {
   Chat,
   ChatEvent,
   Message,
+  ScheduledRunReason,
 } from '@ezychat/shared';
 import {
   AI_GROUP_CONTEXT_MESSAGES,
@@ -87,6 +88,7 @@ import { AgentTurnFailure, errorNameOf } from './agent/models.js';
 import type { AssistResult } from './agent/assist.js';
 import { AI_OLDER_MESSAGES_PAGE, chatTools } from './agent/tools.js';
 import type { AgentToolInfo } from './agent/extension-tools.js';
+import { SAVE_FILE_TO_DRIVE } from '../connectors/google-drive/tools.js';
 import { agentLookupsAvailable, agentTurnTools } from './agent/turn-tools.js';
 import { OAuthError } from './chatgpt-oauth.js';
 import { migrateAiKnowledge, sliceCodePoints } from './migrate.js';
@@ -105,6 +107,7 @@ import {
   type AiContextItem,
   type AiConversationTurn,
   type AiGroupSituation,
+  type AiScheduledSituation,
   type AiCustomer,
   type AiKnowledge,
 } from './prompt.js';
@@ -257,6 +260,8 @@ interface State {
 export interface AiService {
   /** Shared connection, independent of the Sales Agent's on/off and ownership. */
   connectionReady(): boolean;
+  /** The connection can run an agent turn now (signed in or a key saved; any agent on or off). */
+  answerReady(): boolean;
   extractCustomer(prompt: AiRewritePrompt, signal: AbortSignal): Promise<EnrichmentExtraction>;
   /** The connection and the default agent (the only one, else inbox 1's) in the old shape, plus every agent. */
   status(): AiMemberStatus;
@@ -382,8 +387,36 @@ export interface AiService {
     },
     signal: AbortSignal,
   ): Promise<{ output: PhraseOutput; model: string; business: string; internalTexts: string[] }>;
+  /**
+   * A scheduled task's turn (docs/features/scheduled-tasks/design.md): one agent turn for the chat
+   * with the agent's knowledge and look-ups (no writes but a sheet row on an Add rows tab), answer
+   * or no_reply. `preview`: Try it style, no chat tools that change data, nothing stored. Never
+   * sends; the scheduler sends `text`.
+   */
+  scheduledTurn(
+    input: {
+      agentId: number;
+      chatJid: string;
+      task: { name: string; instruction: string };
+      preview: boolean;
+    },
+    signal: AbortSignal,
+  ): Promise<ScheduledTurnResult>;
   shutdown(): Promise<void>;
 }
+
+/** What a scheduled turn decided: send `text`, skip with a reason, or fail with a reason. */
+export interface ScheduledTurnResult {
+  outcome: 'send' | 'skip' | 'fail';
+  text: string | null;
+  reason: ScheduledRunReason | null;
+  /** The look-ups it used (the "AI used …" chat lines; titles only in a preview). */
+  lookups: AgentToolInfo[];
+}
+/** A scheduled turn (look-ups included) may take this long. */
+export const AI_SCHEDULED_TURN_TIMEOUT_MS = 90_000;
+/** The conversation part of a scheduled turn: at most this many of the chat's last messages. */
+export const AI_SCHEDULED_CONTEXT_MESSAGES = 20;
 
 /** A completion that takes longer arrives after the teammate moved on: it is dropped. */
 export const AI_COMPLETION_TIMEOUT_MS = 3_000;
@@ -569,6 +602,8 @@ export function createAiService(
     group?: AiGroupSituation,
     /** The batch's PDFs and the note on files left out (Current situation block). */
     files?: { pdfs: AiPromptPdf[]; note: string | null },
+    /** A scheduled task's turn (scheduled rules and the task in the Current situation block). */
+    scheduled?: AiScheduledSituation,
   ) => ({
     ...buildAiPrompt(
       knowledge,
@@ -581,6 +616,7 @@ export function createAiService(
         awaitingConfirmation,
         ...(group ? { group } : {}),
         ...(files?.note ? { filesNote: files.note } : {}),
+        ...(scheduled ? { scheduled } : {}),
       },
       images,
       customer,
@@ -2107,6 +2143,7 @@ export function createAiService(
 
   const service: AiService = {
     connectionReady: () => !closed && gateOpen() && ready() && !!provider.extractCustomer,
+    answerReady: () => !closed && ready(),
     async extractCustomer(prompt, signal) {
       if (!service.connectionReady()) throw errors.conflict('AI connection unavailable');
       return provider.extractCustomer!(
@@ -3066,6 +3103,149 @@ export function createAiService(
           'WhatsApp Safety AI check',
         );
       }
+    },
+    async scheduledTurn({ agentId, chatJid, task, preview }, outer) {
+      const agent = agentById(ctx.db, agentId);
+      if (!agent) return { outcome: 'skip', text: null, reason: 'agent_off', lookups: [] };
+      if (!ready()) return { outcome: 'skip', text: null, reason: 'ai_disconnected', lookups: [] };
+      const chat = chats.get(chatJid);
+      if (!chat) return { outcome: 'skip', text: null, reason: 'chat_gone', lookups: [] };
+      const group = chat.type === 'group';
+      const current = settingsFor(agent);
+      const saved = contextItems(agent.id);
+      const items = splitKnowledge(saved);
+      const internalTexts = saved.filter((item) => item.internal).map((item) => item.text);
+      const knowledge = relevantKnowledge(items.business, `${task.name}\n${task.instruction}`);
+      const history = messages
+        .list(chatJid, { limit: AI_SCHEDULED_CONTEXT_MESSAGES })
+        .messages.filter((message) => message.deletedAt == null);
+      const lookupAbort = new AbortController();
+      const signal = AbortSignal.any([
+        outer,
+        lookupAbort.signal,
+        AbortSignal.timeout(AI_SCHEDULED_TURN_TIMEOUT_MS),
+      ]);
+      const started = Date.now();
+      const toolCalls: string[] = [];
+      let extension: Awaited<ReturnType<typeof agentTurnTools>> | null = null;
+      let decision: AiDecision;
+      let lookups: AgentToolInfo[];
+      try {
+        extension = await agentTurnTools(
+          ctx,
+          log,
+          // A preview names no chat: tools that change data are not run (as in Try it).
+          { agent: 'sales', agentId: agent.id, chatJid: preview ? null : chatJid, signal },
+          {
+            onFailure: () => lookupAbort.abort(),
+            onCall: (name) => toolCalls.push(name),
+            lookupsOnly: true,
+            // Nobody wrote: a sheet row holds the automatic columns (and AI values where allowed).
+            record: {
+              personJids: group ? [] : null,
+              messageIds: [],
+              filesGiven: false,
+              fileNames: [],
+            },
+          },
+        );
+        // No file came in: nothing to save to Drive.
+        const tools: Record<string, unknown> = { ...extension.tools };
+        delete tools[SAVE_FILE_TO_DRIVE];
+        decision = AiDecision.parse(
+          await provider.generate(
+            current,
+            aiApiKey(ctx.settings),
+            {
+              ...prompt(
+                agent.id,
+                { ...current, preset: agent.preset },
+                items.internal,
+                knowledge,
+                group
+                  ? groupConversation(history, aiUserIds())
+                  : conversation(history, aiUserIds()),
+                false,
+                [],
+                group ? null : aiCustomer(ctx.services.customers?.profile(chatJid).profile ?? null),
+                undefined,
+                undefined,
+                {
+                  name: task.name,
+                  instruction: task.instruction,
+                  chat: {
+                    name: chat.name?.trim() || (group ? 'WhatsApp group' : 'Customer'),
+                    type: group ? 'group' : 'dm',
+                  },
+                },
+              ),
+              tools: {
+                ...chatTools({ knowledge: items.business, onCall: (name) => toolCalls.push(name) }),
+                ...(tools as typeof extension.tools),
+              },
+              onTiming: (timing) =>
+                log.info({ event: 'ai_turn', source: 'scheduled', ...timing }, 'AI turn timing'),
+            },
+            signal,
+          ),
+        );
+      } catch (error) {
+        const failed = extension?.failed() ?? false;
+        const turnFailure = error instanceof AgentTurnFailure ? error : null;
+        log.warn(
+          {
+            event: 'scheduled_turn_failed',
+            agentId: agent.id,
+            reason: failed ? 'lookup_failed' : 'ai_unavailable',
+            kind: turnFailure?.kind ?? 'other',
+            errName: turnFailure?.causeName ?? errorNameOf(error),
+            status: turnFailure?.status ?? null,
+            ms: Date.now() - started,
+          },
+          'AI scheduled turn failed',
+        );
+        if (outer.aborted) throw error;
+        return {
+          outcome: 'fail',
+          text: null,
+          reason: failed ? 'lookup_failed' : 'ai_unavailable',
+          lookups: [],
+        };
+      } finally {
+        lookups = preview
+          ? (extension?.calls() ?? []).map((call) => ({
+              title: call.title,
+              sourceLabel: call.sourceLabel,
+            }))
+          : (extension?.used() ?? []);
+        await extension?.dispose();
+      }
+      const reply = decision.reply.trim();
+      let result: ScheduledTurnResult;
+      if (decision.action === 'handoff')
+        result = { outcome: 'skip', text: null, reason: 'needs_team', lookups };
+      else if (decision.action === 'no_reply' || !reply)
+        result = { outcome: 'skip', text: null, reason: 'nothing_to_say', lookups };
+      else if (findLeak(reply, internalTexts))
+        result = { outcome: 'skip', text: null, reason: 'confidential_leak', lookups };
+      else result = { outcome: 'send', text: reply, reason: null, lookups };
+      // Ids, counts and names of tools only: never the instruction or the message.
+      log.info(
+        {
+          event: 'scheduled_turn',
+          agentId: agent.id,
+          preview,
+          group,
+          action: decision.action,
+          outcome: result.outcome,
+          reason: result.reason,
+          toolCalls,
+          model: current.model ?? null,
+          ms: Date.now() - started,
+        },
+        'AI scheduled turn',
+      );
+      return result;
     },
     canSend(jid, userId, quotedId) {
       // A group answer goes out only while its turn sends it, quoting the member's message.

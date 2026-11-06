@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MessageScheduledTask } from './scheduled-tasks.js';
 import { MessageSafety } from './safety.js';
 import {
   ChatEventType,
@@ -129,6 +130,8 @@ export const MessageSchema = z.object({
   template: z.object({ name: z.string(), language: z.string() }).nullable().optional(),
   /** Sent by the token owner's AI assistant through MCP (shown as "via AI assistant"). */
   viaAssistant: z.boolean().optional(),
+  /** Sent by a scheduled task of an AI agent: shown as "Scheduled · <task>". */
+  scheduledTask: MessageScheduledTask.nullable().optional(),
   /** Voice notes only (inbound audio): the transcript text, when `transcriptStatus` is `ok`. */
   transcript: z.string().nullable().optional(),
   /** Language the transcriber detected (e.g. `en`, `ms`, `zh`), when known. */

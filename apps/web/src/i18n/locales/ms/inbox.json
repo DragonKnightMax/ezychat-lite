@@ -398,7 +398,9 @@
       "showOriginal": "Tunjuk asal (admin)",
       "hideOriginal": "Sembunyi asal",
       "noText": "Tiada teks (media sahaja)"
-    }
+    },
+    "scheduled": "Berjadual",
+    "scheduledNamed": "Berjadual · {{name}}"
   },
   "media": {
     "types": {

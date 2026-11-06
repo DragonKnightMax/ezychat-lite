@@ -212,6 +212,8 @@ export function mergeChat(
     mergeConnectorRows(db, from, to);
     // WhatsApp Safety findings follow their messages (no foreign key).
     db.prepare('UPDATE safety_items SET chat_jid = ? WHERE chat_jid = ?').run(to, from);
+    // Scheduled tasks of AI agents send to the surviving chat (no foreign key).
+    db.prepare('UPDATE ai_scheduled_tasks SET chat_jid = ? WHERE chat_jid = ?').run(to, from);
     if (isAiMember(db, assigneeDropped)) {
       // A teammate took the chat from the AI Sales Agent: no AI follow-up may survive the merge.
       db.prepare(

@@ -357,6 +357,7 @@ describe('AI agent page', () => {
       'Connectors',
       'Closing chats',
       'Groups',
+      'Scheduled tasks',
       'Try it',
       'Role',
       'Hand-over rules',

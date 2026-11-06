@@ -357,3 +357,40 @@ describe('MessageBubble via AI assistant', () => {
     expect(screen.queryByTestId('via-template')).toBeNull();
   });
 });
+
+describe('MessageBubble scheduled task mark', () => {
+  const sent: Message = {
+    ...groupMessage,
+    id: 'S-1',
+    fromMe: true,
+    senderJid: null,
+    body: "Good morning team. Today's bookings: 3.",
+  };
+  const bubble = (message: Message) =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <MessageBubble message={message} showSender={false} outboundLabel="Aina" quoted={null} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  it('marks a message a scheduled task sent with the task name', () => {
+    bubble({ ...sent, scheduledTask: { id: 4, name: 'Morning bookings' } });
+    expect(screen.getByTestId('scheduled-mark').textContent).toBe('Scheduled · Morning bookings');
+  });
+
+  it('says only "Scheduled" once the task is deleted', () => {
+    bubble({ ...sent, scheduledTask: { id: 4, name: null } });
+    expect(screen.getByTestId('scheduled-mark').textContent).toBe('Scheduled');
+  });
+
+  it('marks no other message', () => {
+    bubble(sent);
+    expect(screen.queryByTestId('scheduled-mark')).toBeNull();
+    cleanup();
+    // An incoming message never carries the mark, even with the field set.
+    bubble({ ...groupMessage, scheduledTask: { id: 4, name: 'Morning bookings' } });
+    expect(screen.queryByTestId('scheduled-mark')).toBeNull();
+  });
+});
