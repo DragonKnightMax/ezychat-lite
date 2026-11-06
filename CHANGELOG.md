@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.78] - 2026-11-06
+
 ### Added
 
 - **Google Sheets: let the AI fill worked-out values and formulas.** On a tab set to Add rows, an admin can now let
@@ -38,32 +40,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **A clearer message when macOS blocks the background service.** If EzyChat is switched off under Allow in
-  the Background in System Settings, EzyChat now says where to switch it on instead of "Input/output error".
-- **Mac updates clean up after themselves.** Small leftover update folders older than a day are removed.
+- **Mac updates install again — install this version by hand once.** On a Mac, an update downloaded and asked
+  for your password, then stopped with "could not update" and kept the old version. This version fixes it, but a
+  Mac on 0.1.77 or earlier cannot update itself to it: download the Mac installer from
+  github.com/ossmalaysia/ezychat-lite/releases/latest (arm64 for Apple silicon, x64 for Intel), quit EzyChat
+  and drag the new app over the old one in Applications. Your chats, accounts and settings stay. Later updates
+  install from inside the app again.
+- **The background service works on a Mac downloaded from the website.** Turning on "Run as background
+  service" showed "cannot be opened" again and again and the service never started. It now starts.
 - **A Mac running EzyChat no longer falls asleep on its own.** While EzyChat answers chats, the Mac stays
   awake, so customers and AI replies are not left waiting. The screen can still turn off, and closing the lid
   still puts the Mac to sleep.
-- **The background service works on a Mac downloaded from the website.** Turning on "Run as background
-  service" showed "cannot be opened" again and again and the service never started. It now starts.
 - **A Mac background service that cannot start stops retrying.** If the data folder is in use or was moved
   to EzyChat Enterprise, the service now stops instead of restarting every few seconds, and its log no
   longer grows without limit.
-- **Open logs works for the Mac background service.** It asks for your password and opens a copy of the
-  service logs.
 - **Turning the Mac background service off or on again no longer fails halfway.** EzyChat now waits until
   the old service has fully stopped before it moves your data or starts the new one. Before, this could
   fail with "Input/output error".
+- **A clearer message when macOS blocks the background service.** If EzyChat is switched off under Allow in
+  the Background in System Settings, EzyChat now says where to switch it on instead of "Input/output error".
+- **Open logs works for the Mac background service.** It asks for your password and opens a copy of the
+  service logs.
 - **On a Mac, right-click EzyChat in the Dock for Status & Service and updates.** When the menu bar is full,
   macOS hides the EzyChat icon there, and with it the only way to the background service and updates.
-- **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
-  second of saving the new password could show the password page again.
-- **Mac updates install again.** On a Mac, an update downloaded and asked for your password, then stopped with
-  "could not update" and kept the old version. The installer helper now starts after you approve.
-
+- **Mac updates clean up after themselves.** Small leftover update folders older than a day are removed.
 - **An update blocked by antivirus software no longer breaks EzyChat on Windows.** When an antivirus program stopped
   the update installer, EzyChat could be left without its program files. Now it keeps the version you had, starts it
   again and says that the installer was blocked.
+- **A new teammate is no longer sent back to "Change password" after setting one.** Reloading the app within a
+  second of saving the new password could show the password page again.
 
 ## [0.1.77] - 2026-11-05
 

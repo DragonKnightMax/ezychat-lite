@@ -53,6 +53,19 @@ roll back. Stop the service, install 0.1.17 into `Program Files\EzyChat Lite`, t
 service command from the new app (its generator quotes paths containing spaces) and start the service.
 The data folder and WhatsApp link stay in place. From 0.1.17 onwards in-app updates work again.
 
+**Mac 0.1.77 or earlier → 0.1.78 is always manual.** The Mac updater of those versions started its
+administrator helper with `nohup`, which macOS stops before it runs when there is no console (the
+administrator prompt). The update downloads and asks for the password, then reports that it could not update
+and keeps the old version. Download the Mac installer (arm64 or x64) from the latest GitHub release, quit
+EzyChat, and drag the new app over the old one in `/Applications`. Data stays in place. From 0.1.78 onwards
+in-app updates work again, also with the background service running.
+
+On a Mac, **Status & Service** and **Check for updates** are in the menu bar icon and in the Dock icon's menu
+(right-click): macOS hides menu bar icons when the bar is full. If macOS refuses to start the background service,
+check that EzyChat is switched on under System Settings → General → Login Items & Extensions → Allow in the
+Background. While its server runs, EzyChat keeps the Mac from idle sleep (the display may still sleep; closing
+the lid still sleeps the Mac), so customers and AI replies are not left waiting.
+
 Accounts, conversations, settings and WhatsApp credentials remain in the app's data directory;
 updating does not reset it. Phone and browser clients receive the new interface from the host.
 Check the app and server version in **Status & Service** after updating a background service.
