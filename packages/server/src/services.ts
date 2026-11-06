@@ -36,6 +36,10 @@ initializers.push(initVoice);
 import { initCustomers } from './customers/service.js';
 initializers.push(initCustomers);
 
+// New chat (docs/features/new-chat/design.md): after messaging and customers.
+import { initNewChat } from './chats/new-chat.js';
+initializers.push(initNewChat);
+
 import { initAi } from './ai/service.js';
 initializers.push(initAi);
 

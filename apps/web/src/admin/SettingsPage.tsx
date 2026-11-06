@@ -31,6 +31,7 @@ import { IntegrationsSection } from './IntegrationsSection';
 import { ExtensionBoundary, useExtensionTranslation, useWebExtensions } from '../extensions';
 import { InfoTip } from '@/components/app/InfoTip';
 import { UsageStatsCard } from './UsageStatsSwitch';
+import { NewChatSection } from './NewChatSection';
 
 const TABS = ['general', 'ai', 'integrations', 'device', 'maintenance'] as const;
 type SettingsTab = (typeof TABS)[number];
@@ -291,6 +292,8 @@ export function SettingsPage() {
             </SaveBar>
           </form>
 
+          {/* New chat (docs/features/new-chat/design.md): who may start one, and the daily limit. */}
+          <NewChatSection />
           <UsageStatsCard />
         </TabsContent>
 

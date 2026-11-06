@@ -353,6 +353,19 @@ Screen review per AGENTS.md before done (1280/360, light/dark, all states above)
 4. Default country: **the sending inbox's own country code**, +60 fallback.
 5. Assigned to the starter; the AI **does not answer** until it is handed back.
 
+## As built (feat/new-chat-impl)
+
+- Status and settings have their own routes instead of `/api/settings` + `/api/me`: `GET /api/new-chat` (everyone:
+  `allowed`, `staffEnabled`, `dailyLimit`, `perUserPerHour`, and the user's inboxes with `mode`, `usedToday`,
+  `countryCode`) and `PUT /api/new-chat/settings` {staffEnabled?, dailyLimit?} (admins). The Settings card saves both
+  in one request; the button follows `allowed` (refetched on focus).
+- Template-first sends go through `MessageService.sendFirstTemplate` (validated like `sendTemplate`, sent directly,
+  stored as `sent`); 502 `template_failed` / 503 `wa_disconnected` create nothing.
+- MCP `send_to_new_number` calls `NewChatService.openChecked` and audits `chat.new_number` with `via: 'mcp'` and
+  `tokenId` (replacing `mcp.new_chat`).
+- The header button is icon-only (aria-label and tooltip "New chat"): beside Ask Ezy, Admin and the account menu, a
+  text label pushed the header past the 360 px list. Screens: `docs/screenshots/new-chat/`.
+
 ## Mock and confirmation record
 
 | Date       | Event                                                                                                                                                                                                                                                                                                                                                                                                                                                     |

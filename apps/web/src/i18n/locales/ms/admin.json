@@ -215,7 +215,10 @@
       "safetyReport": "Nombor dilaporkan sebagai penipuan",
       "safetyBlock": "Nombor disekat",
       "safetyUnblock": "Nombor dinyahsekat",
-      "safetyAutoBlock": "Nombor disekat secara automatik"
+      "safetyAutoBlock": "Nombor disekat secara automatik",
+      "chatNewNumber": "Sembang dimulakan dengan nombor baharu",
+      "settingsNewChatStaff": "Tetapan sembang baharu ditukar",
+      "settingsNewChatDailyLimit": "Had harian sembang baharu ditukar"
     },
     "fields": {
       "chat": "Sembang",
@@ -260,7 +263,10 @@
       "members": "Ahli",
       "agent": "Ejen AI",
       "preset": "Titik permulaan",
-      "internal": "Dalaman"
+      "internal": "Dalaman",
+      "startedBy": "Dimulakan oleh",
+      "before": "Sebelum",
+      "after": "Selepas"
     },
     "reasons": {
       "rateLimited": "Terlalu banyak cubaan",
@@ -2962,5 +2968,19 @@
     "note_zero": "Tiada sembang dipilih",
     "note_one": "Hanya {{count}} sembang dipilih",
     "note_other": "Hanya {{count}} sembang dipilih"
+  },
+  "newChat": {
+    "title": "Sembang baharu",
+    "description": "Mulakan sembang WhatsApp dengan nombor yang belum ada dalam peti masuk. Pentadbir sentiasa boleh berbuat demikian.",
+    "staff": "Ahli pasukan boleh memulakan sembang baharu",
+    "staffOn": "Hidup: semua orang boleh memulakan sembang baharu daripada peti masuk mereka.",
+    "staffOff": "Mati: hanya pentadbir melihat Sembang baharu.",
+    "limitLabel": "Sembang baharu sehari, bagi setiap nombor WhatsApp",
+    "limitUnit": "sehari",
+    "limitInvalid": "Masukkan nombor bulat dari 0 hingga {{max}}.",
+    "limitHint": "Mengira nombor baharu yang dimulakan daripada setiap telefon yang dipautkan, oleh pasukan anda dan pembantu AI bersama-sama. 0 = tiada had. Nombor Business API dihadkan oleh Meta.",
+    "limitNone": "Tiada had: pasukan anda dan pembantu AI boleh menghantar mesej kepada seberapa banyak nombor baharu sehari.",
+    "limitBanTitle": "Had yang tinggi boleh menyebabkan nombor anda disekat",
+    "limitBanBody": "WhatsApp boleh menyekat nombor yang menghantar mesej kepada ramai orang yang tidak memintanya. Kekalkan had yang rendah melainkan orang ini menjangkakan mesej anda."
   }
 }

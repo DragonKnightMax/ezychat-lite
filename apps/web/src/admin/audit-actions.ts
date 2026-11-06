@@ -28,6 +28,9 @@ const LABEL_KEYS = {
   'chats.resolve_all': 'audit.actions.chatsResolveAll',
   'chat.merge': 'audit.actions.chatMerge',
   'chat.start_from_group': 'audit.actions.chatStartFromGroup',
+  'chat.new_number': 'audit.actions.chatNewNumber',
+  'settings.new_chat_staff': 'audit.actions.settingsNewChatStaff',
+  'settings.new_chat_daily_limit': 'audit.actions.settingsNewChatDailyLimit',
   'logs.download': 'audit.actions.logsDownload',
   'ai.agent_create': 'audit.actions.aiAgentCreate',
   'ai.agent_delete': 'audit.actions.aiAgentDelete',
@@ -140,6 +143,9 @@ const FIELD_KEYS: Record<string, string> = {
   agentId: 'audit.fields.agent',
   preset: 'audit.fields.preset',
   internal: 'audit.fields.internal',
+  userId: 'audit.fields.startedBy',
+  before: 'audit.fields.before',
+  after: 'audit.fields.after',
 };
 
 /**
@@ -177,7 +183,7 @@ const VALUE_KEYS: Record<string, Record<string, string>> = {
 };
 
 const JID_FIELDS = new Set(['chatJid', 'groupJid', 'from', 'to']);
-const USER_FIELDS = new Set(['targetId', 'assignedTo']);
+const USER_FIELDS = new Set(['targetId', 'assignedTo', 'userId']);
 const SUBJECT_FIELDS = new Set(['chatJid', 'from', 'to', 'targetId', 'documentId', 'shortcut']);
 /** Boolean flags that only say "this changed" (shown in the Changed list, never as Yes/No). */
 const CHANGE_FLAGS: Record<string, string> = {

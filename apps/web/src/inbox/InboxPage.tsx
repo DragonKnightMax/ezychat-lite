@@ -19,6 +19,7 @@ import { useDirectory } from './useDirectory';
 import { ReconnectBanner } from './ReconnectBanner';
 import { WaBanner } from './WaBanner';
 import { useVisibleInboxes } from './useVisibleInboxes';
+import { NewChatButton } from './NewChatDialog';
 import { useCanonicalChatRedirect } from './useCanonicalChatRedirect';
 import { NavigationGuardProvider } from './navigation-guard';
 
@@ -93,10 +94,12 @@ export function InboxPage() {
             )}
             aria-label={t('page.chats')}
           >
-            <header className="flex items-center gap-2 px-3 py-1">
+            <header className="flex items-center gap-1 px-3 py-1">
               <h1 className="flex-1 py-2 text-xl font-semibold tracking-tight text-foreground">
                 {t('page.title')}
               </h1>
+              {/* New chat (docs/features/new-chat/design.md): admins, and team members when allowed. */}
+              <NewChatButton />
               <AskEzyButton />
               {directory.isAdmin && (
                 <Button asChild variant="ghost" size="touch">

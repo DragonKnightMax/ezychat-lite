@@ -217,7 +217,10 @@
       "safetyReport": "Number reported as scam",
       "safetyBlock": "Number blocked",
       "safetyUnblock": "Number unblocked",
-      "safetyAutoBlock": "Number blocked automatically"
+      "safetyAutoBlock": "Number blocked automatically",
+      "chatNewNumber": "Chat started with a new number",
+      "settingsNewChatStaff": "New chats setting changed",
+      "settingsNewChatDailyLimit": "New chats daily limit changed"
     },
     "fields": {
       "chat": "Chat",
@@ -262,7 +265,10 @@
       "members": "Members",
       "agent": "AI agent",
       "preset": "Starting point",
-      "internal": "Internal"
+      "internal": "Internal",
+      "startedBy": "Started by",
+      "before": "Before",
+      "after": "After"
     },
     "reasons": {
       "rateLimited": "Too many attempts",
@@ -2992,5 +2998,19 @@
     "note_zero": "No chats chosen",
     "note_one": "Only {{count}} chosen chat",
     "note_other": "Only {{count}} chosen chats"
+  },
+  "newChat": {
+    "title": "New chats",
+    "description": "Start a WhatsApp chat with a number that is not in the inbox yet. Admins can always do this.",
+    "staff": "Team members can start new chats",
+    "staffOn": "On: everyone can start new chats from the inbox they belong to.",
+    "staffOff": "Off: only admins see New chat.",
+    "limitLabel": "New chats per day, per WhatsApp number",
+    "limitUnit": "a day",
+    "limitInvalid": "Enter a whole number from 0 to {{max}}.",
+    "limitHint": "Counts new numbers started from each linked phone, by your team and by AI assistants together. 0 = no limit. Business API numbers are limited by Meta instead.",
+    "limitNone": "No limit: your team and AI assistants can message as many new numbers a day as they like.",
+    "limitBanTitle": "A high limit can get your number banned",
+    "limitBanBody": "WhatsApp can ban a number that messages many people who did not ask for it. Keep the limit low unless these people expect your message."
   }
 }

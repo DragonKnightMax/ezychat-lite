@@ -1035,5 +1035,82 @@
     "linkUnavailable": "无法从 WhatsApp 读取链接。请稍后再试。",
     "tipTitle": "什么是群管理员？",
     "tipBody": "WhatsApp 群管理员可以更改群组、添加或移除成员。它在 WhatsApp 中设置，与 EzyChat 管理员不同。"
+  },
+  "newChat": {
+    "button": "新对话",
+    "title": "新对话",
+    "description": "给还不在收件箱里的电话号码发消息。",
+    "from": "发送号码",
+    "businessApi": "WhatsApp Business API",
+    "phone": "电话号码",
+    "phonePlaceholder": "012-345 6789 或 +65 9123 4567",
+    "phoneHint": "马来西亚号码可以 0 开头。其他国家请以 + 和国家代码开头。",
+    "phoneInvalid": "请输入电话号码，例如 012-345 6789 或 +65 9123 4567。",
+    "willMessage": "将发消息给 {{number}}。",
+    "name": "名字（可选）",
+    "nameHint": "保存到客户资料。",
+    "banTitle": "只给愿意接收消息的人发送",
+    "banBody": "如果号码给没有要求联系的人发消息，WhatsApp 可能会封禁该号码。请只在对方同意被联系时发起对话。",
+    "apiTitle": "以已批准的模板开始",
+    "apiBody": "在 WhatsApp Business API 上，商家必须用 Meta 批准的模板发起对话。客户回复后即可自由输入。",
+    "usage": "{{inbox}} 今天已使用 {{used}}/{{limit}} 个新对话。",
+    "start": "开始对话",
+    "checking": "正在检查 WhatsApp…",
+    "next": "选择模板",
+    "preparing": "正在检查…",
+    "existingTitle": "已在收件箱中",
+    "existingBody": "{{number}} 已有对话。",
+    "openChat": "打开对话",
+    "back": "返回",
+    "templateTitle": "选择模板",
+    "templateDescription": "发给 {{number}} 的第一条消息。发送后对话才会开始。",
+    "paidNote": "每个模板都会与 Meta 开始一次付费对话。营销模板比实用模板更贵。",
+    "sendTemplate": "发送模板",
+    "sending": "正在发送…",
+    "createdToast": "对话已开始。请写第一条消息。",
+    "sentToast": "模板已发送。对方回复后即可自由输入。",
+    "problems": {
+      "not_on_whatsapp": {
+        "title": "{{number}} 没有使用 WhatsApp",
+        "body": "请检查号码后重试。"
+      },
+      "own_number": {
+        "title": "这是你自己的号码",
+        "body": "请输入客户的号码。"
+      },
+      "wa_disconnected": {
+        "title": "WhatsApp 未连接",
+        "body": "{{inbox}} 已离线，无法检查号码。连接后再试。"
+      },
+      "new_chat_daily_limit": {
+        "title": "已达每日上限",
+        "body": "{{inbox}} 今天已发起 {{limit}} 个新对话。请明天再试。此上限可保护你的号码不被 WhatsApp 封禁。"
+      },
+      "new_chat_hourly_limit": {
+        "title": "新对话太多",
+        "body": "你在过去一小时内已发起 {{hourly}} 个新对话。请稍后再试。"
+      },
+      "template_failed": {
+        "title": "模板未发送",
+        "body": "WhatsApp 未接受该模板，因此没有开始对话。请重试或选择其他模板。"
+      },
+      "new_chat_not_allowed": {
+        "title": "你不能发起新对话",
+        "body": "请管理员在设置中允许。"
+      },
+      "other": {
+        "title": "出了点问题",
+        "body": "请重试。"
+      },
+      "invalid_number": {
+        "title": "不是电话号码",
+        "body": "请输入带国家代码的号码，或以 0 开头的马来西亚号码。"
+      },
+      "new_chat_unsupported": {
+        "title": "此号码不能发起新对话",
+        "body": "请选择另一个 WhatsApp 号码发送。"
+      }
+    },
+    "usageNoLimit": "{{inbox}} 今天已发起 {{used}} 个新对话（无每日上限）。"
   }
 }

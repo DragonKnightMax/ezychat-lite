@@ -91,7 +91,7 @@ export function WindowClosedPanel({
   );
 }
 
-const templateKey = (tpl: Pick<MessageTemplate, 'name' | 'language'>) =>
+export const templateKey = (tpl: Pick<MessageTemplate, 'name' | 'language'>) =>
   `${tpl.name}:${tpl.language}`;
 
 /** The body with each {{n}} replaced by its value; an empty value keeps its placeholder. */
@@ -252,99 +252,15 @@ export function TemplateDialog({
           );
         }}
       >
-        <div
-          role="group"
-          aria-labelledby="template-list-label"
-          className="flex min-w-0 flex-col gap-2"
-          data-testid="template-list"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span id="template-list-label" className="text-sm font-medium">
-              {t('window.choose')}
-            </span>
-            {syncButton}
-          </div>
-          {templates.map((tpl) => {
-            const key = templateKey(tpl);
-            const chosen = key === selectedKey;
-            return (
-              <Button
-                key={key}
-                type="button"
-                variant="outline"
-                aria-pressed={chosen}
-                disabled={!tpl.sendable}
-                onClick={() => choose(tpl)}
-                className={cn(
-                  'h-auto min-h-11 w-full min-w-0 flex-col items-start gap-1 px-3 py-2.5 text-left whitespace-normal',
-                  chosen && 'border-primary bg-primary/5 ring-1 ring-primary',
-                )}
-              >
-                <span className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="min-w-0 font-mono text-sm font-medium break-all">
-                    {tpl.name}
-                  </span>
-                  <Badge variant="outline">{tpl.language}</Badge>
-                  <Badge variant="secondary">{t(`window.category.${tpl.category}`)}</Badge>
-                </span>
-                <span className="line-clamp-2 text-xs font-normal break-words text-muted-foreground">
-                  {tpl.body}
-                </span>
-                {!tpl.sendable && (
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {t(`window.unsupported.${unsupportedReason(tpl)}`)}
-                  </span>
-                )}
-              </Button>
-            );
-          })}
-        </div>
-
-        {selected && values.length > 0 && (
-          <fieldset className="flex min-w-0 flex-col gap-3" data-testid="template-values">
-            <legend className="mb-1 text-sm font-medium">{t('window.values')}</legend>
-            {values.map((value, i) => {
-              const id = `template-value-${i}`;
-              const error = submitted && !value.trim();
-              return (
-                <div key={id} className="flex min-w-0 flex-col gap-1.5">
-                  <Label htmlFor={id}>{t('window.variable', { n: i + 1 })}</Label>
-                  <Input
-                    id={id}
-                    value={value}
-                    maxLength={1024}
-                    placeholder={selected.examples[i] ?? ''}
-                    aria-invalid={error || undefined}
-                    aria-describedby={error ? `${id}-error` : undefined}
-                    onChange={(e) =>
-                      setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))
-                    }
-                  />
-                  {error && (
-                    <p id={`${id}-error`} className="text-sm text-danger">
-                      {t('window.required')}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </fieldset>
-        )}
-
-        {selected && (
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <p className="text-sm font-medium">{t('window.preview')}</p>
-            <p
-              className="min-w-0 rounded-lg border bg-muted/40 px-3 py-2 text-sm break-words whitespace-pre-wrap"
-              data-testid="template-preview"
-            >
-              {fillTemplate(selected.body, values)}
-            </p>
-            {selected.category === 'marketing' && (
-              <p className="text-xs text-muted-foreground">{t('window.marketingNote')}</p>
-            )}
-          </div>
-        )}
+        <TemplateFields
+          templates={templates}
+          selected={selected}
+          values={values}
+          submitted={submitted}
+          syncButton={syncButton}
+          onChoose={choose}
+          onValues={setValues}
+        />
 
         {send.error && <Banner tone="danger">{errorMessage(send.error)}</Banner>}
       </form>
@@ -386,5 +302,122 @@ export function TemplateDialog({
     >
       {body}
     </ResponsiveDialog>
+  );
+}
+
+/**
+ * The template list (sendable ones selectable), the variable boxes and the live preview: shared by the
+ * reply-window dialog and New chat's template step.
+ */
+export function TemplateFields({
+  templates,
+  selected,
+  values,
+  submitted,
+  syncButton,
+  onChoose,
+  onValues,
+}: Readonly<{
+  templates: readonly MessageTemplate[];
+  selected: MessageTemplate | null;
+  values: readonly string[];
+  submitted: boolean;
+  syncButton?: ReactNode;
+  onChoose(tpl: MessageTemplate): void;
+  onValues(values: string[]): void;
+}>) {
+  const { t } = useTranslation('inbox');
+  return (
+    <>
+      <div
+        role="group"
+        aria-labelledby="template-list-label"
+        className="flex min-w-0 flex-col gap-2"
+        data-testid="template-list"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span id="template-list-label" className="text-sm font-medium">
+            {t('window.choose')}
+          </span>
+          {syncButton}
+        </div>
+        {templates.map((tpl) => {
+          const key = templateKey(tpl);
+          const chosen = key === (selected && templateKey(selected));
+          return (
+            <Button
+              key={key}
+              type="button"
+              variant="outline"
+              aria-pressed={chosen}
+              disabled={!tpl.sendable}
+              onClick={() => onChoose(tpl)}
+              className={cn(
+                'h-auto min-h-11 w-full min-w-0 flex-col items-start gap-1 px-3 py-2.5 text-left whitespace-normal',
+                chosen && 'border-primary bg-primary/5 ring-1 ring-primary',
+              )}
+            >
+              <span className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
+                <span className="min-w-0 font-mono text-sm font-medium break-all">{tpl.name}</span>
+                <Badge variant="outline">{tpl.language}</Badge>
+                <Badge variant="secondary">{t(`window.category.${tpl.category}`)}</Badge>
+              </span>
+              <span className="line-clamp-2 text-xs font-normal break-words text-muted-foreground">
+                {tpl.body}
+              </span>
+              {!tpl.sendable && (
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t(`window.unsupported.${unsupportedReason(tpl)}`)}
+                </span>
+              )}
+            </Button>
+          );
+        })}
+      </div>
+
+      {selected && values.length > 0 && (
+        <fieldset className="flex min-w-0 flex-col gap-3" data-testid="template-values">
+          <legend className="mb-1 text-sm font-medium">{t('window.values')}</legend>
+          {values.map((value, i) => {
+            const id = `template-value-${i}`;
+            const error = submitted && !value.trim();
+            return (
+              <div key={id} className="flex min-w-0 flex-col gap-1.5">
+                <Label htmlFor={id}>{t('window.variable', { n: i + 1 })}</Label>
+                <Input
+                  id={id}
+                  value={value}
+                  maxLength={1024}
+                  placeholder={selected.examples[i] ?? ''}
+                  aria-invalid={error || undefined}
+                  aria-describedby={error ? `${id}-error` : undefined}
+                  onChange={(e) => onValues(values.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                {error && (
+                  <p id={`${id}-error`} className="text-sm text-danger">
+                    {t('window.required')}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
+
+      {selected && (
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <p className="text-sm font-medium">{t('window.preview')}</p>
+          <p
+            className="min-w-0 rounded-lg border bg-muted/40 px-3 py-2 text-sm break-words whitespace-pre-wrap"
+            data-testid="template-preview"
+          >
+            {fillTemplate(selected.body, values)}
+          </p>
+          {selected.category === 'marketing' && (
+            <p className="text-xs text-muted-foreground">{t('window.marketingNote')}</p>
+          )}
+        </div>
+      )}
+    </>
   );
 }

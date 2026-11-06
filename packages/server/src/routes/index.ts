@@ -31,6 +31,7 @@ import oauth from './oauth.js';
 import inboxes from './inboxes.js';
 import aiTemplates from './ai-templates.js';
 import templates from './templates.js';
+import newChat from './new-chat.js';
 import replySuggestions from './reply-suggestions.js';
 import askEzy from './ask-ezy.js';
 import fixEnglish from './fix-english.js';
@@ -76,6 +77,7 @@ export const routeModules: RouteModule[] = [
   inboxes,
   aiTemplates,
   templates,
+  newChat,
   replySuggestions,
   askEzy,
   fixEnglish,

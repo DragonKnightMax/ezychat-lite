@@ -1035,5 +1035,82 @@
     "linkUnavailable": "Pautan tidak dapat dibaca dari WhatsApp. Cuba lagi kemudian.",
     "tipTitle": "Apakah admin kumpulan?",
     "tipBody": "Admin kumpulan WhatsApp boleh mengubah kumpulan serta menambah atau mengeluarkan orang. Ia ditetapkan dalam WhatsApp dan berbeza daripada admin EzyChat."
+  },
+  "newChat": {
+    "button": "Sembang baharu",
+    "title": "Sembang baharu",
+    "description": "Hantar mesej kepada nombor telefon yang belum ada dalam peti masuk anda.",
+    "from": "Hantar daripada",
+    "businessApi": "WhatsApp Business API",
+    "phone": "Nombor telefon",
+    "phonePlaceholder": "012-345 6789 atau +65 9123 4567",
+    "phoneHint": "Nombor Malaysia boleh bermula dengan 0. Untuk negara lain, mulakan dengan + dan kod negara.",
+    "phoneInvalid": "Masukkan nombor telefon, contohnya 012-345 6789 atau +65 9123 4567.",
+    "willMessage": "Anda akan menghantar mesej kepada {{number}}.",
+    "name": "Nama (pilihan)",
+    "nameHint": "Disimpan dalam butiran pelanggan.",
+    "banTitle": "Hanya hantar mesej kepada orang yang menjangkakannya",
+    "banBody": "WhatsApp boleh menyekat nombor yang menghantar mesej kepada orang yang tidak memintanya. Mulakan sembang hanya apabila orang itu bersetuju untuk dihubungi.",
+    "apiTitle": "Bermula dengan templat yang diluluskan",
+    "apiBody": "Di WhatsApp Business API, perniagaan mesti memulakan sembang dengan templat yang diluluskan oleh Meta. Anda boleh menulis dengan bebas sebaik sahaja pelanggan membalas.",
+    "usage": "{{used}} daripada {{limit}} sembang baharu digunakan hari ini di {{inbox}}.",
+    "start": "Mulakan sembang",
+    "checking": "Menyemak WhatsApp…",
+    "next": "Pilih templat",
+    "preparing": "Menyemak…",
+    "existingTitle": "Sudah ada dalam peti masuk anda",
+    "existingBody": "{{number}} sudah mempunyai sembang.",
+    "openChat": "Buka sembang",
+    "back": "Kembali",
+    "templateTitle": "Pilih templat",
+    "templateDescription": "Mesej pertama kepada {{number}}. Sembang bermula apabila ia dihantar.",
+    "paidNote": "Setiap templat memulakan perbualan berbayar dengan Meta. Templat pemasaran lebih mahal daripada templat utiliti.",
+    "sendTemplate": "Hantar templat",
+    "sending": "Menghantar…",
+    "createdToast": "Sembang dimulakan. Tulis mesej pertama anda.",
+    "sentToast": "Templat dihantar. Anda boleh menulis dengan bebas sebaik sahaja mereka membalas.",
+    "problems": {
+      "not_on_whatsapp": {
+        "title": "{{number}} tiada WhatsApp",
+        "body": "Semak nombor dan cuba lagi."
+      },
+      "own_number": {
+        "title": "Ini nombor anda sendiri",
+        "body": "Masukkan nombor pelanggan."
+      },
+      "wa_disconnected": {
+        "title": "WhatsApp tidak bersambung",
+        "body": "{{inbox}} di luar talian, jadi nombor tidak dapat disemak. Cuba lagi apabila ia bersambung."
+      },
+      "new_chat_daily_limit": {
+        "title": "Had harian dicapai",
+        "body": "{{inbox}} telah memulakan {{limit}} sembang baharu hari ini. Cuba lagi esok. Had ini melindungi nombor anda daripada disekat WhatsApp."
+      },
+      "new_chat_hourly_limit": {
+        "title": "Terlalu banyak sembang baharu",
+        "body": "Anda telah memulakan {{hourly}} sembang baharu dalam sejam yang lalu. Cuba lagi kemudian."
+      },
+      "template_failed": {
+        "title": "Templat tidak dihantar",
+        "body": "WhatsApp tidak menerimanya, jadi tiada sembang dimulakan. Cuba lagi atau pilih templat lain."
+      },
+      "new_chat_not_allowed": {
+        "title": "Anda tidak boleh memulakan sembang baharu",
+        "body": "Minta pentadbir membenarkannya dalam Tetapan."
+      },
+      "other": {
+        "title": "Ada masalah",
+        "body": "Cuba lagi."
+      },
+      "invalid_number": {
+        "title": "Bukan nombor telefon",
+        "body": "Masukkan nombor dengan kod negaranya, atau nombor Malaysia yang bermula dengan 0."
+      },
+      "new_chat_unsupported": {
+        "title": "Nombor ini tidak boleh memulakan sembang baharu",
+        "body": "Pilih nombor WhatsApp lain untuk menghantar."
+      }
+    },
+    "usageNoLimit": "{{used}} sembang baharu dimulakan hari ini di {{inbox}} (tiada had harian)."
   }
 }

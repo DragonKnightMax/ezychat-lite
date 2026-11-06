@@ -17,6 +17,7 @@ vi.mock('./AiConnectionSection', () => ({
 }));
 vi.mock('./PhraseDictionarySection', () => ({ PhraseDictionarySection: () => null }));
 vi.mock('./FixEnglishSection', () => ({ FixEnglishSection: () => <p>Fix English card</p> }));
+vi.mock('./NewChatSection', () => ({ NewChatSection: () => <p>New chats card</p> }));
 vi.mock('./ReplySuggestionsSection', () => ({
   ReplySuggestionsSection: () => <p>Reply suggestions card</p>,
 }));

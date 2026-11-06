@@ -133,6 +133,19 @@ describe('web client ↔ server routes', () => {
     expect(calls.length).toBeGreaterThan(60);
   });
 
+  it('checks the New chat calls (docs/features/new-chat/design.md)', () => {
+    const ours = scan.calls
+      .filter((c) => c.at.startsWith(join('api', 'new-chat.ts')))
+      .map((c) => `${c.method} ${c.path.replace(/\/inboxes\/[^/]+\//, '/inboxes/:id/')}`)
+      .sort();
+    expect(ours).toEqual([
+      'GET /api/new-chat',
+      'POST /api/inboxes/:id/new-chat',
+      'POST /api/inboxes/:id/new-chat/check',
+      'PUT /api/new-chat/settings',
+    ]);
+  });
+
   it('every web call has a server route with the same method', async () => {
     const { calls } = scan;
     const missing: string[] = [];

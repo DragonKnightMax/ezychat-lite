@@ -26,6 +26,7 @@ import type {
   WaReaction,
   WaSendOptions,
 } from '@ezychat/wa';
+import { WaUnavailableError } from '@ezychat/wa';
 import type { AppContext } from '../context.js';
 import { errors, HttpError } from '../http/errors.js';
 import { getAliases } from '../chats/aliases.js';
@@ -104,6 +105,19 @@ export interface MessageService {
    * 503 offline (the template list is read from the connection).
    */
   sendTemplate(jid: string, body: SendTemplateBody, userId: number): Promise<Message>;
+  /**
+   * New chat on a template-first inbox (design docs/features/new-chat/design.md): checks the template
+   * like `sendTemplate`, sends it to `waJid` at once (not queued: no chat exists yet), and only when
+   * WhatsApp accepted it calls `createChat` and stores the message as sent. Any failure creates
+   * nothing: 503 offline, 502 `template_failed` for a refusal.
+   */
+  sendFirstTemplate(
+    inboxId: number,
+    waJid: string,
+    body: Omit<SendTemplateBody, 'clientId'>,
+    userId: number,
+    createChat: () => string,
+  ): Promise<Message>;
   /** `GET /inboxes/:id/templates`: the inbox's approved templates (cached 5 minutes). */
   listTemplates(inboxId: number, refresh?: boolean): Promise<MessageTemplate[]>;
   /** The message sent earlier with this clientId (send idempotency), or null. */
@@ -753,6 +767,37 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
    * owner, and a teammate replying in a chat the AI owns takes it over (the AI then stops). A human
    * owner is kept when another teammate replies; replies from the linked phone (no user) change nothing.
    */
+  /** The approved, sendable template a body names, with the right number of values (else 400/409). */
+  const approvedTemplate = async (
+    inboxId: number,
+    body: Pick<SendTemplateBody, 'name' | 'language' | 'params'>,
+  ) => {
+    const wa = connections.adapter(inboxId);
+    if (!capabilitiesOf(wa).templates) throw templatesUnsupported();
+    const template = (await templates.list(inboxId, wa)).find(
+      (t) => t.name === body.name && t.language === body.language,
+    );
+    if (!template)
+      throw new HttpError(
+        400,
+        'template_not_found',
+        'This template is not approved for this inbox',
+      );
+    if (!template.sendable)
+      throw new HttpError(
+        400,
+        'template_not_sendable',
+        'Templates with a media header or buttons cannot be sent yet',
+      );
+    if (body.params.length !== template.variables)
+      throw new HttpError(
+        400,
+        'template_params',
+        `This template needs ${template.variables} value(s), got ${body.params.length}`,
+      );
+    return template;
+  };
+
   const claimOnReply = (jid: string, userId: number, t: number) => {
     const chat = requireChat(jid);
     const owner = chat.assigned_to;
@@ -1248,30 +1293,7 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
       if (existing) return present(existing);
       requireSendable(jid);
       if (chatNumberMoved(jid)) throw errors.conflict(MOVED_NUMBER_MESSAGE);
-      const inboxId = inboxOfKey(jid);
-      const wa = connections.adapter(inboxId);
-      if (!capabilitiesOf(wa).templates) throw templatesUnsupported();
-      const template = (await templates.list(inboxId, wa)).find(
-        (t) => t.name === body.name && t.language === body.language,
-      );
-      if (!template)
-        throw new HttpError(
-          400,
-          'template_not_found',
-          'This template is not approved for this inbox',
-        );
-      if (!template.sendable)
-        throw new HttpError(
-          400,
-          'template_not_sendable',
-          'Templates with a media header or buttons cannot be sent yet',
-        );
-      if (body.params.length !== template.variables)
-        throw new HttpError(
-          400,
-          'template_params',
-          `This template needs ${template.variables} value(s), got ${body.params.length}`,
-        );
+      const template = await approvedTemplate(inboxOfKey(jid), body);
       // the list was read asynchronously: another request may have stored this clientId meanwhile
       const raced = repo.byClientId(body.clientId);
       if (raced) return present(raced);
@@ -1301,6 +1323,61 @@ export function createMessageService(ctx: AppContext, deps?: MessageServiceDeps)
         template_language: template.language,
         template_params: JSON.stringify(body.params),
       });
+    },
+
+    async sendFirstTemplate(inboxId, waJid, body, userId, createChat) {
+      const template = await approvedTemplate(inboxId, body);
+      const wa = connections.adapter(inboxId);
+      if (!wa.sendTemplate) throw templatesUnsupported();
+      let sent: SendResult;
+      try {
+        sent = await wa.sendTemplate(waJid, {
+          name: template.name,
+          language: template.language,
+          params: body.params,
+        });
+      } catch (err) {
+        if (err instanceof WaUnavailableError)
+          throw new HttpError(503, 'wa_disconnected', 'This WhatsApp number is not connected');
+        log.warn({ inboxId, err: (err as Error).message }, 'first template refused');
+        throw new HttpError(502, 'template_failed', 'WhatsApp did not accept the template');
+      }
+      const jid = createChat();
+      const id = messageKey(inboxId, sent.id);
+      const existing = repo.get(id);
+      if (existing) return present(existing);
+      const t = now();
+      claimOnReply(jid, userId, t);
+      const row: MessageRow = {
+        id,
+        chat_jid: jid,
+        sender_jid: ownJidOf(jid),
+        sender_name: null,
+        from_me: 1,
+        sent_by_user_id: userId,
+        type: 'text',
+        body: fillTemplate(template.body, body.params),
+        media_path: null,
+        media_mime: null,
+        media_name: null,
+        media_status: 'none',
+        quoted_id: null,
+        status: 'sent',
+        error: null,
+        timestamp: sent.timestamp || t,
+        created_at: t,
+        client_id: null,
+        wa_remote_jid: waJid,
+        template_name: template.name,
+        template_language: template.language,
+        template_params: JSON.stringify(body.params),
+      };
+      repo.insert(row);
+      touchChat(row, t);
+      const msg = present(repo.get(id)!);
+      ctx.bus.emit('message:new', msg);
+      emitChat(jid);
+      return msg;
     },
 
     async sendMedia(jid, file, userId, clientId, opts) {

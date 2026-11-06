@@ -491,6 +491,19 @@ hand-off" = open chats whose last `ai.handoff` audit row has no later reply from
 MCP `get_stats` carries `customers` from the same function. Web: `admin/ReportsPage.tsx` + `ReportCharts.tsx`
 (HTML/SVG in colour tokens, no chart library; every chart has Show as table).
 
+**New chat** (design `docs/features/new-chat/design.md`, mock `docs/features/new-chat/mock`). `chats/new-chat.ts`
+(`ctx.services.newChat`) is the only way to start a chat with a stranger's number: the inbox's **New** dialog
+(`GET /api/new-chat`, `POST /api/inboxes/:id/new-chat/check` (never asks WhatsApp), `POST /api/inboxes/:id/new-chat`
+{phone, name?, clientRequestId, template?}) and MCP `send_to_new_number` (`openChecked`). Admins always; agents while
+`new_chat_staff` is on (admins, `PUT /api/new-chat/settings`, audit `settings.new_chat_staff` before/after), from their
+inboxes; never an agent limited to chosen chats, the AI or another role. The flow comes from `WaCapabilities` only: no
+`replyWindowHours` → `checkNumber`, empty chat assigned to the starter, normal composer; a window with `templates` →
+`MessageService.sendFirstTemplate` sends the template directly (not queued) and creates the chat only once WhatsApp took
+it. Phone numbers: shared `normalizeLocalPhone` (a leading 0 gets the inbox's own country code, +60 fallback). Limits,
+in memory, counted before WhatsApp is asked: `new_chat_daily_limit` per linked-phone inbox (default 20, 0 = none,
+audit `settings.new_chat_daily_limit`; shared with MCP, which keeps its 20 per token on top) and 5 an hour per user.
+Audit `chat.new_number` {inboxId, chatJid, userId, via, tokenId?}; logs ids only.
+
 **Group info.** `packages/server/src/groups/service.ts` + `routes/groups.ts`: `GET /chats/:jid/members`
 reads `WaAdapter.getGroupInfo` (Baileys `groupMetadata`) with a 5-minute cache invalidated by the
 `groupChanged` event, names members from contacts and existing chats only (never inferred), and links
@@ -635,8 +648,8 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
   `type: 'document'`). `/mcp`
   accepts bodies up to 8 MB (`MCP_BODY_LIMIT`), only after the token check in `onRequest`. `send_to_new_number` (scope
   `inbox:send_new`, ticked at creation under "Can send", default off) may start a chat with a number not
-  in the inbox only after `WaAdapter.checkNumber` confirms it (20 checks a day per token, counted before
-  the check; audit `mcp.new_chat`); its description and every result carry the WhatsApp ban warning.
+  in the inbox only after `WaAdapter.checkNumber` confirms it, through the New chat service (20 checks a day per
+  token, then the inbox's shared daily limit, counted before the check; audit `chat.new_number` via `mcp`); its description and every result carry the WhatsApp ban warning.
   Tools log tool name, counts and token id, never arguments, phone numbers or message text.
 - MCP sign-in (OAuth, `mcp/oauth.ts`, `mcp/oauth-routes.ts`, `routes/oauth.ts`): apps register at
   `/mcp/oauth/register` (https, loopback http or an app scheme only), an admin approves on the web page
@@ -662,6 +675,12 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
 - Host-only extension routes (`/api/ext/<name>/host/…`) answer only a direct loopback peer with a
   loopback `Host` and no `CF-Connecting-IP`; the access gate allowlist matches the decoded path and the
   matched route, never a raw prefix alone.
+- New chat (`chats/new-chat.ts`, `/api/inboxes/:id/new-chat[/check]`, MCP `send_to_new_number`): only admins, or
+  agents while `new_chat_staff` is on, and only from inboxes they may open (else 404); agents limited to chosen chats,
+  the AI and every other role are refused (403). One number per request; counted before `checkNumber` (the admin's
+  daily limit per linked phone, shared with MCP; 5 an hour per user); a template-first inbox creates the chat only after
+  WhatsApp accepted the template. Audit `chat.new_number` and logs carry ids only, never the number's name or message
+  text. The core decides the flow from `WaCapabilities`, never from an inbox type name.
 - `/api/client-errors` is public but rate-limited per IP and size-capped.
 
 ## UI rules (apps/web)

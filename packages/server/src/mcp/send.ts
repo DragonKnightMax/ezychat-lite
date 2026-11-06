@@ -22,6 +22,7 @@ import { chatKey, inboxOfKey } from '../inboxes/keys.js';
 import { WINDOW_CLOSED } from '../inboxes/reply-window.js';
 import { capabilitiesOf } from '../inboxes/types.js';
 import { getChats, getMessages } from '../wa-bridge/index.js';
+import { createNewChatService } from '../chats/new-chat.js';
 import { ambiguousChat, findChats } from './inbox.js';
 
 /** Thrown for an expected failure of a send; its message is shown to the model. */
@@ -178,6 +179,16 @@ export const SEND_LIMITS = {
   /** Number checks for new chats (each one asks WhatsApp about a stranger's number). */
   newNumbersPerDay: { windowMs: 24 * 60 * 60_000, max: 20 },
 } as const;
+
+/** New chat refusals worded for the model (the service's codes; its message where it says enough). */
+const NEW_CHAT_REFUSALS: Record<string, ((message: string) => string) | undefined> = {
+  own_number: () => 'This is a linked WhatsApp number itself.',
+  wa_disconnected: () =>
+    'WhatsApp is not connected, so the number cannot be checked. Try again when it is connected.',
+  not_on_whatsapp: () => 'This number does not have WhatsApp.',
+  new_chat_daily_limit: (message) =>
+    `${message}; the team's daily limit of new chats protects the number from a WhatsApp ban. Try again tomorrow.`,
+};
 
 export const NEW_NUMBER_WARNING =
   'This person may not expect a message from this WhatsApp number. WhatsApp can ban a number that ' +
@@ -368,10 +379,6 @@ export function createInboxSendPort(
             'with an approved message template; a person can send one from the inbox.',
         );
       const jid = chatKey(inboxId, `${phone}@s.whatsapp.net`);
-      // The number of any inbox (linked now or before) is the team's own, never a customer.
-      const own = [...ctx.inboxes.connections.ownJids()].some((j) => j.split(/[:@]/)[0] === phone);
-      if (own) throw new SendError('This is a linked WhatsApp number itself.');
-
       // A retry, or a number that already has a chat: an ordinary send, nothing new is created.
       const known = existing(jid);
       const before = messages.byClientId(sendClientId(principal.tokenId, input.requestId));
@@ -379,39 +386,39 @@ export function createInboxSendPort(
         throw new SendError(
           'This requestId was already used for a different message; use a new requestId.',
         );
-      if (known)
-        return {
-          ...send(principal, known.jid, input),
-          newChat: false,
-          warning: NEW_NUMBER_WARNING,
-        };
-
-      if (wa.status.state !== 'open')
-        throw new SendError(
-          'WhatsApp is not connected, so the number cannot be checked. Try again when it is connected.',
+      // The shared New chat service: own number, existing chat, connection, the inbox's daily budget
+      // (after this token's own limit), checkNumber, the chat and its `chat.new_number` audit.
+      let opened: { chatJid: string; created: boolean };
+      try {
+        opened = await (ctx.services.newChat ??= createNewChatService(ctx)).openChecked(
+          principal.user,
+          inboxId,
+          phone,
+          { via: 'mcp', tokenId: principal.tokenId },
+          {
+            now: deps?.now?.(),
+            // Counted before the check: every check asks WhatsApp about a stranger's number.
+            beforeCount: () => {
+              const hit = newNumbers.hit(String(principal.tokenId));
+              if (!hit.allowed)
+                throw new SendError(
+                  `Too many new numbers from this token in a day; try again in ${hit.retryAfterSec} s.`,
+                );
+            },
+          },
         );
-      // Counted before the check: every check asks WhatsApp about a stranger's number.
-      const hit = newNumbers.hit(String(principal.tokenId));
-      if (!hit.allowed)
-        throw new SendError(
-          `Too many new numbers from this token in a day; try again in ${hit.retryAfterSec} s.`,
-        );
-      const found = await wa.checkNumber(phone);
-      if (!found) {
-        log.info({ tokenId: principal.tokenId, found: false }, 'mcp new number check');
-        throw new SendError('This number does not have WhatsApp.');
+      } catch (err) {
+        if (err instanceof HttpError && NEW_CHAT_REFUSALS[err.code]) {
+          log.info({ tokenId: principal.tokenId, refused: err.code }, 'mcp new number check');
+          throw new SendError(NEW_CHAT_REFUSALS[err.code]!(err.message));
+        }
+        throw err;
       }
-      // The chat may have appeared while WhatsApp answered (an inbound message, another call).
-      const raced = existing(chatKey(inboxId, found));
-      const chat = raced ?? chats.upsertFromWa({ jid: found, type: 'dm', name: null }, inboxId);
-      if (!raced)
-        audit(ctx.db, {
-          userId: principal.user.id,
-          action: 'mcp.new_chat',
-          ip: null,
-          meta: { tokenId: principal.tokenId, chatJid: chat.jid },
-        });
-      return { ...send(principal, chat.jid, input), newChat: !raced, warning: NEW_NUMBER_WARNING };
+      return {
+        ...send(principal, opened.chatJid, input),
+        newChat: opened.created,
+        warning: NEW_NUMBER_WARNING,
+      };
     },
   };
 

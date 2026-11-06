@@ -1040,5 +1040,82 @@
     "linkUnavailable": "The link couldn't be read from WhatsApp. Try again later.",
     "tipTitle": "What is a group admin?",
     "tipBody": "A WhatsApp group admin can change the group and add or remove people. It is set in WhatsApp and is separate from being an EzyChat admin."
+  },
+  "newChat": {
+    "button": "New chat",
+    "title": "New chat",
+    "description": "Message a phone number that is not in your inbox yet.",
+    "from": "Send from",
+    "businessApi": "WhatsApp Business API",
+    "phone": "Phone number",
+    "phonePlaceholder": "012-345 6789 or +65 9123 4567",
+    "phoneHint": "Malaysian numbers can start with 0. For other countries, start with + and the country code.",
+    "phoneInvalid": "Enter a phone number, for example 012-345 6789 or +65 9123 4567.",
+    "willMessage": "You will message {{number}}.",
+    "name": "Name (optional)",
+    "nameHint": "Saved in the customer's details.",
+    "banTitle": "Only message people who expect it",
+    "banBody": "WhatsApp can ban a number that messages people who did not ask for it. Start a chat only when the person agreed to be contacted.",
+    "apiTitle": "Starts with an approved template",
+    "apiBody": "On the WhatsApp Business API, a business must start a chat with a template Meta approved. You can write freely once the customer replies.",
+    "usage": "{{used}} of {{limit}} new chats used today on {{inbox}}.",
+    "start": "Start chat",
+    "checking": "Checking WhatsApp…",
+    "next": "Choose a template",
+    "preparing": "Checking…",
+    "existingTitle": "Already in your inbox",
+    "existingBody": "{{number}} already has a chat.",
+    "openChat": "Open chat",
+    "back": "Back",
+    "templateTitle": "Choose a template",
+    "templateDescription": "The first message to {{number}}. The chat starts when it is sent.",
+    "paidNote": "Each template starts a paid conversation with Meta. Marketing templates cost more than utility ones.",
+    "sendTemplate": "Send template",
+    "sending": "Sending…",
+    "createdToast": "Chat started. Write your first message.",
+    "sentToast": "Template sent. You can write freely once they reply.",
+    "problems": {
+      "not_on_whatsapp": {
+        "title": "{{number}} is not on WhatsApp",
+        "body": "Check the number and try again."
+      },
+      "own_number": {
+        "title": "This is your own number",
+        "body": "Enter the customer's number."
+      },
+      "wa_disconnected": {
+        "title": "WhatsApp is not connected",
+        "body": "{{inbox}} is offline, so the number cannot be checked. Try again when it is connected."
+      },
+      "new_chat_daily_limit": {
+        "title": "Daily limit reached",
+        "body": "{{inbox}} started {{limit}} new chats today. Try again tomorrow. The limit protects your number from a WhatsApp ban."
+      },
+      "new_chat_hourly_limit": {
+        "title": "Too many new chats",
+        "body": "You started {{hourly}} new chats in the last hour. Try again later."
+      },
+      "template_failed": {
+        "title": "The template was not sent",
+        "body": "WhatsApp did not accept it, so no chat was started. Try again or choose another template."
+      },
+      "new_chat_not_allowed": {
+        "title": "You cannot start new chats",
+        "body": "Ask an admin to allow it in Settings."
+      },
+      "other": {
+        "title": "Something went wrong",
+        "body": "Try again."
+      },
+      "invalid_number": {
+        "title": "Not a phone number",
+        "body": "Enter the number with its country code, or a Malaysian number starting with 0."
+      },
+      "new_chat_unsupported": {
+        "title": "This number cannot start new chats",
+        "body": "Choose another WhatsApp number to send from."
+      }
+    },
+    "usageNoLimit": "{{used}} new chats started today on {{inbox}} (no daily limit)."
   }
 }

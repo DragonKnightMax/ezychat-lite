@@ -134,13 +134,23 @@ describe('starting a chat', () => {
       .get(jid) as { userId: number };
     expect(row.userId).toBe(admin.id);
     const audits = t.ctx.db
-      .prepare("SELECT action, meta FROM audit_log WHERE action LIKE 'mcp.%' AND meta LIKE ?")
+      .prepare(
+        "SELECT action, meta FROM audit_log WHERE action IN ('chat.new_number', 'mcp.send') AND meta LIKE ?",
+      )
       .all(`%${jid}%`) as Array<{ action: string; meta: string }>;
-    expect(audits.map((a) => a.action).sort()).toEqual(['mcp.new_chat', 'mcp.send']);
+    // The New chat service records the chat (via mcp, with the token); MCP records its send.
+    expect(audits.map((a) => a.action).sort()).toEqual(['chat.new_number', 'mcp.send']);
     for (const a of audits) {
       expect(JSON.parse(a.meta)).toMatchObject({ tokenId: newNumbersId, chatJid: jid });
       expect(a.meta).not.toContain('fair');
     }
+    expect(JSON.parse(audits.find((a) => a.action === 'chat.new_number')!.meta)).toEqual({
+      inboxId: 1,
+      chatJid: jid,
+      userId: admin.id,
+      via: 'mcp',
+      tokenId: newNumbersId,
+    });
 
     // A retry sends nothing again; the same requestId for another number is refused.
     const again = await call('send_to_new_number', {
@@ -204,6 +214,8 @@ describe('starting a chat', () => {
 
 describe('new-number limit', () => {
   it(`allows ${SEND_LIMITS.newNumbersPerDay.max} number checks a day per token`, async () => {
+    // The inbox's own daily budget (shared with the app, new-chat.test.ts) off: only the token cap.
+    t.ctx.settings.set('new_chat_daily_limit', 0);
     let now = Date.parse('2026-10-20T08:00:00Z');
     const port = createInboxSendPort(t.ctx, { now: () => now });
     const principal: ApiPrincipal = {

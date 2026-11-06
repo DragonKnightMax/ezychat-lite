@@ -215,7 +215,10 @@
       "safetyReport": "号码已被举报为诈骗",
       "safetyBlock": "号码已被屏蔽",
       "safetyUnblock": "号码已解除屏蔽",
-      "safetyAutoBlock": "号码已被自动屏蔽"
+      "safetyAutoBlock": "号码已被自动屏蔽",
+      "chatNewNumber": "与新号码开始对话",
+      "settingsNewChatStaff": "新对话设置已更改",
+      "settingsNewChatDailyLimit": "新对话每日上限已更改"
     },
     "fields": {
       "chat": "对话",
@@ -260,7 +263,10 @@
       "members": "成员",
       "agent": "AI 客服",
       "preset": "起点",
-      "internal": "内部"
+      "internal": "内部",
+      "startedBy": "发起人",
+      "before": "之前",
+      "after": "之后"
     },
     "reasons": {
       "rateLimited": "尝试次数过多",
@@ -2957,5 +2963,19 @@
     "noMatch": "没有其他匹配的聊天。",
     "note_zero": "未选择聊天",
     "note_other": "仅 {{count}} 个选定聊天"
+  },
+  "newChat": {
+    "title": "新对话",
+    "description": "与还不在收件箱中的号码发起 WhatsApp 对话。管理员始终可以这样做。",
+    "staff": "团队成员可以发起新对话",
+    "staffOn": "开启：每个人都可以从自己所属的收件箱发起新对话。",
+    "staffOff": "关闭：只有管理员能看到“新对话”。",
+    "limitLabel": "每个 WhatsApp 号码每天的新对话数",
+    "limitUnit": "每天",
+    "limitInvalid": "请输入 0 到 {{max}} 之间的整数。",
+    "limitHint": "统计每个已链接手机发起的新号码，包括团队和 AI 助手。0 = 不限制。Business API 号码由 Meta 限制。",
+    "limitNone": "不限制：团队和 AI 助手每天可以给任意数量的新号码发消息。",
+    "limitBanTitle": "上限过高可能导致号码被封禁",
+    "limitBanBody": "如果号码给很多没有要求联系的人发消息，WhatsApp 可能会封禁该号码。除非对方期待你的消息，否则请保持较低的上限。"
   }
 }

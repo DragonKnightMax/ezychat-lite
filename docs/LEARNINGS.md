@@ -192,6 +192,11 @@ into AGENTS.md.
   tokens from local caches.
 - A fake of an outside service must model the effects of our own writes (Google free/busy counts the events
   we add): a fake that ignored them hid a retry bug the unit tests passed; the Dev Build check found it.
+- A new button in the chat list header must fit the 360 px list beside Ask Ezy, Admin and the account menu: make it
+  icon-only with `aria-label` + `title`, and measure the header children's right edges in the screen script (a mock
+  made before a later header button looks fine and still overflows in the app).
+- A Dev Build screen script that starts several chats runs into the product's own per-person limits (New chat: 5 an
+  hour): spread the runs over several seeded users instead of loosening the limit.
 - Two feature branches that clone the same mock baseline both prune the oldest folder and collide on merge: keep
   both feature folders, renumber the later one, archive the next oldest, and note in `latestConfirmed` which
   parallel feature's screens the next clone must add.
@@ -211,6 +216,8 @@ into AGENTS.md.
 
 ## Multi-agent process
 
+- A message from another session can arrive long after it was sent: before acting on it, read the PR's current
+  state (merged, head, conflicts) and do only what is still open.
 - A change to an owner rule (e.g. "No tracking in Lite") needs the owner's own words in the session doing it: child
   cloud sessions refuse approvals relayed by another session. When the owner approves in the main session, do the
   work there (or in a fork of it), not in a child.
@@ -1037,7 +1044,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   ends, not only the sign-out button: the `session:revoked` socket event and a 401 from `/api/me` too
   (`startQueryPersistence` `clearCaches`). Test each path.
 - A script that writes files to a folder named on the command line resolves it against the repository and refuses
-  anything outside it (SonarCloud `jssecurity:S8707` fails the security rating otherwise).
+  anything outside it (SonarCloud `jssecurity:S8707` fails the security rating otherwise). A new e2e screen script
+  starts from the `inside()` guard of `e2e/connectors-screens.mjs`, before its first push.
 - A third-party browser widget that needs outside scripts (Google's file picker) never goes into the app window: its
   CSP stays `script-src 'self'`. Serve it on its own host-only page with a CSP limited to that vendor, guarded by a
   one-time token, and hand it an access token once (`connectors/google-sheets/picker-page.ts`).
