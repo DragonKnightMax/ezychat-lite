@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.79] - 2026-11-06
+
 ### Added
 
 - **Start a chat with a new number.** **New** next to the Inbox title starts a WhatsApp chat with a number that is not
