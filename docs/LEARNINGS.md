@@ -195,6 +195,15 @@ into AGENTS.md.
 - Two feature branches that clone the same mock baseline both prune the oldest folder and collide on merge: keep
   both feature folders, renumber the later one, archive the next oldest, and note in `latestConfirmed` which
   parallel feature's screens the next clone must add.
+- Bringing a parallel confirmed mock into a new clone: per differing file run `git merge-file <latest> <shared
+  baseline> <parallel>` (the shared baseline folder is still in the tree), merge catalogs by key, then
+  `snapshot.mjs --check`. A confirmed baseline may already fail its own `--check`: record that drift as inherited
+  (copied unchanged) instead of re-hashing it away.
+- Before pruning a feature folder for retention, `git grep` for imports of it outside `docs/features` and run the
+  `scripts/*.test.mjs` suite: `template-store/publisher/` is live tooling (`scripts/template-store.test.mjs` imports
+  it), so prune the next oldest mock instead.
+- Shot scripts that create server-side records (chats, audit rows) need a fresh runner per run, or the second run
+  meets its own earlier data (a "new" number is already a chat). Restart the runner before each full run.
 - A "real" Dev Build check of a signed remote list (connectors, templates) with `--fake-wa`: the server downloads
   nothing unless the `*_LIST_URL` env is set, so set it to the production URL (assert it equals the built-in constant)
   and no test key. Compare the published `minAppVersion` with the branch version first: entries for the next release

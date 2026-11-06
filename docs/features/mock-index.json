@@ -6,15 +6,30 @@
     "olderReferences": "git-history"
   },
   "latestConfirmed": {
-    "feature": "partner-role",
-    "gitRevision": "846a09cc9561a7a65e984572591e3ee458f47d2d",
-    "mock": "docs/features/partner-role/mock/index.html",
-    "design": "docs/features/partner-role/design.md",
+    "feature": "new-chat",
+    "gitRevision": "e7dc8cfacdb7a4066c02016e96fc645187668270",
+    "mock": "docs/features/new-chat/mock/index.html",
+    "design": "docs/features/new-chat/design.md",
     "confirmedAt": "2026-11-06",
-    "confirmation": "Owner (Jazz) 2026-11-06, relayed by the main session: \"The owner CONFIRMED the simplified limited-agent mock (2026-11-06) with your proposed answers\" (chosen chats from any inbox replace inbox access; assign only chosen chats, removal unassigns) plus: no notification of any kind for chats a limited agent cannot see.",
-    "note": "Limited chat access (folder partner-role): clone of google-drive (442b6317) with sql-accounting (e33aabbd) merged in, plus the agent setting \"Chats this member can see\". scheduled-tasks (426c2eb7) was confirmed the same day from the same baseline: the next clone also copies in its Scheduled tasks files. Inherits the coverage gaps of google-drive."
+    "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd): \"The owner CONFIRMED the New chat mock on 2026-11-06, with one change\": the daily new-number limit for personal WhatsApp is an admin setting (default 20, 0 = no limit, ban warning, audited before/after, shared with MCP send_to_new_number); suggested answers stand (counts in memory; Business API only 5/hour per user; default country from the inbox's own number, +60 fallback; assigned to the starter, AI waits); limited agents (chat_scope 'chosen') never start a new chat.",
+    "note": "Clone of scheduled-tasks (google-drive + sql-accounting + scheduled tasks) plus New chat. partner-role (36) was confirmed in parallel from google-drive: the next clone copies in its files (docs/features/partner-role/design.md lists them). Inherits scheduled-tasks' coverage gaps."
   },
   "proposals": [
+    {
+      "feature": "new-chat",
+      "creationOrder": 37,
+      "createdAt": "2026-11-06",
+      "design": "docs/features/new-chat/design.md",
+      "mock": "docs/features/new-chat/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "scheduled-tasks",
+      "baselineGitRevision": "426c2eb766f24e520fd4f59b66ab837c11296045",
+      "coverage": "Full app clone of scheduled-tasks (google-drive + sql-accounting + scheduled tasks); New chat header button (admin; team member with the switch on/off), dialog: empty, invalid, number typed with the ban warning, checking, chat opened (assigned, composer), not on WhatsApp, existing chat → Open chat, daily limit, WhatsApp offline; Business API: template picker with the paid note, variables, preview, send error (no chat), chat after the template with free text locked; Settings → General switch (off/on) and daily limit field (invalid, 0 = no limit, 10, ban warning), Audit log rows; Lite (one inbox); desktop 1280 / mobile 360, light (dark for dialog and template step), en/ms/zh-CN (new-chat-shots.mjs)",
+      "note": "Built in parallel with partner-role (36, from google-drive) on the scheduled-tasks baseline (35); confirmed after partner-role, so latestConfirmed is new-chat and the next clone starts from this mock and copies in partner-role's files (its design.md lists them). Inherits scheduled-tasks' coverage gaps.",
+      "confirmedAt": "2026-11-06",
+      "gitRevision": "e7dc8cfacdb7a4066c02016e96fc645187668270",
+      "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd): \"The owner CONFIRMED the New chat mock on 2026-11-06, with one change\": the daily new-number limit for personal WhatsApp is an admin setting (default 20, 0 = no limit, ban warning, audited before/after, shared with MCP send_to_new_number); suggested answers stand (counts in memory; Business API only 5/hour per user; default country from the inbox's own number, +60 fallback; assigned to the starter, AI waits); limited agents (chat_scope 'chosen') never start a new chat."
+    },
     {
       "feature": "partner-role",
       "creationOrder": 36,
@@ -58,70 +73,6 @@
       "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
       "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md.",
       "note": "Built in parallel with google-drive from the same group-management baseline; the next clone should start from the latestConfirmed (google-drive) and copy in this folder's SQL Account files (src/admin/SqlAccountPage.tsx, src/mock/sqlAccount.ts, sql-account.ts, sql-account-shots.mjs and the changed shared files listed in design.md)."
-    },
-    {
-      "feature": "google-drive",
-      "creationOrder": 33,
-      "createdAt": "2026-11-05",
-      "design": "docs/features/google-drive/design.md",
-      "mock": "docs/features/google-drive/mock/index.html",
-      "status": "confirmed",
-      "baselineFeature": "group-management",
-      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
-      "coverage": "Full app clone of the confirmed group-management reference; Admin → Connectors gallery card (Google Drive beside Google Calendar), connector page Overview (about with Save / Find / Read, Google account card: not connected, stand-in consent with the drive.file wording, connected, sign-in expired, unreachable, Disconnect confirm; Your data), Settings per AI agent (not connected, no folder, stand-in folder picker and blocked window, folder chosen with Open in Google Drive, Save files switch off by default with the safety rules, Read files with Add files picker, file list with a no-text warning and remove, one line linking to the agent instructions, Save bar, paused banner), Mock only chat simulator (photo saved, PDF, question answered from a picked file, Safety-locked file, too large, paused hand-over), Activity (saved, read, skipped, failed), agent page Connectors row; state in the browser (localStorage); desktop 1280 / mobile 360 touch, light/dark (drive-shots.mjs)",
-      "note": "Inherits the coverage gaps of group-management (message-edit-delete, whatsapp-safety, group-agents and claims-template screens). Google Sheets has no mock page in the baseline (shipped without one): its gallery card stays the baseline coming-soon card. Revised 2026-11-05 on owner feedback: connector is use-case agnostic (no file types, folder schemes or example instructions; docs/connector-design.md).",
-      "confirmedAt": "2026-11-05",
-      "gitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
-      "confirmation": "Owner (Jazz) 2026-11-05: connector must be use-case agnostic (mock revised, docs/connector-design.md), then \"yes confirm drive, continue it, untill all working and create pr and merge and archive the session\" (relayed verbatim by the main session) = confirmed with Save (write) and Read (read), decisions 1-7 as proposed."
-    },
-    {
-      "feature": "template-store",
-      "creationOrder": 32,
-      "createdAt": "2026-11-04",
-      "design": "docs/features/template-store/design.md",
-      "mock": "docs/features/template-store/mock/index.html",
-      "status": "confirmed",
-      "confirmedAt": "2026-11-04",
-      "baselineFeature": "claims-template",
-      "baselineGitRevision": "658dbf347820d2e0d167e5e2c7dceff4fc312930",
-      "coverage": "Standalone preview cloned from the claims-template preview (build-preview.mjs from the real catalogs): template gallery with the list loaded (source line, a list template with Works with, a list-only category chip), built-in only, offline; New agent after applying a list template; en/ms/zh-CN, desktop 1280 / mobile 360, light/dark. Real-app screenshots in docs/features/template-store/screenshots.",
-      "note": "Owner asked for a remote template repository like the connector store (2026-11-04); publishing repo decided (connector repo). Confirmed 2026-11-04: owner (Jazz) wrote \"279 go ahead\" (list published, no retiring of built-in templates, no New badge). Standalone gallery preview, not a cumulative full-app clone: latestConfirmed stays on group-management."
-    },
-    {
-      "feature": "group-management",
-      "creationOrder": 31,
-      "createdAt": "2026-11-04",
-      "design": "docs/features/group-management/design.md",
-      "mock": "docs/features/group-management/mock/index.html",
-      "status": "confirmed",
-      "confirmedAt": "2026-11-04",
-      "baselineFeature": "in-app-feedback",
-      "baselineGitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
-      "coverage": "Full app clone of the confirmed in-app-feedback reference; Group info for EzyChat admins: description, Manage bar (Edit info, Add member, Invite link, Settings), join requests (approve/reject), Edit info dialog, Add member (ban-risk note, privacy refusal -> Send invite -> sent, not on WhatsApp), member actions (Make group admin, Remove as admin, Remove from group with confirm, creator protected), invite link (copy, reset with confirm), group settings (only admins send, only admins edit info, who can add, approve new members) with Recent changes, number not a group admin, WhatsApp offline, Business API connection (invite only, n of 8, remove only, no settings) via a Mock only switch, agent read-only; mock-only routes /api/mock/group-admin*; desktop 1280 / mobile 360 touch, light/dark (group-admin-shots.mjs)",
-      "note": "Inherits the coverage gaps of in-app-feedback (message-edit-delete, whatsapp-safety, group-agents and claims-template screens still owed). Baseline drift: the feedback stand-in route now yields to the shipped core route. Parallel with claims-template (30), which does not touch Group info.",
-      "confirmation": "Owner (Jazz) wrote 2026-11-04 \"go with your suggestion, run multiple subagent to implement independent part, only merge to main and archive it, we will release daily.\" = every open question as proposed (admins only, Send invite button, 20/day + 6/hour adds, settings + join requests in v1, Business API via core actions, EzyChat-made changes only, ships in Lite).",
-      "archived": {
-        "folderRemovedAt": "2026-11-06",
-        "lastRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
-        "reason": "retention: sixth feature folder (partner-role merged beside scheduled-tasks)"
-      }
-    },
-    {
-      "feature": "claims-template",
-      "creationOrder": 30,
-      "createdAt": "2026-11-04",
-      "design": "docs/features/claims-template/design.md",
-      "mock": "docs/features/claims-template/mock/index.html",
-      "status": "proposal",
-      "baselineFeature": "group-agents",
-      "baselineGitRevision": "c589b88a4479472c36aea90eea434e5867ceec6a",
-      "coverage": "Standalone preview built from the real catalogs (build-preview.mjs): template gallery with the Team and operations category and the Claims agent card, a new agent after Apply (name, Custom type, role, hand-over rules, Claim rules note, group-agent note), after Create agent (Direct chats off, Groups on, Claim rules item), an existing Lite agent (finish-steps note); en/ms/zh-CN, desktop 1280 / mobile 360, light/dark. The cumulative full-app clone is still owed (the latestConfirmed mock predates the template gallery).",
-      "note": "Owner asked for the template on 2026-11-04 and said to go ahead with implementation; the mock is recorded for review, not yet confirmed.",
-      "archived": {
-        "folderRemovedAt": "2026-11-06",
-        "lastRevision": "c0775617686625a9878aec06341cdfec66c03cea",
-        "reason": "retention: sixth feature folder (scheduled-tasks, partner-role)"
-      }
     },
     {
       "feature": "group-agents",
@@ -597,6 +548,22 @@
       }
     },
     {
+      "feature": "app-baseline",
+      "creationOrder": 2,
+      "createdAt": "2026-10-14",
+      "design": "docs/features/app-baseline/design.md",
+      "mock": "docs/features/app-baseline/mock/index.html",
+      "status": "unconfirmed",
+      "baselineFeature": null,
+      "baselineAppRevision": "643a724b756a127361ea8ac61037f8dd87c628ff",
+      "coverage": "Full existing frontend: 169 original runtime files, all routes; provider side effects simulated",
+      "archived": {
+        "folderRemovedAt": "2026-10-22",
+        "lastRevision": "610ca5e0ac2c624d3399eb187cecac5f65f010e4",
+        "reason": "retention: sixth feature folder (custom-agents)"
+      }
+    },
+    {
       "feature": "customer-enrichment",
       "creationOrder": 1,
       "createdAt": "2026-10-14",
@@ -612,22 +579,62 @@
         "lastRevision": "6a3ccfc312525007dd22aa771f75ca3c6fb67071",
         "reason": "retention: sixth feature folder (multi-inbox)"
       }
+    }
+  ],
+  "archived": [
+    {
+      "feature": "claims-template",
+      "creationOrder": 30,
+      "createdAt": "2026-11-04",
+      "design": "docs/features/claims-template/design.md",
+      "mock": "docs/features/claims-template/mock/index.html",
+      "status": "proposal",
+      "baselineFeature": "group-agents",
+      "baselineGitRevision": "c589b88a4479472c36aea90eea434e5867ceec6a",
+      "coverage": "Standalone preview built from the real catalogs (build-preview.mjs): template gallery with the Team and operations category and the Claims agent card, a new agent after Apply (name, Custom type, role, hand-over rules, Claim rules note, group-agent note), after Create agent (Direct chats off, Groups on, Claim rules item), an existing Lite agent (finish-steps note); en/ms/zh-CN, desktop 1280 / mobile 360, light/dark. The cumulative full-app clone is still owed (the latestConfirmed mock predates the template gallery).",
+      "note": "Owner asked for the template on 2026-11-04 and said to go ahead with implementation; the mock is recorded for review, not yet confirmed.",
+      "archived": true,
+      "archivedAt": "2026-11-06",
+      "archivedRevision": "171f3aa",
+      "archivedBy": "five-folder retention (scheduled-tasks / new-chat)"
     },
     {
-      "feature": "app-baseline",
-      "creationOrder": 2,
-      "createdAt": "2026-10-14",
-      "design": "docs/features/app-baseline/design.md",
-      "mock": "docs/features/app-baseline/mock/index.html",
-      "status": "unconfirmed",
-      "baselineFeature": null,
-      "baselineAppRevision": "643a724b756a127361ea8ac61037f8dd87c628ff",
-      "coverage": "Full existing frontend: 169 original runtime files, all routes; provider side effects simulated",
-      "archived": {
-        "folderRemovedAt": "2026-10-22",
-        "lastRevision": "610ca5e0ac2c624d3399eb187cecac5f65f010e4",
-        "reason": "retention: sixth feature folder (custom-agents)"
-      }
+      "feature": "group-management",
+      "creationOrder": 31,
+      "createdAt": "2026-11-04",
+      "design": "docs/features/group-management/design.md",
+      "mock": "docs/features/group-management/mock/index.html",
+      "status": "confirmed",
+      "confirmedAt": "2026-11-04",
+      "baselineFeature": "in-app-feedback",
+      "baselineGitRevision": "f3eaf7bcf7792fb4e058103b9bd9f93e9fcc4ed6",
+      "coverage": "Full app clone of the confirmed in-app-feedback reference; Group info for EzyChat admins: description, Manage bar (Edit info, Add member, Invite link, Settings), join requests (approve/reject), Edit info dialog, Add member (ban-risk note, privacy refusal -> Send invite -> sent, not on WhatsApp), member actions (Make group admin, Remove as admin, Remove from group with confirm, creator protected), invite link (copy, reset with confirm), group settings (only admins send, only admins edit info, who can add, approve new members) with Recent changes, number not a group admin, WhatsApp offline, Business API connection (invite only, n of 8, remove only, no settings) via a Mock only switch, agent read-only; mock-only routes /api/mock/group-admin*; desktop 1280 / mobile 360 touch, light/dark (group-admin-shots.mjs)",
+      "note": "Inherits the coverage gaps of in-app-feedback (message-edit-delete, whatsapp-safety, group-agents and claims-template screens still owed). Baseline drift: the feedback stand-in route now yields to the shipped core route. Parallel with claims-template (30), which does not touch Group info.",
+      "confirmation": "Owner (Jazz) wrote 2026-11-04 \"go with your suggestion, run multiple subagent to implement independent part, only merge to main and archive it, we will release daily.\" = every open question as proposed (admins only, Send invite button, 20/day + 6/hour adds, settings + join requests in v1, Business API via core actions, EzyChat-made changes only, ships in Lite).",
+      "archived": true,
+      "gitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
+      "archivedAt": "2026-11-06",
+      "archivedRevision": "afc97fd",
+      "archivedBy": "five-folder retention (scheduled-tasks / new-chat)"
+    },
+    {
+      "feature": "google-drive",
+      "creationOrder": 33,
+      "createdAt": "2026-11-05",
+      "design": "docs/features/google-drive/design.md",
+      "mock": "docs/features/google-drive/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "group-management",
+      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
+      "coverage": "Full app clone of the confirmed group-management reference; Admin → Connectors gallery card (Google Drive beside Google Calendar), connector page Overview (about with Save / Find / Read, Google account card: not connected, stand-in consent with the drive.file wording, connected, sign-in expired, unreachable, Disconnect confirm; Your data), Settings per AI agent (not connected, no folder, stand-in folder picker and blocked window, folder chosen with Open in Google Drive, Save files switch off by default with the safety rules, Read files with Add files picker, file list with a no-text warning and remove, one line linking to the agent instructions, Save bar, paused banner), Mock only chat simulator (photo saved, PDF, question answered from a picked file, Safety-locked file, too large, paused hand-over), Activity (saved, read, skipped, failed), agent page Connectors row; state in the browser (localStorage); desktop 1280 / mobile 360 touch, light/dark (drive-shots.mjs)",
+      "note": "Inherits the coverage gaps of group-management (message-edit-delete, whatsapp-safety, group-agents and claims-template screens). Google Sheets has no mock page in the baseline (shipped without one): its gallery card stays the baseline coming-soon card. Revised 2026-11-05 on owner feedback: connector is use-case agnostic (no file types, folder schemes or example instructions; docs/connector-design.md).",
+      "confirmedAt": "2026-11-05",
+      "gitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
+      "confirmation": "Owner (Jazz) 2026-11-05: connector must be use-case agnostic (mock revised, docs/connector-design.md), then \"yes confirm drive, continue it, untill all working and create pr and merge and archive the session\" (relayed verbatim by the main session) = confirmed with Save (write) and Read (read), decisions 1-7 as proposed.",
+      "archived": true,
+      "archivedAt": "2026-11-06",
+      "archivedRevision": "3a287f5",
+      "archivedBy": "new-chat (five-folder retention; template-store kept as tooling)"
     }
   ]
 }
