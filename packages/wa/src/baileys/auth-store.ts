@@ -1,5 +1,7 @@
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { useMultiFileAuthState, type AuthenticationState } from 'baileys';
+import type { WaAuthStorage } from '../types.js';
+import { createRemoteAuthStore } from './remote-auth-store.js';
 
 export interface AuthStore {
   readonly dir: string;
@@ -11,7 +13,8 @@ export interface AuthStore {
   backup(): Promise<string>;
 }
 
-export function createAuthStore(dir: string): AuthStore {
+export function createAuthStore(dir: string, storage?: WaAuthStorage): AuthStore {
+  if (storage) return createRemoteAuthStore(dir, storage);
   return {
     dir,
     async load() {

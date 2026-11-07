@@ -1919,6 +1919,8 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
 
 ## Cloudflare and sharing
 
+- A container auth backend must persist every credential and Signal-key batch before resolving, keep each inbox isolated, and fail closed on storage errors; filesystem snapshots cannot preserve writes made after the snapshot.
+
 - Slow remote access through the tunnel: measure before changing code. In the browser on the tunnel host, read
   `performance.getEntriesByType('resource')` (count, `transferSize`, duration per kind) and `/cdn-cgi/trace`
   (`colo` = where the visitor enters); on the PC read cloudflared's `/metrics` on `127.0.0.1:20241…`

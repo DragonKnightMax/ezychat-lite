@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.81] - 2026-11-08
+
+### Added
+
+- WhatsApp adapters accept an isolated durable authentication storage backend, so hosted connections can restore credentials and Signal keys without a local auth directory. The default desktop filesystem backend is unchanged.
+
 ## [0.1.80] - 2026-11-08
 
 ### Added

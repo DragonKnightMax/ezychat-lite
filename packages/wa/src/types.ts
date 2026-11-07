@@ -579,9 +579,21 @@ export interface WaAdapter {
 
 export interface WaAdapterOptions {
   authDir: string;
+  /** Optional durable auth backend. The caller supplies one isolated store per inbox. */
+  authStorage?: WaAuthStorage;
   /** days of history to import; a getter is re-read on every (re)connect / history batch */
   historyDays: number | (() => number);
   logger?: Logger;
+}
+
+/** Serialized auth records; implementations must encrypt them and commit each set atomically. */
+export interface WaAuthStorage {
+  get(keys: readonly string[]): Promise<Readonly<Record<string, string | null>>>;
+  /** Null deletes a record. Resolve only after the complete batch is durable. */
+  set(changes: Readonly<Record<string, string | null>>): Promise<void>;
+  clear(): Promise<void>;
+  /** Keep a durable backup and return its opaque reference, never its contents. */
+  backup(): Promise<string>;
 }
 
 export class WaUnavailableError extends Error {

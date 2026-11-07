@@ -141,6 +141,39 @@ describe('linked account identity', () => {
 });
 
 describe('createBaileysAdapter (offline smoke)', () => {
+  it('uses the public durable auth storage option for connect, credential updates and logout', async () => {
+    const records = new Map<string, string>();
+    const clear = vi.fn(async () => {
+      records.clear();
+    });
+    const ev = new EventEmitter();
+    socketFactory.mockReturnValueOnce({ ev, end: vi.fn(), logout: vi.fn(async () => {}) });
+    const a = createBaileysAdapter({
+      authDir: 'remote-scope',
+      historyDays: 0,
+      authStorage: {
+        get: async (keys) => Object.fromEntries(keys.map((key) => [key, records.get(key) ?? null])),
+        set: async (changes) => {
+          for (const [key, value] of Object.entries(changes)) {
+            if (value === null) records.delete(key);
+            else records.set(key, value);
+          }
+        },
+        clear,
+        backup: async () => 'backup-ref',
+      },
+    });
+    await a.connect();
+    expect(records.has('creds')).toBe(true);
+    const options = socketFactory.mock.calls.at(-1)![0];
+    options.auth.creds.registered = true;
+    ev.emit('creds.update', {});
+    await vi.waitFor(() => expect(JSON.parse(records.get('creds')!).registered).toBe(true));
+    await a.logout();
+    expect(clear).toHaveBeenCalledOnce();
+    expect(records.size).toBe(0);
+  });
+
   it('starts disconnected and refuses to send without connecting', async () => {
     const a = createBaileysAdapter({ authDir: 'unused-auth-dir', historyDays: 7 });
     expect(a.status.state).toBe('disconnected');

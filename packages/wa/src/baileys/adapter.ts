@@ -222,7 +222,7 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
 
   constructor(opts: WaAdapterOptions) {
     super();
-    this.auth = createAuthStore(opts.authDir);
+    this.auth = createAuthStore(opts.authDir, opts.authStorage);
     this.historyDaysOpt = opts.historyDays;
     this.logger = opts.logger ?? pino({ level: 'silent' });
   }
