@@ -6,15 +6,30 @@
     "olderReferences": "git-history"
   },
   "latestConfirmed": {
-    "feature": "new-chat",
-    "gitRevision": "e7dc8cfacdb7a4066c02016e96fc645187668270",
-    "mock": "docs/features/new-chat/mock/index.html",
-    "design": "docs/features/new-chat/design.md",
-    "confirmedAt": "2026-11-06",
-    "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd): \"The owner CONFIRMED the New chat mock on 2026-11-06, with one change\": the daily new-number limit for personal WhatsApp is an admin setting (default 20, 0 = no limit, ban warning, audited before/after, shared with MCP send_to_new_number); suggested answers stand (counts in memory; Business API only 5/hour per user; default country from the inbox's own number, +60 fallback; assigned to the starter, AI waits); limited agents (chat_scope 'chosen') never start a new chat.",
-    "note": "Clone of scheduled-tasks (google-drive + sql-accounting + scheduled tasks) plus New chat. partner-role (36) was confirmed in parallel from google-drive: the next clone copies in its files (docs/features/partner-role/design.md lists them). Inherits scheduled-tasks' coverage gaps."
+    "feature": "forward-message",
+    "gitRevision": "2549b7afac813d8c2c957d15d653b2a150325866",
+    "mock": "docs/features/forward-message/mock/index.html",
+    "design": "docs/features/forward-message/design.md",
+    "confirmedAt": "2026-11-07",
+    "confirmation": "Owner (Jazz) confirmed the Forward mock 2026-11-07 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd) with all proposed answers: offline refuse; forwarding claims the chat like a reply; 5 chats per forward and 30 forwards a minute per user; no WhatsApp Forwarded mark on Business API copies; [forwarded] in the AI conversation; composer upload limit 64 -> 100 MB for every type, checked per number (Business API video over 16 MB offered as a file); linked-phone video limit 64 MB until measured.",
+    "note": "Clone of new-chat (scheduled-tasks + google-drive + sql-accounting + New chat) with partner-role (limited chat access) merged in, plus Forward (large files, across numbers). Inherits new-chat's coverage gaps (message edit/delete and Safety-on-message screens)."
   },
   "proposals": [
+    {
+      "feature": "forward-message",
+      "creationOrder": 38,
+      "createdAt": "2026-11-07",
+      "design": "docs/features/forward-message/design.md",
+      "mock": "docs/features/forward-message/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "new-chat",
+      "baselineGitRevision": "e7dc8cfacdb7a4066c02016e96fc645187668270",
+      "coverage": "Full app clone of new-chat with partner-role (846a09cc) merged in three ways against google-drive 442b6317; Forward on the message menu (desktop ⋮ menu, touch press-and-hold bar, disabled when Safety locks the file), dialog: what is forwarded, search, chats and groups by inbox access / chosen chats, two inboxes picked with the own-number note, 5 of 5, Business API chat with the window closed (row disabled), Safety locked, WhatsApp offline, forwarded many times = one chat, sent toast (n chats; one chat with Open chat); Forwarded / Forwarded many times label on copies and on customers' forwarded messages; Activity row; limited agent (Ravi) list; Lite; desktop 1280 / mobile 360 touch, light (dark for the dialog and label), en/ms/zh-CN ; large files (owner case, a 70 MB video from Catering to a Business API chat and a group on another number: size, large-file note, Send as Video/File with Video disabled above the chat's limit, 120 MB greyed out for the Business API chat, Sending 70 MB… in the target chat, upload failed with Retry) (forward-shots.mjs, 56 shots, 0 page errors, 0 overflow)",
+      "note": "Inherits new-chat's coverage gaps (the mock web source predates message edit/delete and Safety on messages: a minimal ⋮ menu and a Mock only Safety switch stand in). Stand-in routes /api/mock/forward*. Prunes sql-accounting (34). partner-role's files are already merged in, so the next clone starts from this mock alone.",
+      "confirmedAt": "2026-11-07",
+      "gitRevision": "2549b7afac813d8c2c957d15d653b2a150325866",
+      "confirmation": "Owner (Jazz) confirmed the Forward mock 2026-11-07 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd) with all proposed answers: offline refuse; forwarding claims the chat like a reply; 5 chats per forward and 30 forwards a minute per user; no WhatsApp Forwarded mark on Business API copies; [forwarded] in the AI conversation; composer upload limit 64 -> 100 MB for every type, checked per number (Business API video over 16 MB offered as a file); linked-phone video limit 64 MB until measured."
+    },
     {
       "feature": "new-chat",
       "creationOrder": 37,
@@ -59,20 +74,6 @@
       "confirmedAt": "2026-11-06",
       "gitRevision": "426c2eb766f24e520fd4f59b66ab837c11296045",
       "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd) \"with the proposed answers\": 10 tasks per agent; skipped/failed runs in History only (no push); Business API outside the 24 h window skipped for now (template later); add_sheet_row allowed."
-    },
-    {
-      "feature": "sql-accounting",
-      "creationOrder": 34,
-      "createdAt": "2026-11-05",
-      "design": "docs/features/sql-accounting/design.md",
-      "mock": "docs/features/sql-accounting/mock/index.html",
-      "status": "confirmed",
-      "baselineFeature": "group-management",
-      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
-      "confirmedAt": "2026-11-05",
-      "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
-      "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md.",
-      "note": "Built in parallel with google-drive from the same group-management baseline; the next clone should start from the latestConfirmed (google-drive) and copy in this folder's SQL Account files (src/admin/SqlAccountPage.tsx, src/mock/sqlAccount.ts, sql-account.ts, sql-account-shots.mjs and the changed shared files listed in design.md)."
     },
     {
       "feature": "group-agents",
@@ -635,6 +636,24 @@
       "archivedAt": "2026-11-06",
       "archivedRevision": "3a287f5",
       "archivedBy": "new-chat (five-folder retention; template-store kept as tooling)"
+    },
+    {
+      "feature": "sql-accounting",
+      "creationOrder": 34,
+      "createdAt": "2026-11-05",
+      "design": "docs/features/sql-accounting/design.md",
+      "mock": "docs/features/sql-accounting/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "group-management",
+      "baselineGitRevision": "26116d59b3b9ca31b202163dc599cb96b1bf6f5e",
+      "confirmedAt": "2026-11-05",
+      "gitRevision": "e33aabbd3db038dabb0eb8375c96363f3a157d3b",
+      "confirmation": "Owner (Jazz) wrote 2026-11-05 \"3. Yes,can u research it\" (relayed by the main session): design as proposed, open questions researched and recorded in design.md.",
+      "note": "Built in parallel with google-drive from the same group-management baseline; the next clone should start from the latestConfirmed (google-drive) and copy in this folder's SQL Account files (src/admin/SqlAccountPage.tsx, src/mock/sqlAccount.ts, sql-account.ts, sql-account-shots.mjs and the changed shared files listed in design.md).",
+      "archived": true,
+      "archivedAt": "2026-11-07",
+      "archivedRevision": "2bb1c87",
+      "archivedBy": "forward-message (five-folder retention; template-store kept as tooling)"
     }
   ]
 }
