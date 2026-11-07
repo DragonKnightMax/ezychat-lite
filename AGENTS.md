@@ -709,7 +709,18 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
 
 ## UI rules (apps/web)
 
-See `docs/design-system.md` ("Calm Desk"). Primitives are shadcn/ui in
+**One design system for all design work** (owner rule): `docs/design-system.md` ("Calm Desk") is the single
+source of design truth for EzyChat Lite and EzyChat Enterprise. It covers production screens (web, desktop
+shell, status page), feature HTML mocks, extension screens, screenshots and generated images of the app.
+
+- Read it before any design work. A screen review checks against it.
+- A new token, component, variant or pattern is added to it in the same PR that first uses it, with a do/don't
+  and a link to the mock screen that shows it. Never invent a one-off style in feature code or a mock.
+- A change that contradicts it updates it first, and needs the owner's confirmation like any mock.
+- Enterprise does not keep its own design system. It follows this file through the published `@ezychat/web`
+  components, and asks for a missing pattern with a Lite PR here first.
+
+Primitives are shadcn/ui in
 `apps/web/src/components/ui`; app composites in `components/app`. Feature code must not use raw
 `<button>`/`<dialog>`/`<select>` or Tailwind palette/hex colours (ESLint enforces); use token classes
 (`bg-primary`, `text-muted-foreground`). Every screen must work at 360px without horizontal scroll.
