@@ -10,6 +10,9 @@ into AGENTS.md.
 
 ## Working method
 
+- A change that touches many places (8+ files or 400+ lines, docs and lockfiles excluded; the `review-nudge` hook
+  says so) gets `/code-review` before its PR, its findings fixed or reported in the PR; merging still waits for the
+  owner's explicit request.
 - Do not edit, rename or check out files while a full `npm test` / `test:coverage` run is in progress: tests that
   migrate a data dir mid-run see two schema versions ("duplicate column") and the result proves nothing. Run it again
   on the final tree before reporting it.
