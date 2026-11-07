@@ -1161,6 +1161,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## WhatsApp / Baileys
 
+- A bounded-media API is an explicit optional hook, counts decrypted bytes before retention, and tests cancellation through a real local HTTP stream: Baileys getHttpStream drops AbortSignal, and destroying its decrypting Transform alone does not cancel the upstream request.
+
 - `WaAdapterEvents` has no "profile photo changed" event: a cache of WhatsApp photos (`avatars/store.ts`) refreshes
   by age (24 h) and keeps the last good photo when a refresh fails. Serve the bytes yourself with a version in the
   URL (`?v=<hash>`, immutable) instead of a 302 to WhatsApp's CDN: over a slow tunnel each redirect was a ~0.7 s

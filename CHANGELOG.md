@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Public WhatsApp adapters can opt into bounded media downloads with a decrypted-byte limit and cancellation signal; existing unbounded methods keep their behavior.
+
 - **Forward a message.** **⋮ → Forward** on a message (press and hold on a phone) sends a copy to up to 5 chats or groups
   you can open, shown as "Forwarded" on WhatsApp. It works across your WhatsApp numbers, re-uses the stored file (no
   re-upload from your computer) and shows "Forwarded" / "Forwarded many times" in the chat, also on forwarded messages

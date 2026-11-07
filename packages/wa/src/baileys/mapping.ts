@@ -1,6 +1,7 @@
 import { downloadMediaMessage, normalizeMessageContent, type proto, type WAMessage } from 'baileys';
 import type { MessageType } from '@ezychat/shared';
-import type { WaIncomingMessage, WaReaction } from '../types.js';
+import type { WaIncomingMessage, WaMediaDownloadOptions, WaReaction } from '../types.js';
+import { downloadBoundedMessage } from './bounded-download.js';
 import { normalizeContactJid } from './contact-aliases.js';
 
 export type JidKind = 'dm' | 'group' | 'other';
@@ -111,6 +112,10 @@ export function mapStoredReactions(msg: proto.IWebMessageInfo): WaReaction[] {
 
 /** Optional hook for media downloads that need a live socket (reupload of expired media). */
 export type MediaDownloader = (msg: WAMessage) => Promise<Buffer>;
+export type BoundedMediaDownloader = (
+  msg: WAMessage,
+  options: WaMediaDownloadOptions,
+) => Promise<Buffer>;
 
 const defaultDownloader: MediaDownloader = async (msg) =>
   (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;
@@ -127,6 +132,9 @@ interface ContextCarrier {
 export function mapWAMessage(
   msg: proto.IWebMessageInfo,
   download: MediaDownloader = defaultDownloader,
+  downloadBounded: BoundedMediaDownloader | undefined = download === defaultDownloader
+    ? downloadBoundedMessage
+    : undefined,
 ): WaIncomingMessage | null {
   const key = msg.key;
   const chatJid = key?.remoteJid;
@@ -226,7 +234,17 @@ export function mapWAMessage(
     quotedId,
     ...(forwardingScore ? { forwardingScore } : {}),
     timestamp,
-    media: media ? { ...media, download: () => download(raw) } : null,
+    media: media
+      ? {
+          ...media,
+          download: () => download(raw),
+          ...(downloadBounded
+            ? {
+                downloadBounded: (options: WaMediaDownloadOptions) => downloadBounded(raw, options),
+              }
+            : {}),
+        }
+      : null,
   };
 }
 
