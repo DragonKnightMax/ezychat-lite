@@ -16,5 +16,7 @@ loads the same identity and Signal keys. WhatsApp can still revoke an identity.
 
 Offline tests verify restoration, inbox isolation, protobuf values, deletion, backup,
 logout, the public adapter option, credential updates, and persistence failures.
-No test contacts WhatsApp or sends a message. This backend remains untested against
-real WhatsApp until the cloud pilot is linked with the owner's test number.
+An isolated local packed-package check received a real WhatsApp QR and persisted
+encrypted credentials through a Miniflare Durable Object. It did not pair a phone or
+send messages. Linked-session restart/reconnection remains untested against real
+WhatsApp until the cloud pilot is linked with the owner's test number.

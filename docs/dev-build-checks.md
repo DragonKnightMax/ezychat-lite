@@ -29,6 +29,24 @@ Read this log before testing a feature, and add a row after every Dev Build chec
 
 ## Log
 
+### Cloud authentication storage: partial provider check
+
+2026-11-07, PR #337, checked code `b446a87` (merged as `ffd8525`). Built and packed
+`@ezychat/shared` and `@ezychat/wa` locally as unreleased 0.1.81 artifacts. Installed
+them in the ignored EzyChat Cloud smoke workspace. The real public adapter used the
+CloudflareStorage encryption backend with a local Miniflare SQLite Durable Object.
+It contacted WhatsApp and received a QR code. The test verified that encrypted `creds`
+were durably stored, then disconnected. QR values and credentials were not logged.
+No phone was paired, no real app data was used, and no messages were sent.
+
+This is a partial provider check, not qualification of linked-session recovery.
+Real phone pairing, restart/reconnection, Signal-key updates and inbound media restoration
+remain untested. The end-to-end and full Dev Build workbook stages remain incomplete.
+The late release review remains risk:human (40). The feature PR was merged before the
+required owner approval/review; package and desktop release workflows were cancelled.
+The v0.1.81 tag exists, but no package publication or desktop release is claimed.
+The owner must approve any subsequent release. Do not use this entry as that approval.
+
 MCP `send_file` (branch `feat/mcp-send-file`), owner's PC, `D:\dev\test-env\lite\start-sheets-google.ps1` (worktree
 `D:\dev\wm-pr192`, port 7491, kept test data, fake WhatsApp); AI assistant access turned on for the run with a temporary
 "Can send" token, both removed and access turned off again afterwards; calls to the real `/mcp` endpoint from the
