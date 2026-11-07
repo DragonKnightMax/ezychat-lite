@@ -245,3 +245,21 @@ describe('Conversation file drop', () => {
     expect(uploads).toHaveLength(0);
   });
 });
+
+describe('Conversation forward', () => {
+  it('⋮ → Forward opens the dialog for that message; Cancel closes it', async () => {
+    const proto = Element.prototype as unknown as Record<string, unknown>;
+    proto.hasPointerCapture ??= () => false;
+    proto.setPointerCapture ??= () => {};
+    proto.releasePointerCapture ??= () => {};
+    setup(chatAt(Date.now() - HOUR), { inboxes: null });
+    await openConversation();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('message-more'));
+    await user.click(await screen.findByTestId('message-forward'));
+    const dialog = await screen.findByRole('dialog', { name: 'Forward message' });
+    expect(within(dialog).getByTestId('forward-preview').textContent).toBe('Hello');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+});

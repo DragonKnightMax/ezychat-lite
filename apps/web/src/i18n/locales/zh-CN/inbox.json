@@ -184,7 +184,8 @@
       "clean": "没有错误",
       "unavailable": "语法检查暂不可用",
       "unavailableHint": "AI 连接需要处理。拼写仍会检查，消息也可以正常发送。"
-    }
+    },
+    "sentAsFile": "{{name}} 对这个号码来说太大，无法作为视频发送，将以文件形式发送，保持原始画质。"
   },
   "quickReplies": {
     "title": "快捷回复",
@@ -404,7 +405,12 @@
       "noText": "没有文字（仅媒体）"
     },
     "scheduled": "定时",
-    "scheduledNamed": "定时 · {{name}}"
+    "scheduledNamed": "定时 · {{name}}",
+    "uploadErrors": {
+      "too_large": "文件太大，无法发送。",
+      "too_large_as_video": "文件太大，无法通过这个 WhatsApp 号码以视频形式发送。",
+      "too_large_for_whatsapp": "对这个 WhatsApp 号码来说文件太大。"
+    }
   },
   "media": {
     "types": {
@@ -1112,5 +1118,92 @@
       }
     },
     "usageNoLimit": "{{inbox}} 今天已发起 {{used}} 个新对话（无每日上限）。"
+  },
+  "forward": {
+    "action": "转发",
+    "lockedReason": "已被 WhatsApp 安全功能锁定",
+    "forwarded": "已转发",
+    "forwardedMany": "已多次转发",
+    "title": "转发消息",
+    "description": "最多发送副本到 {{max}} 个聊天或群组。在 WhatsApp 上会显示为“已转发”。",
+    "manyTimesNote": "这条消息已被多次转发。WhatsApp 只允许每次转发到一个聊天。",
+    "count": "已选 {{count}} / {{max}}",
+    "full": "每次最多可转发到 {{max}} 个聊天。",
+    "remove": "移除 {{name}}",
+    "search": "搜索聊天和群组",
+    "listLabel": "可以转发到的聊天",
+    "loading": "正在加载聊天…",
+    "emptyTitle": "找不到聊天",
+    "emptyQuery": "试试其他名字或号码。要给新号码发消息，请使用“新聊天”。",
+    "emptyNone": "你还没有可以转发到的聊天。",
+    "windowClosedRow": "回复窗口已关闭：请在该聊天中发送模板",
+    "otherInbox": "每个聊天会从它自己的 WhatsApp 号码收到这条消息。",
+    "cancel": "取消",
+    "send": "转发",
+    "sendCount_other": "转发到 {{count}} 个聊天",
+    "sending": "正在转发…",
+    "sentOne": "已转发给 {{name}}",
+    "sentMany_other": "已转发到 {{count}} 个聊天",
+    "openChat": "打开聊天",
+    "problems": {
+      "wa_disconnected": {
+        "title": "WhatsApp 未连接",
+        "body": "{{inbox}} 恢复在线后再转发。"
+      },
+      "window_closed": {
+        "title": "回复窗口已关闭",
+        "body": "你选的一个聊天在过去 24 小时内没有发消息。请移除它，或在该聊天中发送模板。"
+      },
+      "safety_locked": {
+        "title": "此文件已被锁定",
+        "body": "WhatsApp 安全功能发现此文件有危险，不能转发。"
+      },
+      "rate_limited": {
+        "title": "转发太多",
+        "body": "你在过去一分钟内转发了很多消息。请稍等再试。"
+      },
+      "media_unavailable": {
+        "title": "文件不可用",
+        "body": "无法从 WhatsApp 下载此文件，所以不能转发。"
+      },
+      "message_deleted": {
+        "title": "消息已删除",
+        "body": "这条消息已被删除，所以不能转发。"
+      },
+      "other": {
+        "title": "未转发",
+        "body": "出了点问题，什么都没有发送。请再试一次。"
+      },
+      "too_large_as_video": {
+        "title": "视频太大",
+        "body": "请改为以文件形式发送。文件保持原始画质。"
+      },
+      "too_large_for_whatsapp": {
+        "title": "超出 WhatsApp 的上限",
+        "body": "你选的一个聊天所在号码不能接收这么大的文件。请移除它后再试。"
+      },
+      "message_not_sent": {
+        "title": "尚未发送",
+        "body": "只有 WhatsApp 已收到的消息才能转发。请等它发送后再试。"
+      },
+      "inbox_removed": {
+        "title": "号码已移除",
+        "body": "你选的一个聊天所在的 WhatsApp 号码已被移除。请移除它后再试。"
+      },
+      "forward_many_times": {
+        "title": "每次一个聊天",
+        "body": "这条消息已被多次转发。请只选一个聊天。"
+      }
+    },
+    "largeNote": "大文件（{{size}}）。每个副本都会重新上传到 WhatsApp，可能需要几分钟。",
+    "sendAs": "发送方式",
+    "asVideo": "视频",
+    "asFile": "文件",
+    "sendAsHint": "视频可在聊天中播放。文件保持原始画质，客户下载后观看。",
+    "videoTooBig": "这个视频（{{size}}）太大，无法以视频形式发送到你选的聊天（上限 {{max}}）。将以文件形式发送，保持原始画质。",
+    "tooBigRow": "对这个号码来说太大：文件上限 {{max}}",
+    "sendingLarge": "正在发送 {{size}} 到 WhatsApp…",
+    "thisNumber": "这个 WhatsApp 号码",
+    "loadFailed": "无法加载聊天。请关闭后再试。"
   }
 }

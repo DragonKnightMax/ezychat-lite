@@ -167,6 +167,89 @@ describe('the ⋮ menu of a message', () => {
   });
 });
 
+describe('Forward in the ⋮ menu', () => {
+  const inbound: Message = { ...ours, id: 'IN1', fromMe: false, sentByUserId: null };
+  const high = {
+    itemId: 1,
+    level: 'high' as const,
+    rules: [],
+    aiReason: null,
+    locked: true,
+    deletedBy: null,
+    status: 'open' as const,
+  };
+
+  it('comes first, also on a message nobody may change, and passes the message back', async () => {
+    const onForward = vi.fn();
+    const c = changes(undefined, { onForward });
+    renderBubble(ours, { changes: c });
+    await userEvent.click(screen.getByTestId('message-more'));
+    const items = await screen.findAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual(['Forward', 'Edit', 'Delete']);
+    await userEvent.click(items[0]!);
+    expect(onForward).toHaveBeenCalledWith(ours);
+    cleanup();
+    renderBubble(inbound, { changes: changes(undefined, { onForward }) });
+    await userEvent.click(screen.getByTestId('message-more'));
+    expect(
+      (await screen.findAllByRole('menuitem')).map((i) => i.getAttribute('data-testid')),
+    ).toEqual(['message-forward']);
+  });
+
+  it('WhatsApp offline does not touch Forward (each chosen chat has its own number)', async () => {
+    renderBubble(inbound, {
+      changes: changes(undefined, { onForward: vi.fn(), disabledReason: 'Not connected.' }),
+    });
+    await userEvent.click(screen.getByTestId('message-more'));
+    const item = await screen.findByTestId('message-forward');
+    expect(item.getAttribute('aria-disabled')).toBeNull();
+    expect(screen.queryByText('Not connected.')).toBeNull();
+  });
+
+  it('is disabled with the reason for a file WhatsApp Safety rated High', async () => {
+    const onForward = vi.fn();
+    renderBubble(
+      { ...inbound, type: 'document', body: null, mediaName: 'x.zip', safety: high },
+      { changes: changes(undefined, { onForward }) },
+    );
+    await userEvent.click(screen.getByTestId('message-more'));
+    const item = await screen.findByTestId('message-forward');
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.textContent).toContain('Locked by WhatsApp Safety');
+    // …and the press-and-hold bar has no Forward either.
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByTestId('reaction-picker-button'));
+    await screen.findByTestId('reaction-picker');
+    expect(screen.queryByTestId('touch-forward')).toBeNull();
+  });
+
+  it('no ⋮ for a message WhatsApp does not have yet, a deleted one or a system line', () => {
+    const c = changes({ id: 9, role: 'agent' }, { onForward: vi.fn() });
+    renderBubble({ ...ours, id: 'local-1', status: 'pending', sentByUserId: 1 }, { changes: c });
+    renderBubble({ ...ours, id: 'P1', status: 'pending', sentByUserId: 1 }, { changes: c });
+    renderBubble({ ...ours, id: 'F1', status: 'failed', sentByUserId: 1 }, { changes: c });
+    renderBubble({ ...inbound, deletedAt: NOW, deletedBy: 'sender' }, { changes: c });
+    renderBubble({ ...inbound, hidden: true }, { changes: c });
+    renderBubble({ ...inbound, type: 'system' }, { changes: c });
+    expect(screen.queryByTestId('message-more')).toBeNull();
+  });
+
+  it('on touch, Forward sits under Reply in the press-and-hold bar', async () => {
+    const onForward = vi.fn();
+    renderBubble(inbound, { changes: changes(undefined, { onForward }) });
+    await userEvent.click(screen.getByTestId('reaction-picker-button'));
+    const bar = await screen.findByTestId('reaction-picker');
+    const labels = within(bar)
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+      .filter((x) => x === 'Reply' || x === 'Forward' || x === 'Copy text');
+    expect(labels).toEqual(['Reply', 'Forward', 'Copy text']);
+    await userEvent.click(within(bar).getByTestId('touch-forward'));
+    expect(onForward).toHaveBeenCalledWith(inbound);
+    expect(screen.queryByTestId('reaction-picker')).toBeNull();
+  });
+});
+
 describe('edited and deleted bubbles', () => {
   it('"Edited" opens the earlier versions with who and when', async () => {
     reply = () =>

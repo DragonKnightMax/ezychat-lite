@@ -218,6 +218,10 @@ into AGENTS.md.
   and no test key. Compare the published `minAppVersion` with the branch version first: entries for the next release
   are hidden on the current one, so check both (the build as is, and `WATI_VERSION=<release>`).
 
+- A new server-side refusal (a size limit, a window) needs a way through in every UI path that can hit it, not only
+  in the new dialog: the forward dialog offered "send as file", but the composer's 70 MB video on a linked phone just
+  failed until a Dev Build check with a real-sized file found it. Test limits with files at the real size.
+
 ## Multi-agent process
 
 - A message from another session can arrive long after it was sent: before acting on it, read the PR's current
@@ -733,7 +737,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   cloud session `launchBrowser` needs `PW_CHROMIUM=/opt/pw-browsers/chromium-*/chrome-linux64/chrome`. A script's
   fetch sends `content-type: application/json` only with a body: the server answers 400 to a bodiless DELETE with it.
   Its API calls go through `cookieSession` (`devbuild-client.mjs`): a raw `fetch(base + path)` fails SonarCloud's
-  security rating (S7044/S8476, request forgery from argv input).
+  security rating (S7044/S8476, request forgery from argv input). A check that needs its own fetch (multipart upload)
+  repeats that guard (port range, path pattern, `new URL(...).origin === base`), and builds its test files in code
+  instead of reading a path from argv (S8707 counts reads too, not only writes).
 - An antivirus "threat blocked" report on our installer: first compare the file's SHA-256 with the release digest
   (`gh api …/releases/tags/<tag>` asset `digest`; Enterprise `latest.json`) and check `Get-AuthenticodeSignature`
   (signer Anchor Sprint Pte. Ltd.). Genuine and signed means a reputation false positive (each release is a new,

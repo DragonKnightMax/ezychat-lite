@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { PRIMARY_INBOX_ID, parseChatKey, waMessageId } from '../inboxes/keys.js';
 
@@ -34,6 +34,34 @@ export class MediaStore {
 
   /** `chatJid` / `msgId`: the stored chat key and message key (or a `local-` id). */
   save(chatJid: string, msgId: string, buf: Buffer, ext: string): string {
+    const rel = this.relFor(chatJid, msgId, ext);
+    mkdirSync(join(this.root, chatMediaDir(chatJid)), { recursive: true });
+    // a new file, never a write through a hard link another message's copy shares
+    rmSync(join(this.root, rel), { force: true });
+    writeFileSync(join(this.root, rel), buf);
+    return rel;
+  }
+
+  /**
+   * Stores a stored file again for another message (a forwarded copy): a hard link where the file
+   * system allows it (no extra space; Baileys' media cache then uploads it once per number), else a
+   * full copy. Each message owns its own entry, so deleting one never removes another's file.
+   */
+  copy(chatJid: string, msgId: string, sourceRel: string, ext: string): string {
+    const src = this.abs(sourceRel);
+    const rel = this.relFor(chatJid, msgId, ext);
+    const dest = join(this.root, rel);
+    mkdirSync(join(this.root, chatMediaDir(chatJid)), { recursive: true });
+    rmSync(dest, { force: true });
+    try {
+      linkSync(src, dest);
+    } catch {
+      copyFileSync(src, dest);
+    }
+    return rel;
+  }
+
+  private relFor(chatJid: string, msgId: string, ext: string): string {
     const dir = chatMediaDir(chatJid);
     const cleanExt =
       ext
@@ -42,10 +70,7 @@ export class MediaStore {
         .toLowerCase() || 'bin';
     // a `local-` id is not a message key: its clientId part may hold any character, '#' too
     const file = msgId.startsWith('local-') ? msgId : waMessageId(msgId);
-    const rel = `${dir}/${sanitizeSegment(file)}.${cleanExt}`;
-    mkdirSync(join(this.root, dir), { recursive: true });
-    writeFileSync(join(this.root, rel), buf);
-    return rel;
+    return `${dir}/${sanitizeSegment(file)}.${cleanExt}`;
   }
 
   /** Absolute path of a stored relative path; throws if it escapes the root. */

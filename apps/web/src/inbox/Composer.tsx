@@ -49,6 +49,7 @@ import {
   checkAttachments,
   filesFromTransfer,
   formatBytes,
+  type MediaLimits,
 } from '@/lib/file-transfer';
 import {
   FixEnglishButton,
@@ -114,6 +115,8 @@ export interface ComposerProps {
    * can tag. `members` is null while loading; `onOpen` runs when the picker opens. Null: no picker.
    */
   mentions?: { members: GroupMember[] | null; error: boolean; onOpen(): void } | null;
+  /** What this chat's WhatsApp number takes per kind of file (bytes); absent = the upload limit. */
+  mediaLimits?: MediaLimits | null;
   /**
    * Fix English (docs/features/grammar-fix/design.md): spelling and grammar marks in this chat
    * (any chat type; null or a status with both checks off = nothing shown).
@@ -177,6 +180,7 @@ export function Composer({
   askEzy = null,
   fixEnglish = null,
   mentions = null,
+  mediaLimits = null,
   ref,
 }: ComposerProps) {
   const { t } = useTranslation('inbox');
@@ -216,13 +220,13 @@ export function Composer({
 
   function addFiles(incoming: readonly File[]) {
     if (disabled || incoming.length === 0) return;
-    const { accepted, rejected } = checkAttachments(incoming, filesRef.current.length);
+    const { accepted, rejected } = checkAttachments(incoming, filesRef.current.length, mediaLimits);
     for (const r of rejected)
       toast.error(
         t(`composer.files.${r.reason}`, {
           name: r.file.name,
           max: MAX_ATTACHMENTS,
-          limit: formatBytes(MEDIA_UPLOAD_LIMIT_BYTES),
+          limit: formatBytes(r.limit ?? MEDIA_UPLOAD_LIMIT_BYTES),
         }),
       );
     if (accepted.length) queueFiles([...filesRef.current, ...accepted]);

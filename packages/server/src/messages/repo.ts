@@ -6,6 +6,7 @@ import type {
   MessageType,
   TranscriptStatus,
 } from '@ezychat/shared';
+import { forwardedManyTimes } from '@ezychat/shared';
 import type { DB } from '../db/index.js';
 
 export interface MessageRow {
@@ -53,6 +54,13 @@ export interface MessageRow {
   /** "Delete for me": hidden for the whole team. */
   hidden_at?: number | null;
   hidden_by_user_id?: number | null;
+  /**
+   * WhatsApp's forwarding score (038): an inbound forwarded message's, or a copy we forwarded (the
+   * source's + 1); NULL = not forwarded. Optional so inserts need not name it.
+   */
+  forwarding_score?: number | null;
+  /** Bytes of the stored file (038); NULL = not known yet. */
+  media_size?: number | null;
 }
 
 export function mediaUrlFor(id: string): string {
@@ -79,6 +87,8 @@ export function rowToMessage(r: MessageRow): Message {
         transcript_lang: null,
         transcript_status: null,
         voice_note: 0,
+        forwarding_score: null,
+        media_size: null,
       }),
       deletedAt: r.deleted_at,
       deletedBy: r.deleted_by ?? null,
@@ -107,6 +117,10 @@ export function rowToMessage(r: MessageRow): Message {
     // Filled by the message service's present() (one batched lookup per page).
     reactions: [],
     ...(r.voice_note === 1 ? { voiceNote: true } : {}),
+    ...(r.forwarding_score != null && r.forwarding_score > 0
+      ? { forwarded: { manyTimes: forwardedManyTimes(r.forwarding_score) } }
+      : {}),
+    ...(r.media_size != null && r.media_path ? { mediaSize: r.media_size } : {}),
     ...(r.sent_via_token_id != null ? { viaAssistant: true } : {}),
     ...(r.template_name
       ? { template: { name: r.template_name, language: r.template_language ?? '' } }
@@ -193,17 +207,19 @@ export class MessageRepo {
         `INSERT OR IGNORE INTO messages (id, chat_jid, sender_jid, sender_name, from_me, sent_by_user_id, type, body,
            media_path, media_mime, media_name, media_status, quoted_id, status, error, timestamp, created_at, client_id,
            wa_remote_jid, voice_note, mentioned_jids, sent_via_token_id, template_name, template_language,
-           template_params, scheduled_task_id)
+           template_params, scheduled_task_id, forwarding_score, media_size)
          VALUES (@id, @chat_jid, @sender_jid, @sender_name, @from_me, @sent_by_user_id, @type, @body,
            @media_path, @media_mime, @media_name, @media_status, @quoted_id, @status, @error, @timestamp, @created_at, @client_id,
            @wa_remote_jid, @voice_note, @mentioned_jids, @sent_via_token_id, @template_name, @template_language,
-           @template_params, @scheduled_task_id)`,
+           @template_params, @scheduled_task_id, @forwarding_score, @media_size)`,
       )
       .run({
         ...r,
         voice_note: r.voice_note ?? 0,
         sent_via_token_id: r.sent_via_token_id ?? null,
         scheduled_task_id: r.scheduled_task_id ?? null,
+        forwarding_score: r.forwarding_score ?? null,
+        media_size: r.media_size ?? null,
         template_name: r.template_name ?? null,
         template_language: r.template_language ?? null,
         template_params: r.template_params ?? null,

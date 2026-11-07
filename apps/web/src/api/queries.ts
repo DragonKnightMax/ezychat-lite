@@ -633,7 +633,16 @@ export interface SendMediaInput {
   quotedId?: string;
   /** A recorded Ogg/Opus voice note: sent as a WhatsApp voice note, never with a caption. */
   voiceNote?: boolean;
+  /** A video above the number's video limit goes as a file (a document, full quality). */
+  asFile?: boolean;
 }
+
+/** 413 answers of the media upload that the failed bubble words itself. */
+const SIZE_REFUSALS: ReadonlySet<string> = new Set([
+  'too_large',
+  'too_large_as_video',
+  'too_large_for_whatsapp',
+]);
 
 export function useSendMedia(jid: string) {
   const qc = useQueryClient();
@@ -644,6 +653,7 @@ export function useSendMedia(jid: string) {
         ...(input.caption ? { caption: input.caption } : {}),
         ...(input.quotedId ? { quotedId: input.quotedId } : {}),
         ...(input.voiceNote ? { voiceNote: '1' as const } : {}),
+        ...(input.asFile ? { asFile: '1' as const } : {}),
       };
       const form = new FormData();
       for (const [key, value] of Object.entries(fields)) form.append(key, value);
@@ -689,7 +699,13 @@ export function useSendMedia(jid: string) {
         { id: `local-${input.clientId}`, clientId: input.clientId },
         {
           status: 'failed',
-          error: e instanceof Error ? e.message : 'Upload failed',
+          // WhatsApp's size refusals keep their code: the bubble words them (MessageBubble).
+          error:
+            e instanceof ApiError && e.status === 413 && SIZE_REFUSALS.has(e.code)
+              ? e.code
+              : e instanceof Error
+                ? e.message
+                : 'Upload failed',
         },
       );
     },

@@ -40,18 +40,48 @@ export function filesFromTransfer(
   });
 }
 
-export type RejectedFile = { file: File; reason: 'too_large' | 'empty' | 'too_many' };
+export type RejectedFile = {
+  file: File;
+  reason: 'too_large' | 'empty' | 'too_many';
+  /** The limit a `too_large` file went over, in bytes. */
+  limit?: number;
+};
+
+/** What a chat's WhatsApp number takes, per kind of file (`InboxCapabilities.mediaLimits`). */
+export type MediaLimits = Partial<Record<'video' | 'image' | 'audio' | 'document', number>>;
+
+/**
+ * The largest file of this type the chat's number takes: the app's upload limit, lowered by the
+ * number's own limit for images, audio and documents. A video is checked against the document
+ * limit only: above the video limit the server answers `too_large_as_video` (it may go as a file).
+ */
+export function uploadLimitFor(mime: string, limits?: MediaLimits | null): number {
+  const kind = mime.startsWith('image/')
+    ? 'image'
+    : mime.startsWith('audio/')
+      ? 'audio'
+      : 'document';
+  const own = limits?.[kind];
+  return own ? Math.min(own, MEDIA_UPLOAD_LIMIT_BYTES) : MEDIA_UPLOAD_LIMIT_BYTES;
+}
+
+/** A video above the number's video limit (it can still go as a file, up to the document limit). */
+export function videoNeedsFile(file: File, limits?: MediaLimits | null): boolean {
+  return file.type.startsWith('video/') && !!limits?.video && file.size > limits.video;
+}
 
 /** Splits files into the ones that can be sent and the ones refused before any upload. */
 export function checkAttachments(
   files: readonly File[],
   alreadyQueued: number,
+  limits?: MediaLimits | null,
 ): { accepted: File[]; rejected: RejectedFile[] } {
   const accepted: File[] = [];
   const rejected: RejectedFile[] = [];
   for (const file of files) {
+    const limit = uploadLimitFor(file.type, limits);
     if (file.size === 0) rejected.push({ file, reason: 'empty' });
-    else if (file.size > MEDIA_UPLOAD_LIMIT_BYTES) rejected.push({ file, reason: 'too_large' });
+    else if (file.size > limit) rejected.push({ file, reason: 'too_large', limit });
     else if (alreadyQueued + accepted.length >= MAX_ATTACHMENTS)
       rejected.push({ file, reason: 'too_many' });
     else accepted.push(file);

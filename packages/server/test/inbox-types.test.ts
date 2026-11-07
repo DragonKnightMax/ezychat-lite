@@ -192,9 +192,18 @@ describe('adapter factory by inbox type', () => {
       editMessage: true,
       deleteForEveryone: true,
       deleteForMe: true,
+      // a linked phone's WhatsApp limits (video 64 MB until measured, files 2 GB) and Forwarded mark
+      mediaLimits: {
+        video: 64 * 1024 * 1024,
+        image: 64 * 1024 * 1024,
+        audio: 64 * 1024 * 1024,
+        document: 2048 * 1024 * 1024,
+      },
+      forwardedMark: true,
     });
     expect(listed[1]!.capabilities.mentions).toBe(false);
     expect(listed[1]!.capabilities.editMessage).toBeUndefined();
+    expect(listed[1]!.capabilities.forwardedMark).toBeUndefined();
   });
 
   it('refuses a type no extension registered (400 unknown_inbox_type) and creates nothing', async () => {

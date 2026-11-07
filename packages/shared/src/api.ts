@@ -126,6 +126,11 @@ export const SendMediaFields = z.object({
   quotedId: z.string().max(256).optional(),
   /** "1": send the Ogg/Opus file as a WhatsApp voice note (never with a caption). */
   voiceNote: z.literal('1').optional(),
+  /**
+   * "1": send a video as a file (a document: full quality, no preview), e.g. above the number's video
+   * limit (`InboxCapabilities.mediaLimits.video`). Ignored for other types.
+   */
+  asFile: z.literal('1').optional(),
 });
 export type SendMediaFields = z.infer<typeof SendMediaFields>;
 
@@ -372,4 +377,4 @@ export const FakeLinkBody = z.object({ inboxId: z.number().int().positive() });
 export type FakeLinkBody = z.infer<typeof FakeLinkBody>;
 
 /** Largest file `POST /chats/:jid/media` accepts; the composer refuses bigger files before uploading. */
-export const MEDIA_UPLOAD_LIMIT_BYTES = 64 * 1024 * 1024;
+export const MEDIA_UPLOAD_LIMIT_BYTES = 100 * 1024 * 1024;

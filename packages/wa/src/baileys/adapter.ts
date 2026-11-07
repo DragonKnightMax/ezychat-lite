@@ -47,6 +47,7 @@ import { createAuthStore, type AuthStore } from './auth-store.js';
 import { backoffMs, classifyDisconnect } from './disconnect.js';
 import { Lru } from './lru.js';
 import { createWaVersionSource } from './wa-version.js';
+import { MediaCache } from './media-cache.js';
 import { jidType, mapStoredReactions, mapWAMessage, mapWAReaction, toMs } from './mapping.js';
 import { quotedForChat, quotedFromRef } from './quoted.js';
 import { mapWAProtocol } from './protocol.js';
@@ -64,6 +65,58 @@ import {
 } from './group-admin.js';
 
 type ILogger = NonNullable<Parameters<typeof makeWASocket>[0]['logger']>;
+
+/**
+ * Upload time allowed for one file (Baileys has none by default): a 70 MB video on a slow line is not
+ * cut off (design docs/features/forward-message/design.md → Large files).
+ */
+export const MEDIA_UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** WhatsApp's "Forwarded" mark for a send that asks for it (`WaSendOptions.forwarded`). */
+export function forwardedContext(
+  opts: WaSendOptions | undefined,
+): { contextInfo: proto.IContextInfo } | Record<string, never> {
+  const score = opts?.forwarded?.score;
+  if (score === undefined || !Number.isFinite(score) || score < 1) return {};
+  return { contextInfo: { isForwarded: true, forwardingScore: Math.floor(score) } };
+}
+
+/**
+ * The content of one file send: given by `path`, Baileys reads it from disk (streamed, and its media
+ * cache can re-use one upload for several chats); `asDocument` sends any file as a document.
+ */
+export function mediaContent(file: WaSendFile, opts?: WaSendOptions): AnyMessageContent {
+  const { mime, fileName, caption } = file;
+  const source = file.path ? { url: file.path } : file.buffer;
+  const withCaption = caption ? { caption } : {};
+  const fwd = forwardedContext(opts);
+  let content: AnyMessageContent;
+  if (file.asDocument) {
+    content = { document: source, mimetype: mime, fileName, ...withCaption };
+  } else if (mime.startsWith('image/') && mime !== 'image/webp') {
+    content = { image: source, mimetype: mime, ...withCaption };
+  } else if (mime === 'image/webp') {
+    content = { sticker: source, mimetype: mime };
+  } else if (mime.startsWith('video/')) {
+    content = { video: source, mimetype: mime, ...withCaption };
+  } else if (file.voiceNote) {
+    // Seconds and waveform are given, so Baileys needs neither music-metadata nor audio-decode.
+    // Baileys copies `waveform` into the audio message but leaves it out of its content type.
+    const voice: AnyMessageContent & { waveform: Uint8Array } = {
+      audio: source,
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: true,
+      seconds: file.voiceNote.seconds,
+      waveform: file.voiceNote.waveform,
+    };
+    content = voice;
+  } else if (mime.startsWith('audio/')) {
+    content = { audio: source, mimetype: mime };
+  } else {
+    content = { document: source, mimetype: mime, fileName, ...withCaption };
+  }
+  return { ...content, ...fwd } as AnyMessageContent;
+}
 
 const RAW_CACHE_MAX = 2000;
 /** How long an edit or delete this adapter sent waits for WhatsApp's echo of it. */
@@ -146,6 +199,8 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
   private readonly logger: Logger;
   private readonly historyDaysOpt: WaAdapterOptions['historyDays'];
   private raw = new Lru<string, WAMessage>(RAW_CACHE_MAX);
+  /** Uploaded files re-used for later copies on this number (Baileys `mediaCache`). */
+  private readonly mediaCache = new MediaCache();
   /**
    * Target ids of edits and deletes this adapter sent → when: WhatsApp echoes them back like the
    * phone's own, and the core already recorded them with the teammate who made them.
@@ -344,6 +399,8 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
       shouldSyncHistoryMessage: () => this.historyDays > 0,
       getMessage: async (key) =>
         key.id ? (this.raw.get(key.id)?.message ?? undefined) : undefined,
+      // One upload for several copies of a file on this number (forward to several chats).
+      mediaCache: this.mediaCache,
     });
     this.sock = sock;
     this.signalKeys = keys;
@@ -724,6 +781,8 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
     opts?: WaSendOptions,
     /** keep the sent message for quotes and media (not for reactions) */
     cache = true,
+    /** media sends: Baileys' upload options */
+    extra?: { mediaUploadTimeoutMs?: number },
   ): Promise<SendResult> {
     const sock = this.requireOpen();
     // The live cache is small and cleared on reconnect; rebuild older quotes from the saved copy.
@@ -739,6 +798,7 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
       const options = {
         ...(quoted ? { quoted } : {}),
         ...(opts?.messageId ? { messageId: opts.messageId } : {}),
+        ...(extra ?? {}),
       };
       res = await sock.sendMessage(
         chatJid,
@@ -763,35 +823,14 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
   sendText(chatJid: string, text: string, opts?: WaSendOptions): Promise<SendResult> {
     // A tag is `@<number>` in the text plus the member's address in `mentions` (contextInfo).
     const mentions = opts?.mentions?.length ? { mentions: [...opts.mentions] } : {};
-    return this.send(chatJid, { text, ...mentions }, opts);
+    // Baileys merges this contextInfo with the one it builds for the mentions.
+    return this.send(chatJid, { text, ...mentions, ...forwardedContext(opts) }, opts);
   }
 
   sendMedia(chatJid: string, file: WaSendFile, opts?: WaSendOptions): Promise<SendResult> {
-    const { buffer, mime, fileName, caption } = file;
-    let content: AnyMessageContent;
-    if (mime.startsWith('image/') && mime !== 'image/webp') {
-      content = { image: buffer, mimetype: mime, ...(caption ? { caption } : {}) };
-    } else if (mime === 'image/webp') {
-      content = { sticker: buffer, mimetype: mime };
-    } else if (mime.startsWith('video/')) {
-      content = { video: buffer, mimetype: mime, ...(caption ? { caption } : {}) };
-    } else if (file.voiceNote) {
-      // Seconds and waveform are given, so Baileys needs neither music-metadata nor audio-decode.
-      // Baileys copies `waveform` into the audio message but leaves it out of its content type.
-      const voice: AnyMessageContent & { waveform: Uint8Array } = {
-        audio: buffer,
-        mimetype: 'audio/ogg; codecs=opus',
-        ptt: true,
-        seconds: file.voiceNote.seconds,
-        waveform: file.voiceNote.waveform,
-      };
-      content = voice;
-    } else if (mime.startsWith('audio/')) {
-      content = { audio: buffer, mimetype: mime };
-    } else {
-      content = { document: buffer, mimetype: mime, fileName, ...(caption ? { caption } : {}) };
-    }
-    return this.send(chatJid, content, opts);
+    return this.send(chatJid, mediaContent(file, opts), opts, true, {
+      mediaUploadTimeoutMs: MEDIA_UPLOAD_TIMEOUT_MS,
+    });
   }
 
   /** The key WhatsApp matches a message by; the cached key carries the group author as delivered. */

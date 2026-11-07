@@ -35,3 +35,4 @@ export * from './feedback.js';
 export * from './usage.js';
 export * from './scheduled-tasks.js';
 export * from './new-chat.js';
+export * from './forward.js';

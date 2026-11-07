@@ -184,7 +184,8 @@
       "clean": "Tiada kesilapan",
       "unavailable": "Semakan tatabahasa tidak tersedia",
       "unavailableHint": "Sambungan AI perlu diperiksa. Ejaan masih disemak, dan mesej anda boleh dihantar."
-    }
+    },
+    "sentAsFile": "{{name}} terlalu besar untuk video pada nombor ini, jadi ia dihantar sebagai fail dalam kualiti penuh."
   },
   "quickReplies": {
     "title": "Balasan pantas",
@@ -404,7 +405,12 @@
       "noText": "Tiada teks (media sahaja)"
     },
     "scheduled": "Berjadual",
-    "scheduledNamed": "Berjadual · {{name}}"
+    "scheduledNamed": "Berjadual · {{name}}",
+    "uploadErrors": {
+      "too_large": "Terlalu besar untuk dihantar.",
+      "too_large_as_video": "Terlalu besar untuk dihantar sebagai video melalui nombor WhatsApp ini.",
+      "too_large_for_whatsapp": "Terlalu besar untuk nombor WhatsApp ini."
+    }
   },
   "media": {
     "types": {
@@ -1112,5 +1118,92 @@
       }
     },
     "usageNoLimit": "{{used}} sembang baharu dimulakan hari ini di {{inbox}} (tiada had harian)."
+  },
+  "forward": {
+    "action": "Majukan",
+    "lockedReason": "Dikunci oleh Keselamatan WhatsApp",
+    "forwarded": "Dimajukan",
+    "forwardedMany": "Dimajukan berkali-kali",
+    "title": "Majukan mesej",
+    "description": "Hantar salinan kepada hingga {{max}} sembang atau kumpulan. Ia dipaparkan sebagai \"Dimajukan\" di WhatsApp.",
+    "manyTimesNote": "Mesej ini telah dimajukan berkali-kali. WhatsApp hanya membenarkan anda memajukannya kepada satu sembang pada satu masa.",
+    "count": "{{count}} daripada {{max}} dipilih",
+    "full": "Anda boleh memajukan kepada {{max}} sembang pada satu masa.",
+    "remove": "Buang {{name}}",
+    "search": "Cari sembang dan kumpulan",
+    "listLabel": "Sembang yang boleh anda majukan",
+    "loading": "Memuatkan sembang…",
+    "emptyTitle": "Tiada sembang ditemui",
+    "emptyQuery": "Cuba nama atau nombor lain. Untuk menghantar mesej ke nombor baharu, gunakan Sembang baharu.",
+    "emptyNone": "Anda belum mempunyai sembang untuk dimajukan.",
+    "windowClosedRow": "Tetingkap balasan ditutup: hantar templat dari sembang itu",
+    "otherInbox": "Setiap sembang menerima mesej daripada nombor WhatsAppnya sendiri.",
+    "cancel": "Batal",
+    "send": "Majukan",
+    "sendCount_other": "Majukan kepada {{count}} sembang",
+    "sending": "Memajukan…",
+    "sentOne": "Dimajukan kepada {{name}}",
+    "sentMany_other": "Dimajukan kepada {{count}} sembang",
+    "openChat": "Buka sembang",
+    "problems": {
+      "wa_disconnected": {
+        "title": "WhatsApp tidak bersambung",
+        "body": "Majukan semula apabila {{inbox}} kembali dalam talian."
+      },
+      "window_closed": {
+        "title": "Tetingkap balasan ditutup",
+        "body": "Sembang yang anda pilih tidak menulis dalam 24 jam lepas. Buang sembang itu, atau hantar templat dari sembang tersebut."
+      },
+      "safety_locked": {
+        "title": "Fail ini dikunci",
+        "body": "Keselamatan WhatsApp mendapati fail ini berbahaya. Ia tidak boleh dimajukan."
+      },
+      "rate_limited": {
+        "title": "Terlalu banyak majukan",
+        "body": "Anda telah memajukan banyak mesej dalam seminit lepas. Tunggu sebentar dan cuba lagi."
+      },
+      "media_unavailable": {
+        "title": "Fail tidak tersedia",
+        "body": "Fail tidak dapat dimuat turun dari WhatsApp, jadi ia tidak boleh dimajukan."
+      },
+      "message_deleted": {
+        "title": "Mesej dipadam",
+        "body": "Mesej ini telah dipadam, jadi ia tidak boleh dimajukan."
+      },
+      "other": {
+        "title": "Tidak dimajukan",
+        "body": "Ada masalah. Tiada apa-apa dihantar. Cuba lagi."
+      },
+      "too_large_as_video": {
+        "title": "Terlalu besar untuk video",
+        "body": "Hantar sebagai fail. Fail mengekalkan kualiti penuh."
+      },
+      "too_large_for_whatsapp": {
+        "title": "Terlalu besar untuk WhatsApp",
+        "body": "Sembang yang anda pilih menggunakan nombor yang tidak boleh menerima fail sebesar ini. Buang sembang itu dan cuba lagi."
+      },
+      "message_not_sent": {
+        "title": "Belum dihantar",
+        "body": "Hanya mesej yang sudah ada di WhatsApp boleh dimajukan. Tunggu sehingga ia dihantar."
+      },
+      "inbox_removed": {
+        "title": "Nombor dibuang",
+        "body": "Sembang yang anda pilih menggunakan nombor WhatsApp yang telah dibuang. Buang sembang itu dan cuba lagi."
+      },
+      "forward_many_times": {
+        "title": "Satu sembang pada satu masa",
+        "body": "Mesej ini telah dimajukan berkali-kali. Pilih satu sembang."
+      }
+    },
+    "largeNote": "Fail besar ({{size}}). Setiap salinan dimuat naik ke WhatsApp semula, jadi ia mungkin mengambil beberapa minit.",
+    "sendAs": "Hantar sebagai",
+    "asVideo": "Video",
+    "asFile": "Fail",
+    "sendAsHint": "Video dimainkan dalam sembang. Fail mengekalkan kualiti penuh; pelanggan memuat turunnya untuk menonton.",
+    "videoTooBig": "Video ini ({{size}}) terlalu besar untuk dihantar sebagai video ke sembang yang anda pilih (hingga {{max}}). Ia dihantar sebagai fail, dalam kualiti penuh.",
+    "tooBigRow": "Terlalu besar untuk nombor ini: fail hingga {{max}}",
+    "sendingLarge": "Menghantar {{size}} ke WhatsApp…",
+    "thisNumber": "nombor WhatsApp ini",
+    "loadFailed": "Sembang tidak dapat dimuatkan. Tutup dan cuba lagi."
   }
 }

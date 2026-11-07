@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { jidType, mapStoredReactions, mapWAMessage, mapWAReaction } from './mapping.js';
+import {
+  forwardingScoreOf,
+  jidType,
+  mapStoredReactions,
+  mapWAMessage,
+  mapWAReaction,
+} from './mapping.js';
 
 const base = (over: Record<string, unknown> = {}) => ({
   key: { remoteJid: '60123456789@s.whatsapp.net', fromMe: false, id: 'ABC' },
@@ -394,5 +400,60 @@ describe('mapStoredReactions (history sync)', () => {
     expect(dmList[0]).toMatchObject({ senderJid: '60123@s.whatsapp.net', fromMe: false });
     expect(mapStoredReactions(base({ message: { conversation: 'x' } }))).toEqual([]);
     expect(mapStoredReactions(stored([{ text: '👍', key: {} }], 'status@broadcast'))).toEqual([]);
+  });
+});
+
+describe('forwarded messages', () => {
+  const ctx = (contextInfo: Record<string, unknown>) => contextInfo;
+  it('reads the forwarding score from the content carrier (text, image, document, audio)', () => {
+    const text = mapWAMessage(
+      base({
+        message: {
+          extendedTextMessage: {
+            text: 'fwd',
+            contextInfo: ctx({ isForwarded: true, forwardingScore: 4 }),
+          },
+        },
+      }),
+    );
+    expect(text?.forwardingScore).toBe(4);
+    const image = mapWAMessage(
+      base({
+        message: { imageMessage: { caption: 'p', contextInfo: ctx({ isForwarded: true }) } },
+      }),
+    );
+    // marked forwarded without a score: once
+    expect(image?.forwardingScore).toBe(1);
+    const doc = mapWAMessage(
+      base({
+        message: {
+          documentMessage: {
+            fileName: 'a.pdf',
+            contextInfo: ctx({ isForwarded: true, forwardingScore: 127 }),
+          },
+        },
+      }),
+    );
+    expect(doc?.forwardingScore).toBe(127);
+    const audio = mapWAMessage(
+      base({ message: { audioMessage: { ptt: true, contextInfo: ctx({ forwardingScore: 5 }) } } }),
+    );
+    expect(audio?.forwardingScore).toBe(5);
+  });
+
+  it('leaves a message that was not forwarded unmarked', () => {
+    expect(mapWAMessage(base({ message: { conversation: 'own words' } }))).not.toHaveProperty(
+      'forwardingScore',
+    );
+    expect(
+      mapWAMessage(
+        base({
+          message: { extendedTextMessage: { text: 'x', contextInfo: ctx({ isForwarded: false }) } },
+        }),
+      ),
+    ).not.toHaveProperty('forwardingScore');
+    expect(forwardingScoreOf(null)).toBe(0);
+    expect(forwardingScoreOf({ forwardingScore: 0, isForwarded: false })).toBe(0);
+    expect(forwardingScoreOf({ forwardingScore: 2.5 })).toBe(2);
   });
 });

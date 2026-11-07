@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ban, EllipsisVertical, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import { Ban, EllipsisVertical, Eye, EyeOff, Forward, Pencil, Trash2 } from 'lucide-react';
 import type { Message, MessageEdit } from '@ezychat/shared';
 import { Banner, ResponsiveDialog } from '@/components/app';
 import { Button } from '@/components/ui/button';
@@ -22,22 +22,30 @@ import type { Directory } from './useDirectory';
 /**
  * The ⋮ button next to a message (hover or focus on desktop, like Reply; touch screens reach the
  * same actions from the press-and-hold bar). Shown only when the user may do something with the
- * message; Edit stays visible, disabled, once its 15 minutes are over.
+ * message: Forward first (every message that can be forwarded), then Edit and Delete. Edit stays
+ * visible, disabled, once its 15 minutes are over; Forward stays visible, disabled, for a file
+ * WhatsApp Safety locked.
  */
 export function MessageMoreMenu({
   rights,
   disabledReason,
   onEdit,
   onDelete,
+  onForward,
+  forwardLocked = false,
 }: {
   rights: MessageRights;
   disabledReason: string | null;
   onEdit(): void;
   onDelete(): void;
+  /** Set when the message can be forwarded. */
+  onForward?(): void;
+  forwardLocked?: boolean;
 }) {
   const { t } = useTranslation('inbox');
   const [open, setOpen] = useState(false);
-  if (!hasActions(rights)) return null;
+  const changeable = hasActions(rights);
+  if (!changeable && !onForward) return null;
   const canDelete =
     (rights.canDeleteForEveryone && !rights.deleteWindowClosed) || rights.canDeleteForMe;
   return (
@@ -59,6 +67,22 @@ export function MessageMoreMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)]">
+        {onForward && (
+          <DropdownMenuItem
+            disabled={forwardLocked}
+            onSelect={onForward}
+            className="min-h-11 items-start sm:min-h-9"
+            data-testid="message-forward"
+          >
+            <Forward aria-hidden="true" className="mt-0.5" />
+            <span className="flex flex-col">
+              {t('forward.action')}
+              {forwardLocked && (
+                <span className="text-xs text-muted-foreground">{t('forward.lockedReason')}</span>
+              )}
+            </span>
+          </DropdownMenuItem>
+        )}
         {rights.canEdit && (
           <DropdownMenuItem
             disabled={rights.editWindowClosed || !!disabledReason}
@@ -94,7 +118,7 @@ export function MessageMoreMenu({
             </span>
           </DropdownMenuItem>
         )}
-        {disabledReason && (
+        {disabledReason && changeable && (
           <p className="px-2 py-1.5 text-xs text-warning" role="status">
             {disabledReason}
           </p>

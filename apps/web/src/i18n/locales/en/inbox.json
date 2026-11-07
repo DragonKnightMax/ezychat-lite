@@ -187,7 +187,8 @@
       "clean": "No mistakes",
       "unavailable": "Grammar check unavailable",
       "unavailableHint": "The AI connection needs attention. Spelling is still checked, and your message can be sent."
-    }
+    },
+    "sentAsFile": "{{name}} is too big for a video on this number, so it goes as a file in full quality."
   },
   "quickReplies": {
     "title": "Quick replies",
@@ -407,7 +408,12 @@
       "noText": "No text (media only)"
     },
     "scheduled": "Scheduled",
-    "scheduledNamed": "Scheduled · {{name}}"
+    "scheduledNamed": "Scheduled · {{name}}",
+    "uploadErrors": {
+      "too_large": "Too large to send.",
+      "too_large_as_video": "Too large to send as a video on this WhatsApp number.",
+      "too_large_for_whatsapp": "Too large for this WhatsApp number."
+    }
   },
   "media": {
     "types": {
@@ -1117,5 +1123,94 @@
       }
     },
     "usageNoLimit": "{{used}} new chats started today on {{inbox}} (no daily limit)."
+  },
+  "forward": {
+    "action": "Forward",
+    "lockedReason": "Locked by WhatsApp Safety",
+    "forwarded": "Forwarded",
+    "forwardedMany": "Forwarded many times",
+    "title": "Forward message",
+    "description": "Send a copy to up to {{max}} chats or groups. It shows as \"Forwarded\" on WhatsApp.",
+    "manyTimesNote": "This message was forwarded many times. WhatsApp lets you forward it to one chat at a time.",
+    "count": "{{count}} of {{max}} chosen",
+    "full": "You can forward to {{max}} chats at a time.",
+    "remove": "Remove {{name}}",
+    "search": "Search chats and groups",
+    "listLabel": "Chats you can forward to",
+    "loading": "Loading chats…",
+    "emptyTitle": "No chats found",
+    "emptyQuery": "Try another name or number. To message a new number, use New chat.",
+    "emptyNone": "You have no chats to forward to yet.",
+    "windowClosedRow": "Reply window closed: send a template from the chat",
+    "otherInbox": "Each chat gets the message from its own WhatsApp number.",
+    "cancel": "Cancel",
+    "send": "Forward",
+    "sendCount_one": "Forward to {{count}} chat",
+    "sendCount_other": "Forward to {{count}} chats",
+    "sending": "Forwarding…",
+    "sentOne": "Forwarded to {{name}}",
+    "sentMany_one": "Forwarded to {{count}} chat",
+    "sentMany_other": "Forwarded to {{count}} chats",
+    "openChat": "Open chat",
+    "problems": {
+      "wa_disconnected": {
+        "title": "WhatsApp is not connected",
+        "body": "Forward again when {{inbox}} is back online."
+      },
+      "window_closed": {
+        "title": "Reply window closed",
+        "body": "A chat you chose has not written in the last 24 hours. Remove it, or send a template from that chat."
+      },
+      "safety_locked": {
+        "title": "This file is locked",
+        "body": "WhatsApp Safety found this file dangerous. It can't be forwarded."
+      },
+      "rate_limited": {
+        "title": "Too many forwards",
+        "body": "You forwarded a lot in the last minute. Wait a moment and try again."
+      },
+      "media_unavailable": {
+        "title": "File not available",
+        "body": "The file could not be downloaded from WhatsApp, so it can't be forwarded."
+      },
+      "message_deleted": {
+        "title": "Message deleted",
+        "body": "This message was deleted, so it can't be forwarded."
+      },
+      "other": {
+        "title": "Not forwarded",
+        "body": "Something went wrong. Nothing was sent. Try again."
+      },
+      "too_large_as_video": {
+        "title": "Too big for a video",
+        "body": "Send it as a file instead. Files keep full quality."
+      },
+      "too_large_for_whatsapp": {
+        "title": "Too large for WhatsApp",
+        "body": "A chat you chose is on a number that can't take a file this large. Remove it and try again."
+      },
+      "message_not_sent": {
+        "title": "Not sent yet",
+        "body": "Only a message WhatsApp has can be forwarded. Wait until it is sent."
+      },
+      "inbox_removed": {
+        "title": "Number removed",
+        "body": "A chat you chose is on a WhatsApp number that was removed. Remove it and try again."
+      },
+      "forward_many_times": {
+        "title": "One chat at a time",
+        "body": "This message was forwarded many times. Choose one chat."
+      }
+    },
+    "largeNote": "Large file ({{size}}). Each copy is uploaded to WhatsApp again, so it can take a few minutes.",
+    "sendAs": "Send as",
+    "asVideo": "Video",
+    "asFile": "File",
+    "sendAsHint": "A video plays in the chat. A file keeps full quality; the customer downloads it to watch.",
+    "videoTooBig": "This video ({{size}}) is too big to send as a video to the chats you chose (up to {{max}}). It goes as a file, in full quality.",
+    "tooBigRow": "Too large for this number: files up to {{max}}",
+    "sendingLarge": "Sending {{size}} to WhatsApp…",
+    "thisNumber": "this WhatsApp number",
+    "loadFailed": "Chats could not be loaded. Close and try again."
   }
 }

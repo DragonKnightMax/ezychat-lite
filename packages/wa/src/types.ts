@@ -19,6 +19,11 @@ export interface WaIncomingMessage {
   /** Explicit mentions from contextInfo; absent only for older adapters/imports. */
   mentionedJids?: string[];
   quotedId: string | null;
+  /**
+   * WhatsApp's forwarding score (`contextInfo.forwardingScore`, at least 1 when `isForwarded`); absent or
+   * 0 = not forwarded. From `FORWARD_MANY_TIMES_SCORE` WhatsApp shows "Forwarded many times".
+   */
+  forwardingScore?: number;
   /** epoch ms */
   timestamp: number;
   media: null | { mime: string; fileName: string | null; download: () => Promise<Buffer> };
@@ -267,6 +272,11 @@ export interface WaSendOptions {
    * that cannot choose the id ignores it.
    */
   messageId?: string;
+  /**
+   * Send as WhatsApp "Forwarded" with this forwarding score (the source's score + 1). Only adapters with
+   * `capabilities.forwardedMark` mark it; others send a normal message.
+   */
+  forwarded?: { score: number };
 }
 
 /**
@@ -290,7 +300,15 @@ export interface SendResult {
 }
 
 export interface WaSendFile {
+  /** The file's bytes. Large files are given by `path` instead (streamed, never read into memory). */
   buffer: Buffer;
+  /**
+   * The stored file on disk. When set, an adapter that can stream reads it from there (Baileys
+   * `{ url: path }`, which also lets its media cache upload one file once for several chats).
+   */
+  path?: string;
+  /** Send any file (e.g. a video above the video limit) as a document. */
+  asDocument?: boolean;
   mime: string;
   fileName: string;
   caption?: string;
@@ -338,7 +356,41 @@ export interface WaCapabilities {
   deleteForMe?: boolean;
   /** Changes groups it is admin of (group management). Absent: read-only Group info. */
   groupAdmin?: WaGroupAdminCapabilities;
+  /**
+   * What WhatsApp takes per message, in bytes: a video sent as a video, an image, audio, and any file
+   * sent as a document. Absent (or a missing field) = no limit known; WhatsApp's answer decides.
+   */
+  mediaLimits?: WaMediaLimits;
+  /** Sent copies can carry WhatsApp's "Forwarded" mark (`WaSendOptions.forwarded`). Absent: no. */
+  forwardedMark?: boolean;
 }
+
+export interface WaMediaLimits {
+  video?: number;
+  image?: number;
+  audio?: number;
+  document?: number;
+}
+
+const MB = 1024 * 1024;
+/**
+ * A linked phone (design docs/features/forward-message/design.md → Large files): WhatsApp publishes no
+ * limit for a video sent as a video, so 64 MB until a Dev Build measures it against real WhatsApp
+ * (owner 2026-11-07); documents up to 2 GB (WhatsApp's announced limit).
+ */
+export const LINKED_PHONE_MEDIA_LIMITS: WaMediaLimits = Object.freeze({
+  video: 64 * MB,
+  image: 64 * MB,
+  audio: 64 * MB,
+  document: 2048 * MB,
+});
+/** Meta's published Cloud API limits (developers.facebook.com/docs/whatsapp/cloud-api/reference/media). */
+export const BUSINESS_API_MEDIA_LIMITS: WaMediaLimits = Object.freeze({
+  video: 16 * MB,
+  image: 5 * MB,
+  audio: 16 * MB,
+  document: 100 * MB,
+});
 
 /** Everything a linked phone can change in a group (Baileys and the fake). */
 export const LINKED_PHONE_GROUP_ADMIN: WaGroupAdminCapabilities = Object.freeze({
@@ -371,6 +423,8 @@ export const LINKED_PHONE_CAPABILITIES: WaCapabilities = Object.freeze({
   deleteForEveryone: true,
   deleteForMe: true,
   groupAdmin: LINKED_PHONE_GROUP_ADMIN,
+  mediaLimits: LINKED_PHONE_MEDIA_LIMITS,
+  forwardedMark: true,
 });
 
 /** An approved message template of the number's business account. */

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,5 +38,22 @@ describe('media store', () => {
       '6012_s_whatsapp_net/local-x_2.ogg',
     );
     expect(() => store.abs('../outside')).toThrow('escapes');
+  });
+
+  it('copies a stored file for another message as a hard link; saving again never writes through it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'media-store-'));
+    dirs.push(root);
+    const store = new MediaStore(root);
+    const src = store.save('6012@s.whatsapp.net', 'SRC', Buffer.from('video'), 'mp4');
+    const copy = store.copy('6013@s.whatsapp.net#2', 'local-fw:0', src, 'mp4');
+    expect(copy).toBe('inbox-2/6013_s_whatsapp_net/local-fw_0.mp4');
+    expect(readFileSync(store.abs(copy), 'utf8')).toBe('video');
+    expect(statSync(store.abs(copy)).ino).toBe(statSync(store.abs(src)).ino);
+    // copying again replaces the entry
+    expect(store.copy('6013@s.whatsapp.net#2', 'local-fw:0', src, 'mp4')).toBe(copy);
+    // a new save of the source is a new file: the copy keeps its bytes
+    store.save('6012@s.whatsapp.net', 'SRC', Buffer.from('other'), 'mp4');
+    expect(readFileSync(store.abs(copy), 'utf8')).toBe('video');
+    expect(() => store.copy('6013@s.whatsapp.net', 'X', '../outside', 'bin')).toThrow('escapes');
   });
 });

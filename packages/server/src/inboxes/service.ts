@@ -10,7 +10,7 @@ import {
   type User,
   type WaStatus,
 } from '@ezychat/shared';
-import type { WaAdapter } from '@ezychat/wa';
+import { LINKED_PHONE_MEDIA_LIMITS, type WaAdapter } from '@ezychat/wa';
 import type { AppContext } from '../context.js';
 import { agentById, agentForInbox, agentsForInbox, setAgentInbox } from '../ai/agents.js';
 import { ChatRepo, type ChatRow } from '../chats/repo.js';
@@ -196,7 +196,14 @@ export function createInboxService(ctx: AppContext, deps?: { now?: () => number 
       type: row.type,
       capabilities: wa?.capabilities
         ? { ...wa.capabilities, mentions: wa.capabilities.mentions === true }
-        : { ...DEFAULT_INBOX_CAPABILITIES },
+        : wa
+          ? // a linked phone (Baileys, the fake) declares none: its media limits and Forwarded mark
+            {
+              ...DEFAULT_INBOX_CAPABILITIES,
+              mediaLimits: { ...LINKED_PHONE_MEDIA_LIMITS },
+              forwardedMark: true,
+            }
+          : { ...DEFAULT_INBOX_CAPABILITIES },
     };
   };
 

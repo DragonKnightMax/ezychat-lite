@@ -12,6 +12,8 @@ import {
   Clock,
   Copy,
   FileText,
+  Forward,
+  Loader2,
   Mic,
   Reply,
   RotateCw,
@@ -33,7 +35,8 @@ import { SafetyFile, SafetyNotice, showsSafety } from './SafetyMessage';
 import { ReactionBadges } from './ReactionBadges';
 import { ReactionPicker } from './ReactionPicker';
 import { DeletedBody, EditedLabel, MessageMoreMenu } from './MessageActions';
-import { NO_RIGHTS, type MessageChangeProps } from './message-changes';
+import { NO_RIGHTS, forwardLocked, forwardable, type MessageChangeProps } from './message-changes';
+import { formatBytes } from '../lib/file-transfer';
 import { useGuardedLinkClick } from './navigation-guard';
 import type { Directory } from './useDirectory';
 import { SWIPE_TRIGGER_PX, useSwipeReply } from './useSwipeReply';
@@ -298,14 +301,20 @@ export function MessageBubble({
       : sentBy === meId
         ? ''
         : (directory?.nameOf(sentBy) ?? t('message.reactions.fromTeammateUnknown'));
+  // Forward: whoever sees the message may forward it (the server checks every chosen chat).
+  const canForward = !!changes?.onForward && forwardable(m);
+  const locked = canForward && forwardLocked(m);
   const moreMenu = changes && (
     <MessageMoreMenu
       rights={rights}
       disabledReason={changeDisabled}
       onEdit={() => changes.onEdit(m)}
       onDelete={() => changes.onDelete(m)}
+      onForward={canForward ? () => changes.onForward!(m) : undefined}
+      forwardLocked={locked}
     />
   );
+  const touchForward = canForward && !locked ? () => changes!.onForward!(m) : undefined;
   // Touch: Edit and Delete under Reply in the press-and-hold bar, only while they are possible.
   const touchEdit =
     changes && rights.canEdit && !rights.editWindowClosed && !changeDisabled
@@ -327,6 +336,7 @@ export function MessageBubble({
       onReact={(emoji) => onReact!(m, emoji)}
       disabledReason={reactDisabledReason}
       onReply={() => onReply!(m)}
+      onForward={touchForward}
       onCopy={copyBody}
       onEdit={touchEdit}
       onDelete={touchDelete}
@@ -397,6 +407,12 @@ export function MessageBubble({
           <p className="mb-0.5 truncate text-[11px] font-medium text-muted-foreground">
             {outboundLabel}
           </p>
+        )}
+        {/* "Forwarded" / "Forwarded many times", as WhatsApp shows it. */}
+        {m.forwarded && !deleted && <ForwardedLabel many={m.forwarded.manyTimes} />}
+        {/* A large file still going up to WhatsApp (no progress: Baileys reports none). */}
+        {out && m.status === 'pending' && (m.mediaSize ?? 0) >= LARGE_FILE_BYTES && (
+          <SendingLarge size={m.mediaSize!} />
         )}
         {/* A message an AI agent's scheduled task sent ("Scheduled · <task>"). */}
         {out && m.scheduledTask && <ScheduledMark task={m.scheduledTask} />}
@@ -491,7 +507,7 @@ export function MessageBubble({
         </div>
         {out && m.status === 'failed' && !deleted && (
           <div className="mt-1 flex flex-wrap items-center justify-end gap-2 text-xs text-danger">
-            <span className="min-w-0 truncate">{m.error ?? t('message.notSent')}</span>
+            <span className="min-w-0 truncate">{failedReason(m.error, t)}</span>
             {onRetry && (
               <Button
                 variant="outline"
@@ -521,6 +537,50 @@ export function MessageBubble({
       {!out && copyButton}
       {!out && moreMenu}
     </div>
+  );
+}
+
+/** From this size a file shows that it is still uploading, and Forward warns before sending it. */
+export const LARGE_FILE_BYTES = 20 * 1024 * 1024;
+
+/** Upload refusals the app words itself; any other error is shown as the server wrote it. */
+const UPLOAD_ERRORS = ['too_large', 'too_large_as_video', 'too_large_for_whatsapp'] as const;
+type UploadError = (typeof UPLOAD_ERRORS)[number];
+
+/** Why a message was not sent, in plain words. */
+export function failedReason(error: string | null, t: TFunction<['inbox', 'common']>): string {
+  if (!error) return t('message.notSent');
+  return (UPLOAD_ERRORS as readonly string[]).includes(error)
+    ? t(`message.uploadErrors.${error as UploadError}`)
+    : error;
+}
+
+/** "Forwarded" / "Forwarded many times" at the top of a bubble. */
+function ForwardedLabel({ many }: Readonly<{ many: boolean }>) {
+  const { t } = useTranslation('inbox');
+  return (
+    <p
+      className="mb-0.5 flex items-center gap-1 text-xs italic text-muted-foreground"
+      data-testid="forwarded-label"
+    >
+      <Forward className="size-3.5 shrink-0" aria-hidden="true" />
+      {many ? t('forward.forwardedMany') : t('forward.forwarded')}
+    </p>
+  );
+}
+
+/** A large copy still uploading to WhatsApp (pending in the send queue). */
+function SendingLarge({ size }: Readonly<{ size: number }>) {
+  const { t } = useTranslation('inbox');
+  return (
+    <p
+      className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
+      role="status"
+      data-testid="sending-large"
+    >
+      <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
+      {t('forward.sendingLarge', { size: formatBytes(size) })}
+    </p>
   );
 }
 

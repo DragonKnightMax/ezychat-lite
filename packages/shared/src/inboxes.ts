@@ -40,6 +40,21 @@ export const InboxCapabilitiesSchema = z.object({
   deleteForEveryone: z.boolean().optional(),
   /** Deletes a message on the linked phone too ("Delete for me"). */
   deleteForMe: z.boolean().optional(),
+  /**
+   * What WhatsApp takes per message on this connection, in bytes (a video sent as a video; any file
+   * sent as a document). Absent or a missing field = no limit known (WhatsApp's answer decides).
+   */
+  mediaLimits: z
+    .object({
+      video: z.number().int().positive(),
+      image: z.number().int().positive(),
+      audio: z.number().int().positive(),
+      document: z.number().int().positive(),
+    })
+    .partial()
+    .optional(),
+  /** Sent copies carry WhatsApp's "Forwarded" mark (linked phone). Absent = no. */
+  forwardedMark: z.boolean().optional(),
 });
 export type InboxCapabilities = z.infer<typeof InboxCapabilitiesSchema>;
 export const DEFAULT_INBOX_CAPABILITIES: InboxCapabilities = {

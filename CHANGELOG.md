@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Forward a message.** **⋮ → Forward** on a message (press and hold on a phone) sends a copy to up to 5 chats or groups
+  you can open, shown as "Forwarded" on WhatsApp. It works across your WhatsApp numbers, re-uses the stored file (no
+  re-upload from your computer) and shows "Forwarded" / "Forwarded many times" in the chat, also on forwarded messages
+  customers send you. A video too big to send as a video goes as a file in full quality.
+
+### Changed
+
+- Files up to **100 MB** can be sent from the composer (was 64 MB), within what each WhatsApp number allows.
+
 ## [0.1.79] - 2026-11-06
 
 ### Added

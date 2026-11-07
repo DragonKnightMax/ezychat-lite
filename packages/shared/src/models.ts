@@ -137,6 +137,13 @@ export const MessageSchema = z.object({
   template: z.object({ name: z.string(), language: z.string() }).nullable().optional(),
   /** Sent by the token owner's AI assistant through MCP (shown as "via AI assistant"). */
   viaAssistant: z.boolean().optional(),
+  /**
+   * Forwarded on WhatsApp (ours or the customer's): "Forwarded", or "Forwarded many times" from
+   * `FORWARD_MANY_TIMES_SCORE`. Absent/null = not forwarded.
+   */
+  forwarded: z.object({ manyTimes: z.boolean() }).nullable().optional(),
+  /** Bytes of the stored file, when known (media `ok`); absent/null otherwise. */
+  mediaSize: z.number().int().nonnegative().nullable().optional(),
   /** Sent by a scheduled task of an AI agent: shown as "Scheduled · <task>". */
   scheduledTask: MessageScheduledTask.nullable().optional(),
   /** Voice notes only (inbound audio): the transcript text, when `transcriptStatus` is `ok`. */

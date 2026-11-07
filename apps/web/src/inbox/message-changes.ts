@@ -59,6 +59,24 @@ export function hasActions(r: MessageRights): boolean {
   return r.canEdit || r.canDeleteForEveryone || r.canDeleteForMe;
 }
 
+/**
+ * A message that may be forwarded (the server's rule): one WhatsApp has (not `local-`, not pending
+ * or failed), not a system line, not deleted for everyone or hidden for the team.
+ */
+export function forwardable(m: Message): boolean {
+  if (m.type === 'system' || m.deletedAt != null || m.hidden) return false;
+  if (m.id.startsWith('local-')) return false;
+  return !(m.fromMe && (m.status === 'pending' || m.status === 'failed'));
+}
+
+/**
+ * Forward stays in the menu but disabled for a file WhatsApp Safety rated High (locked, released or
+ * deleted), admins too: the server refuses it the same way (409 `safety_locked`).
+ */
+export function forwardLocked(m: Message): boolean {
+  return m.safety?.level === 'high';
+}
+
 /** Handlers and rights the conversation gives each bubble. */
 export interface MessageChangeProps {
   rightsOf(m: Message): MessageRights;
@@ -66,6 +84,8 @@ export interface MessageChangeProps {
   disabledReason: string | null;
   onEdit(m: Message): void;
   onDelete(m: Message): void;
+  /** Forward a copy to other chats (⋮ menu first item; under Reply in the press-and-hold bar). */
+  onForward?(m: Message): void;
   /** Admins may read the original of a deleted message. */
   isAdmin: boolean;
 }

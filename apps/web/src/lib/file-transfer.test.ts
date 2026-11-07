@@ -10,6 +10,8 @@ import {
   safeFileName,
   safeMime,
   setDownloadDrag,
+  uploadLimitFor,
+  videoNeedsFile,
 } from './file-transfer';
 
 /** A file whose `size` reads as `size` without allocating it. */
@@ -75,6 +77,37 @@ describe('file transfer', () => {
     expect(checkAttachments([sized('max.bin', MEDIA_UPLOAD_LIMIT_BYTES)], 0).accepted).toHaveLength(
       1,
     );
+  });
+
+  it("a video above the number's video limit goes as a file; nothing else does", () => {
+    const MB = 1024 * 1024;
+    const cloud = { video: 16 * MB, document: 100 * MB };
+    expect(videoNeedsFile(sized('v.mp4', 70 * MB, 'video/mp4'), cloud)).toBe(true);
+    expect(videoNeedsFile(sized('v.mp4', 10 * MB, 'video/mp4'), cloud)).toBe(false);
+    expect(videoNeedsFile(sized('p.pdf', 70 * MB, 'application/pdf'), cloud)).toBe(false);
+    expect(videoNeedsFile(sized('v.mp4', 70 * MB, 'video/mp4'), null)).toBe(false);
+    expect(videoNeedsFile(sized('v.mp4', 70 * MB, 'video/mp4'), { document: MB })).toBe(false);
+  });
+
+  it("the upload limit is 100 MB, lowered by what the chat's number takes per kind", () => {
+    const MB = 1024 * 1024;
+    expect(MEDIA_UPLOAD_LIMIT_BYTES).toBe(100 * MB);
+    const cloud = { video: 16 * MB, image: 5 * MB, audio: 16 * MB, document: 100 * MB };
+    expect(uploadLimitFor('image/jpeg', cloud)).toBe(5 * MB);
+    expect(uploadLimitFor('audio/ogg', cloud)).toBe(16 * MB);
+    expect(uploadLimitFor('application/pdf', { document: 2 * 1024 * MB })).toBe(100 * MB);
+    // A video is checked against the file limit: above the video limit the server decides.
+    expect(uploadLimitFor('video/mp4', cloud)).toBe(100 * MB);
+    expect(uploadLimitFor('video/mp4', { document: 50 * MB })).toBe(50 * MB);
+    expect(uploadLimitFor('image/png')).toBe(100 * MB);
+    expect(uploadLimitFor('image/png', null)).toBe(100 * MB);
+    const r = checkAttachments(
+      [sized('p.jpg', 6 * MB, 'image/jpeg'), sized('v.mp4', 70 * MB, 'video/mp4')],
+      0,
+      cloud,
+    );
+    expect(r.accepted.map((f) => f.name)).toEqual(['v.mp4']);
+    expect(r.rejected).toEqual([expect.objectContaining({ reason: 'too_large', limit: 5 * MB })]);
   });
 
   it('formats sizes for the tray', () => {

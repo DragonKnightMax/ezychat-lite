@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { WaStatus } from '@ezychat/shared';
 import { FakeWaAdapter, WaUnavailableError } from '../index.js';
@@ -190,6 +193,50 @@ describe('FakeWaAdapter', () => {
     const file = { buffer: Buffer.from('abc'), mime: 'image/png', fileName: 'a.png' };
     const res = await wa.sendMedia('601111@s.whatsapp.net', file);
     expect(wa.sent[0]).toEqual({ chatJid: '601111@s.whatsapp.net', file, id: res.id });
+  });
+
+  it('records the Forwarded mark, reads a file given by path, and marks a forwarded incoming message', async () => {
+    const wa = new FakeWaAdapter();
+    await wa.connect();
+    await wa.sendText('601111@s.whatsapp.net', 'fwd', { forwarded: { score: 2 } });
+    expect(wa.sent[0]).toMatchObject({ text: 'fwd', forwarded: { score: 2 } });
+    const dir = mkdtempSync(join(tmpdir(), 'fake-wa-'));
+    try {
+      const path = join(dir, 'v.mp4');
+      writeFileSync(path, 'from disk');
+      const file = {
+        get buffer(): Buffer {
+          throw new Error('the buffer of a file given by path is never read');
+        },
+        path,
+        mime: 'video/mp4',
+        fileName: 'v.mp4',
+        caption: 'hall',
+        asDocument: true,
+      };
+      const res = await wa.sendMedia('601111@s.whatsapp.net', file, { forwarded: { score: 1 } });
+      expect(wa.sent[1]).toEqual({
+        chatJid: '601111@s.whatsapp.net',
+        id: res.id,
+        forwarded: { score: 1 },
+        file: {
+          buffer: Buffer.from('from disk'),
+          path,
+          mime: 'video/mp4',
+          fileName: 'v.mp4',
+          caption: 'hall',
+          asDocument: true,
+        },
+      });
+      expect(await wa.downloadMedia(res.id)).toEqual(Buffer.from('from disk'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    const got: WaIncomingMessage[] = [];
+    wa.on('message', (m: WaIncomingMessage) => got.push(m));
+    wa.simulateIncoming({ chatJid: '601111@s.whatsapp.net', body: 'x', forwardingScore: 5 });
+    wa.simulateIncoming({ chatJid: '601111@s.whatsapp.net', body: 'y' });
+    expect(got.map((m) => m.forwardingScore)).toEqual([5, undefined]);
   });
 
   it('simulateStatus merges and emits', () => {

@@ -30,6 +30,8 @@ import { getInboxService } from '../inboxes/service.js';
 /** fake WA only: `quotedId` is a stored message id of the same chat (the member replies to it). */
 const FakeIncomingDevBody = FakeIncomingBody.extend({
   quotedId: z.string().min(1).max(512).optional(),
+  /** The message arrives as WhatsApp "Forwarded" with this score (5+ = "Forwarded many times"). */
+  forwardingScore: z.number().int().min(1).max(1000).optional(),
 });
 
 const FakeWindowBody = z.object({
@@ -110,6 +112,7 @@ export default async function devRoutes(app: FastifyInstance, ctx: AppContext) {
         ...(body.senderJid ? { senderJid: body.senderJid } : {}),
         ...(body.mentionedJids !== undefined ? { mentionedJids: body.mentionedJids } : {}),
         ...(body.quotedId ? { quotedId: waMessageId(body.quotedId) } : {}),
+        ...(body.forwardingScore ? { forwardingScore: body.forwardingScore } : {}),
         type: body.type ?? 'text',
         // A simulated voice note or photo: the fake adapter serves these bytes as the download.
         media: body.media

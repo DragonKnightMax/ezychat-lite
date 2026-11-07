@@ -834,6 +834,10 @@ describe('mergeLiteInbox refusals and rollback', () => {
     );
     // and 037 (limited chat access)
     db.exec('DROP TABLE member_chats; ALTER TABLE users DROP COLUMN chat_scope;');
+    // and 038 (message forwarding)
+    db.exec(
+      'ALTER TABLE messages DROP COLUMN forwarding_score; ALTER TABLE messages DROP COLUMN media_size;',
+    );
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

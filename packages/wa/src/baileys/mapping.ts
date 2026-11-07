@@ -197,6 +197,7 @@ export function mapWAMessage(
   }
 
   const quotedId = ctx?.contextInfo?.stanzaId ?? null;
+  const forwardingScore = forwardingScoreOf(ctx?.contextInfo);
   const raw = msg as WAMessage;
 
   // The same person's other address (PN for a LID chat or the reverse); only for direct chats.
@@ -223,7 +224,19 @@ export function mapWAMessage(
       ),
     ],
     quotedId,
+    ...(forwardingScore ? { forwardingScore } : {}),
     timestamp,
     media: media ? { ...media, download: () => download(raw) } : null,
   };
+}
+
+/**
+ * WhatsApp's forwarding score of a message (`contextInfo.isForwarded` / `forwardingScore`): at least 1
+ * when it is marked forwarded, 0 when it is not.
+ */
+export function forwardingScoreOf(ctx: proto.IContextInfo | null | undefined): number {
+  if (!ctx) return 0;
+  const score = typeof ctx.forwardingScore === 'number' ? ctx.forwardingScore : 0;
+  if (score > 0) return Math.floor(score);
+  return ctx.isForwarded ? 1 : 0;
 }

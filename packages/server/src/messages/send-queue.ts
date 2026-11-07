@@ -20,6 +20,10 @@ export interface SendJob {
   caption?: string;
   /** media jobs: send the Ogg/Opus file as a WhatsApp voice note */
   voiceNote?: boolean;
+  /** media jobs: send any file (e.g. a video above the video limit) as a document */
+  asDocument?: boolean;
+  /** a forwarded copy: WhatsApp's forwarding score it carries (the source's + 1) */
+  forwardingScore?: number;
   /** template jobs: the approved template and its body values */
   template?: WaTemplateSend;
   /**

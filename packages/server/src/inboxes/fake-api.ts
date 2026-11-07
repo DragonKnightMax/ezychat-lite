@@ -1,4 +1,9 @@
-import { FakeWaAdapter, type WaCapabilities, type WaTemplate } from '@ezychat/wa';
+import {
+  BUSINESS_API_MEDIA_LIMITS,
+  FakeWaAdapter,
+  type WaCapabilities,
+  type WaTemplate,
+} from '@ezychat/wa';
 import type { InboxTypeDefinition } from '../extensions.js';
 import { PRIMARY_INBOX_ID } from './keys.js';
 import type { InboxRow } from './repo.js';
@@ -13,6 +18,8 @@ export const FAKE_API_CAPABILITIES: WaCapabilities = Object.freeze({
   replyWindowHours: 24,
   templates: true,
   needsPublicUrl: true,
+  // Meta's Cloud API limits; no Forwarded mark (the Cloud API has none)
+  mediaLimits: BUSINESS_API_MEDIA_LIMITS,
 });
 
 /** Demo templates: two sendable ones and one with an image header (listed, not sendable). */

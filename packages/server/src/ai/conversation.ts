@@ -20,8 +20,19 @@ export function customerText(message: Message): string {
   return isTranscribed(message) ? message.transcript! : '';
 }
 
-/** One conversation line for the model. Transcripts are customer data like any text. */
+/** Marks a customer's message WhatsApp delivered as forwarded: someone else's words, not theirs. */
+export const FORWARDED_PREFIX = '[forwarded]';
+
+/**
+ * One conversation line for the model. Transcripts are customer data like any text. A customer's
+ * forwarded message starts with `[forwarded] `, so the agent does not read it as their own words.
+ */
 export function conversationLine(message: Message): string {
+  const line = messageLine(message);
+  return message.forwarded && !message.fromMe ? `${FORWARDED_PREFIX} ${line}` : line;
+}
+
+function messageLine(message: Message): string {
   if (message.type === 'image')
     return `[image]${message.body?.trim() ? ` ${message.body.slice(0, LINE_CHARACTERS)}` : ''}`;
   if (message.type === 'audio' && !message.fromMe)
