@@ -1,3 +1,4 @@
+import { boundedMediaBuffer, validateMediaDownloadOptions } from '../media-download.js';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import type { WaStatus } from '@ezychat/shared';
@@ -6,6 +7,7 @@ import {
   type SendResult,
   type WaAdapter,
   type WaAdapterEvents,
+  type WaMediaDownloadOptions,
   type WaCapabilities,
   type WaContactAlias,
   type WaGroupInfo,
@@ -290,6 +292,15 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
     return this.media.get(messageId) ?? null;
   }
 
+  async downloadMediaBounded(
+    messageId: string,
+    options: WaMediaDownloadOptions,
+  ): Promise<Buffer | null> {
+    validateMediaDownloadOptions(options);
+    const buffer = this.media.get(messageId);
+    return buffer ? boundedMediaBuffer(buffer, options) : null;
+  }
+
   async getProfilePicture(_jid: string): Promise<string | null> {
     if (this._status.state !== 'open') throw new WaUnavailableError();
     return null;
@@ -557,7 +568,18 @@ export class FakeWaAdapter extends EventEmitter implements WaAdapter {
       quotedId: p.quotedId ?? null,
       ...(p.forwardingScore ? { forwardingScore: p.forwardingScore } : {}),
       timestamp: p.timestamp ?? Date.now(),
-      media: p.media ?? null,
+      media: p.media
+        ? {
+            ...p.media,
+            // Fake downloads are already-allocated fixtures, never untrusted network streams.
+            downloadBounded:
+              p.media.downloadBounded ??
+              (async (options: WaMediaDownloadOptions) => {
+                validateMediaDownloadOptions(options);
+                return boundedMediaBuffer(await p.media!.download(), options);
+              }),
+          }
+        : null,
     };
     this.emitTyped('message', msg, { source: 'live' });
     return msg;

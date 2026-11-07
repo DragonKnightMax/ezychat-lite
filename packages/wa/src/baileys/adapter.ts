@@ -1,3 +1,4 @@
+import { validateMediaDownloadOptions } from '../media-download.js';
 import { EventEmitter } from 'node:events';
 import {
   Browsers,
@@ -28,6 +29,7 @@ import {
   type WaAdapter,
   type WaAdapterEvents,
   type WaAdapterOptions,
+  type WaMediaDownloadOptions,
   type WaChatInfo,
   type WaContactInfo,
   type WaAliasSource,
@@ -47,6 +49,7 @@ import { createAuthStore, type AuthStore } from './auth-store.js';
 import { backoffMs, classifyDisconnect } from './disconnect.js';
 import { Lru } from './lru.js';
 import { createWaVersionSource } from './wa-version.js';
+import { downloadBoundedMessage } from './bounded-download.js';
 import { MediaCache } from './media-cache.js';
 import { decodeMediaRef } from './media-ref.js';
 import { jidType, mapStoredReactions, mapWAMessage, mapWAReaction, toMs } from './mapping.js';
@@ -614,7 +617,11 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
     // History sync keeps earlier reactions on the reacted message itself.
     if (source === 'history')
       for (const r of mapStoredReactions(m)) this.emitTyped('reaction', r, { source });
-    const mapped = mapWAMessage(m, (raw) => this.download(raw));
+    const mapped = mapWAMessage(
+      m,
+      (raw) => this.download(raw),
+      (raw, options) => this.downloadBounded(raw, options),
+    );
     if (!mapped) return;
     if (source === 'history' && mapped.timestamp < this.historyCutoff()) return;
     this.emitTyped('message', mapped, { source });
@@ -767,6 +774,15 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
         : undefined,
     );
     return buf as Buffer;
+  }
+
+  private downloadBounded(raw: WAMessage, options: WaMediaDownloadOptions): Promise<Buffer> {
+    const sock = this.sock;
+    return downloadBoundedMessage(
+      raw,
+      options,
+      sock ? { reuploadRequest: sock.updateMediaMessage } : undefined,
+    );
   }
 
   // ---------------------------------------------------------------- outbound
@@ -1130,6 +1146,15 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
       this.logger.warn({ err, kind }, 'about unavailable');
       throw err;
     }
+  }
+
+  async downloadMediaBounded(
+    messageId: string,
+    options: WaMediaDownloadOptions,
+  ): Promise<Buffer | null> {
+    validateMediaDownloadOptions(options);
+    const raw = this.raw.get(messageId);
+    return raw ? this.downloadBounded(raw, options) : null;
   }
 
   async getProfilePicture(jid: string): Promise<string | null> {
