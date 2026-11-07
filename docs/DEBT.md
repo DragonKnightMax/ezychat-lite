@@ -8,6 +8,29 @@ Newest first. Bugs and feature ideas stay in `docs/backlog.md`; short rules for 
 Each entry: **where**, **what**, **why it matters**, then **fix** (PR) or **next step**, and the
 **rule** that prevents a repeat.
 
+## Backlog table (daily tech-debt run)
+
+One row per item; the daily run works it top to bottom. Detail for fixed items is under **Fixed**.
+
+| id | area | finding | severity | size | status | last checked |
+| --- | --- | --- | --- | --- | --- | --- |
+| L-1 | desktop/updater | Blocked installer (antivirus): result not shown in the app language; same version offered again at once | med | major | recorded-major (needs owner decision on a delay before offering releases) | 2026-11-07 |
+| L-2 | e2e | `e2e/devbuild-multi-inbox-check.mjs` fails from step 2 on a fresh `--max-inboxes 3` server | low | small | open | 2026-11-07 |
+| L-3 | web i18n | "Hand-off" vs "Hand-over" wording differs; ms/zh `ai.agents.handoffTitle` still English | low | small | open (touches a screen: needs e2e round) | 2026-11-07 |
+| L-4 | web | A failed file upload cannot be sent again (Retry does not resend the local file) | med | major | recorded-major (composer tray redesign) | 2026-11-07 |
+| L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | open | 2026-11-07 |
+| L-6 | e2e | `e2e/reactions.spec.ts` flaky | low | small | open | 2026-11-07 |
+| L-7 | wa | Reactions mapping untested against real WhatsApp | med | major | recorded-major (needs real WhatsApp) | 2026-11-07 |
+| L-8 | desktop | `status-sections.ts` TODO(phase 4b): import types from `@ezychat/desktop` once published | low | small | open | 2026-11-07 |
+| L-9 | web | Flag emoji show as letters on Windows (needs bundled flag font) | low | small | open | 2026-11-07 |
+| L-10 | deps | 10 Dependabot PRs open (#302-#311) and older PRs #201, #237, #240, #249, #273 | low | small | open (not techdebt/ PRs; not merged by this run) | 2026-11-07 |
+
+SonarCloud was not queried and lint/typecheck were not run (docs-only change); re-check next run.
+
+### Run log
+
+- 2026-11-07: no `techdebt/` PRs open; no code fixed; backlog table created from this file, `docs/backlog.md` and a TODO scan.
+
 ## Fixed
 
 ### 2026-11-07 · AI leak check searched the whole reply for every Internal window
