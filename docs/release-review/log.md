@@ -389,3 +389,27 @@ Hard stops: 1. critical change without a real WhatsApp test; 3. security rule: p
 Migration: packages/server/src/db/migrations/038_message_forwarding.sql — adds-only
 
 Decision: **risk:human**
+
+## 2026-11-07 · PR #337 · `b446a87` · risk:human (40)
+
+**NOT READY: PR is merged; critical change without a real WhatsApp test; score 40 < 70: the owner tests and approves · risk:human (40)**
+
+Tier **critical**, set by: packages/wa/src/baileys/adapter.ts, packages/wa/src/baileys/auth-store.ts, packages/wa/src/baileys/remote-auth-store.ts, packages/wa/src/types.ts
+
+| Item | Points | Proof |
+| --- | --- | --- |
+| Start | 50 | |
+| Tier: critical | -30 | ✓ |
+| Size: 112 code lines | -10 | ✓ |
+| Changed-lines coverage 97.1 % | +20 | ✓ |
+| e2e covers the change | 0 | ✗ missing |
+| Desktop link check (not needed) | +5 | ✓ |
+| Dev Build check | 0 | ✗ missing |
+| Screen review (not needed) | +5 | ✓ |
+| Real-part test | 0 | ✗ missing |
+| Review comments: 0 open of 0 | 0 | ✓ |
+| **Score** | **40** | |
+
+Hard stops: 1. critical change without a real WhatsApp test
+
+Decision: **risk:human**
