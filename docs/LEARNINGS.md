@@ -834,6 +834,9 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   sessions and test agents stay, so nobody registers again.
 - On macOS a full menu bar (notch) hides tray icons: every tray-only action (Status & Service, updates) is also
   in the Dock menu (`app.dock.setMenu`, `tray.ts`). macOS adds Quit there itself.
+- Measure before porting to Rust (or rewriting for speed): the 2026-11-07 review found only one measurable
+  hot spot (the AI leak check), fixed in TypeScript. See `docs/DEBT.md` (Open) for the numbers and the
+  ranked Rust candidates.
 - Changed-lines coverage counts an untested entry `main()`: put new start-up logic in an exported function
   with injectable I/O (`startArgs` in `server-host.cts`) so `main()` gains one call line, and leave
   unrelated log text alone (each touched line counts).

@@ -37,4 +37,55 @@ describe('findLeak', () => {
     expect(findLeak('plan is RM 1,180 a', [internal], 15)).toBe(true);
     expect(findLeak('plan is RM 1,180 a', [internal])).toBe(false);
   });
+
+  it('gives the same answer as a plain search of the reply for every window', () => {
+    // The pre-index algorithm, kept as the reference: any window of an Internal text found in the reply.
+    const normalise = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase();
+    const reference = (reply: string, texts: readonly string[], minRun: number) => {
+      const haystack = normalise(reply);
+      if (haystack.length < minRun) return false;
+      return texts.some((raw) => {
+        const text = normalise(raw);
+        for (let start = 0; start + minRun <= text.length; start++)
+          if (haystack.includes(text.slice(start, start + minRun))) return true;
+        return false;
+      });
+    };
+    const words = [
+      'harga',
+      'RM',
+      '1,180',
+      'stok',
+      'Kopi',
+      'teh',
+      'seat',
+      'never',
+      'lower',
+      'promo',
+    ];
+    let seed = 7;
+    const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+    const text = (count: number) =>
+      Array.from({ length: count }, () => words[next() % words.length]).join(
+        ['  ', ' ', '\n', '\t '][next() % 4],
+      );
+    let leaks = 0;
+    for (let round = 0; round < 300; round++) {
+      const texts = [text(40 + (next() % 80)), text(next() % 30)];
+      const source = texts[0]!;
+      // Half the replies quote a slice of an Internal text (with changed case), half do not.
+      const planted =
+        round % 2 === 0
+          ? source.slice(next() % 50, 50 + (next() % 120)).toUpperCase()
+          : text(next() % 60);
+      const reply = `${text(next() % 40)} ${planted} ${text(next() % 20)}`;
+      const minRun = [15, 25, 40][round % 3]!;
+      const expected = reference(reply, texts, minRun);
+      if (expected) leaks++;
+      expect(findLeak(reply, texts, minRun), `round ${round}`).toBe(expected);
+    }
+    // Both outcomes were exercised.
+    expect(leaks).toBeGreaterThan(50);
+    expect(leaks).toBeLessThan(300);
+  });
 });

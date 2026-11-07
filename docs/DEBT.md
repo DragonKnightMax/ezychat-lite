@@ -10,6 +10,21 @@ Each entry: **where**, **what**, **why it matters**, then **fix** (PR) or **next
 
 ## Fixed
 
+### 2026-11-07 · AI leak check searched the whole reply for every Internal window
+
+- **Where:** `packages/server/src/ai/leak-check.ts` (`findLeak`), run on every AI reply (`ai/service.ts`,
+  `ai/draft-check.ts`).
+- **What:** each 40-character window of the Internal texts (up to 10,000 characters per agent) was searched
+  for with `reply.includes(…)`: about 10,000 substring scans of the whole reply.
+- **Why it matters:** the only measurable CPU cost found in the 2026-11-07 performance review: 11.6 ms per
+  4,000-character reply with no leak (the usual case), on every AI reply.
+- **Fix:** index each 40-character window of the reply once in a `Set`, then look each Internal window up:
+  1.2 ms (about 10×). Trade-off: a short-lived set of about 4,000 strings (≈0.75 MB) per call, collected at
+  once. An equivalence test keeps the old algorithm as the reference on 300 generated cases (leaks planted
+  with changed case and spacing, three minimum runs).
+- **Rule:** a speed-up of a safety check ships with a test that compares it to the plain algorithm on
+  generated input, both outcomes exercised.
+
 ### 2026-11-01 · Hand-rolled "database at migration N" in tests
 
 - **Where:** `packages/server/src/db/migrate.test.ts` (8 copies), `test/upgrade-from-oldest.test.ts` (3),
@@ -35,6 +50,29 @@ Each entry: **where**, **what**, **why it matters**, then **fix** (PR) or **next
   its PR merges").
 
 ## Open
+
+- **Rust and performance evaluation (2026-11-07, no migration).** Goal checked: speed, safety, memory.
+  Measured on Node 22 (macOS arm64), worst-case inputs, TypeScript today: voice-note parse + waveform
+  0.007 ms; knowledge search over 500,000 characters 0.3 ms; AI leak check 11.6 ms (fixed above, now 1.2 ms).
+  Hashing and crypto already run in OpenSSL; SQLite, argon2 (`@node-rs/argon2`, Rust) and the voice engine are
+  already native. A full Rust migration is not worth it: no hot spot, the core libraries (Baileys, Fastify, AI
+  SDK, the Enterprise extension API) have no Rust equivalent, and each native module adds per-platform
+  builds (Windows x64, Mac x64 and arm64), signing and npm prebuilds for Enterprise.
+  - **Memory** is spent outside our code: the running Enterprise app showed about 280 MB main process,
+    280 MB server (`utilityProcess`), 200 MB renderer. Next step when memory matters: evaluate running the
+    background service on plain Node instead of the Electron binary (`ELECTRON_RUN_AS_NODE`), and
+    measure Baileys and the voice model.
+  - **Rust candidates, only when a real problem shows** (untrusted input, as a napi-rs addon behind the same
+    TypeScript signature, TypeScript fallback when it does not load, the existing tests run against both):
+    1. PDF/Word text extraction (`ai/knowledge.ts`, `knowledge-worker.ts`): the one real speed and memory
+       win on hostile PDFs; large, and its text would differ from pdf.js.
+    2. Voice note Ogg/Opus parser (`voice/audio.ts` `oggOpusDurationSeconds`, `messages/voice-note.ts`):
+       small, adversarial tests exist; the cheapest way to prove the Rust toolchain end to end.
+    3. ZIP listing and file-type check (`safety/zip.ts`, `safety/rules.ts` `magicOf`).
+  - Not candidates: the updater helpers (a bug breaks self-update), `server-host.cts` and the workers (glue),
+    regex text helpers (cheap), anything in Enterprise (no CPU-heavy code).
+- **Rule:** measure before porting. A Rust (or any rewrite) proposal names the measured cost it removes and
+  the test that proves the same answers.
 
 - **Very large modules** (2026-11-01 scan, lines): `packages/server/src/ai/service.ts` 2908,
   `apps/web/src/api/queries.ts` 1244, `apps/web/src/inbox/Composer.tsx` 1213,
