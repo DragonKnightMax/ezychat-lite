@@ -96,6 +96,8 @@ version until the release is published (§3 or §4). Never rename the copies: sh
 - A bad release is fixed by a **new** version (hotfix), never by deleting a published release: installed
   apps may already run it.
 - Update `docs/backlog.md` for items the release closed.
+- **Antivirus:** a release has new files with new hashes. When the owner asks, report them to McAfee with the
+  `submit-installers` skill (`node scripts/mcafee-submit.mjs --edition all`: Lite and Enterprise, Windows and both Macs).
 - **Website release page** (owner rule): on release day, after Enterprise is out too, open one
   ossmalaysia/ezychat-website PR that adds the day to `/releases`: rows in `src/lib/release-calendar.json`
   written in plain words from this CHANGELOG section (and Enterprise's), shipped `upcoming` items moved into
