@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Files up to **100 MB** can be sent from the composer (was 64 MB), within what each WhatsApp number allows.
+- New images load much faster, also through remote access: the chat shows WhatsApp's small, blurred preview, and the real
+  photo loads when you open the image. An image with no preview, such as an older imported one, still shows the real photo.
+- A chat with many older images now downloads each image when you reach it, not all at once, and keeps the right space
+  for it, so the chat does not jump while images load.
+
+### Fixed
+
+- Older images, videos and files imported from your phone could show "could not load" after the app restarted or
+  updated, and Retry did not help. Messages imported from this version on stay available after a restart.
 
 ## [0.1.79] - 2026-11-06
 

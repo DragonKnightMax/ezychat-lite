@@ -144,6 +144,11 @@ export const MessageSchema = z.object({
   forwarded: z.object({ manyTimes: z.boolean() }).nullable().optional(),
   /** Bytes of the stored file, when known (media `ok`); absent/null otherwise. */
   mediaSize: z.number().int().nonnegative().nullable().optional(),
+  /** An image's size as WhatsApp reports it, also before the file arrives; absent/null = not known. */
+  mediaWidth: z.number().int().positive().nullable().optional(),
+  mediaHeight: z.number().int().positive().nullable().optional(),
+  /** WhatsApp's small preview of an image, when it has one: the chat shows it, opening shows the real file. */
+  mediaThumbUrl: z.string().nullable().optional(),
   /** Sent by a scheduled task of an AI agent: shown as "Scheduled · <task>". */
   scheduledTask: MessageScheduledTask.nullable().optional(),
   /** Voice notes only (inbound audio): the transcript text, when `transcriptStatus` is `ok`. */

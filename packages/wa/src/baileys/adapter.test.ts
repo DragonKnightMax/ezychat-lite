@@ -146,6 +146,7 @@ describe('createBaileysAdapter (offline smoke)', () => {
     expect(a.status.state).toBe('disconnected');
     await expect(a.sendText('1@s.whatsapp.net', 'hi')).rejects.toBeInstanceOf(WaUnavailableError);
     expect(await a.downloadMedia('nope')).toBeNull();
+    expect(await a.downloadMedia('nope', 'not a ref')).toBeNull();
     await expect(a.getProfilePicture('1@s.whatsapp.net')).rejects.toBeInstanceOf(
       WaUnavailableError,
     );

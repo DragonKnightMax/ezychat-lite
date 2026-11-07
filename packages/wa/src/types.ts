@@ -26,7 +26,18 @@ export interface WaIncomingMessage {
   forwardingScore?: number;
   /** epoch ms */
   timestamp: number;
-  media: null | { mime: string; fileName: string | null; download: () => Promise<Buffer> };
+  media: null | {
+    mime: string;
+    fileName: string | null;
+    download: () => Promise<Buffer>;
+    /** What `downloadMedia` needs after a restart: opaque, stored by the server until the file is stored. */
+    ref?: string;
+    /** The image's size as reported with the message, when known. */
+    width?: number;
+    height?: number;
+    /** WhatsApp's small JPEG preview of an image, when the message has one. */
+    thumbnail?: Buffer;
+  };
 }
 
 /**
@@ -490,8 +501,8 @@ export interface WaAdapter {
   deleteForMe?(chatJid: string, target: WaMessageTarget, timestamp: number): Promise<void>;
   markRead(chatJid: string, messageIds: string[]): Promise<void>;
   sendPresence(chatJid: string, presence: 'composing' | 'paused'): Promise<void>;
-  /** re-download by id if still cached */
-  downloadMedia(messageId: string): Promise<Buffer | null>;
+  /** re-download by id if still cached, else with the message's stored `media.ref` */
+  downloadMedia(messageId: string, ref?: string | null): Promise<Buffer | null>;
   /** Photo URL; null when there is none or it is private. Throws when it cannot be read. */
   getProfilePicture(jid: string): Promise<string | null>;
   /** Members and details of a group this number belongs to. Throws WaUnavailableError when offline. */

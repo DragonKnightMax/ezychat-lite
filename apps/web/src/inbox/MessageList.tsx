@@ -187,6 +187,7 @@ export function MessageList({
     <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
+        data-chat-scroll
         onScroll={onScroll}
         className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-background py-2"
         aria-label={t('messageList.label')}

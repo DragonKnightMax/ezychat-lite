@@ -48,6 +48,7 @@ import { backoffMs, classifyDisconnect } from './disconnect.js';
 import { Lru } from './lru.js';
 import { createWaVersionSource } from './wa-version.js';
 import { MediaCache } from './media-cache.js';
+import { decodeMediaRef } from './media-ref.js';
 import { jidType, mapStoredReactions, mapWAMessage, mapWAReaction, toMs } from './mapping.js';
 import { quotedForChat, quotedFromRef } from './quoted.js';
 import { mapWAProtocol } from './protocol.js';
@@ -937,8 +938,8 @@ export class BaileysAdapter extends EventEmitter implements WaAdapter {
     await sock.sendPresenceUpdate(presence, chatJid);
   }
 
-  async downloadMedia(messageId: string): Promise<Buffer | null> {
-    const raw = this.raw.get(messageId);
+  async downloadMedia(messageId: string, ref?: string | null): Promise<Buffer | null> {
+    const raw = this.raw.get(messageId) ?? (ref ? decodeMediaRef(ref) : null);
     if (!raw) return null;
     try {
       return await this.download(raw);

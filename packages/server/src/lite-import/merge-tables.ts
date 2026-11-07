@@ -24,6 +24,8 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   chats: { merged: true },
   messages: { merged: true },
   message_reactions: { merged: true },
+  media_refs: { merged: true },
+  media_thumbs: { merged: true },
   message_edits: { merged: true },
   message_changes_pending: { merged: true },
   chat_events: { merged: true },
@@ -518,6 +520,14 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     for (const r of rows(lite, 'SELECT * FROM message_reactions')) {
       const id = maps.message(r.message_id as string);
       if (id) addReaction({ ...r, message_id: id, sent_by_user_id: maps.user(r.sent_by_user_id) });
+    }
+    // Files not downloaded yet stay downloadable in the new inbox, and images keep their preview.
+    for (const table of ['media_refs', 'media_thumbs']) {
+      const add = inserter(target, table);
+      for (const row of rows(lite, `SELECT * FROM ${table}`)) {
+        const id = maps.message(row.message_id as string);
+        if (id) add({ ...row, message_id: id });
+      }
     }
     // Earlier versions of edited messages, and edits/deletes still waiting for their message.
     const addEdit = inserter(target, 'message_edits', { omit: ['id'] });

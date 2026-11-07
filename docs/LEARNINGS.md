@@ -1172,6 +1172,13 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## WhatsApp / Baileys
 
+- Imported (history) image messages carry `width` and `height` but no `jpegThumbnail` (0 of 203 on real WhatsApp), and a
+  live one's is tiny (48 × 64 px, 622 bytes, on one photo the number sent): do not plan a chat preview from that field; the
+  app must make its own. The adapter's `raw` cache is memory only, so a later download goes
+  through the stored `media_refs` row: restart the server when you test on-demand media.
+- Opening a chat sends read receipts for its newest 20 customer messages while the number is connected, also in a Dev Build
+  (`chats/service.ts#markRead`). To drive a screen on real data, copy `app.db`, `secret.key` and `media/` without `wa-auth/`
+  to a temp folder and start it with `--fake-wa`: nothing can reach WhatsApp.
 - `WaAdapterEvents` has no "profile photo changed" event: a cache of WhatsApp photos (`avatars/store.ts`) refreshes
   by age (24 h) and keeps the last good photo when a refresh fails. Serve the bytes yourself with a version in the
   URL (`?v=<hash>`, immutable) instead of a 302 to WhatsApp's CDN: over a slow tunnel each redirect was a ~0.7 s

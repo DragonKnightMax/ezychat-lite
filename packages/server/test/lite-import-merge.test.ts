@@ -794,6 +794,35 @@ describe('mergeLiteInbox refusals and rollback', () => {
     expect(existsSync(join(t.dir, WORK_DIR))).toBe(false);
   });
 
+  it('keeps download data and image previews, under the merged message id', async () => {
+    const t = seedTarget();
+    const lite = seedLite();
+    const db = openDb(join(lite.dir, 'app.db'));
+    const { id } = db.prepare('SELECT id FROM messages LIMIT 1').get() as { id: string };
+    db.prepare('INSERT INTO media_refs (message_id, ref) VALUES (?, ?)').run(id, '{"r":1}');
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff]);
+    db.prepare('INSERT INTO media_thumbs (message_id, jpeg) VALUES (?, ?)').run(id, jpeg);
+    db.close();
+    await merge(t.dir, lite.dir);
+    const check = openDb(join(t.dir, 'app.db'));
+    try {
+      const ref = check.prepare('SELECT message_id, ref FROM media_refs').get() as {
+        message_id: string;
+        ref: string;
+      };
+      expect(ref.ref).toBe('{"r":1}');
+      expect(ref.message_id.startsWith(`${id}#`)).toBe(true);
+      const thumb = check.prepare('SELECT message_id, jpeg FROM media_thumbs').get() as {
+        message_id: string;
+        jpeg: Buffer;
+      };
+      expect(thumb.message_id).toBe(ref.message_id);
+      expect(thumb.jpeg.equals(jpeg)).toBe(true);
+    } finally {
+      check.close();
+    }
+  });
+
   it('migrates an older Lite copy before merging, never Lite itself', async () => {
     const t = seedTarget();
     const lite = seedLite();
@@ -838,6 +867,11 @@ describe('mergeLiteInbox refusals and rollback', () => {
     db.exec(
       'ALTER TABLE messages DROP COLUMN forwarding_score; ALTER TABLE messages DROP COLUMN media_size;',
     );
+    // and 039 (media download data) and 040 (image previews)
+    db.exec(
+      'DROP TABLE media_refs; ALTER TABLE messages DROP COLUMN media_width; ALTER TABLE messages DROP COLUMN media_height;',
+    );
+    db.exec('DROP TABLE media_thumbs; ALTER TABLE messages DROP COLUMN media_has_thumb;');
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

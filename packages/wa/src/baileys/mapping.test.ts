@@ -103,6 +103,45 @@ describe('mapWAMessage', () => {
     ).toMatchObject({ senderJid: '123@lid', senderJidAlt: '60111@s.whatsapp.net' });
   });
 
+  it("carries WhatsApp's JPEG preview of an image", () => {
+    const jpegThumbnail = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0]);
+    const media = mapWAMessage(base({ message: { imageMessage: { jpegThumbnail } } }))?.media;
+    expect(media?.thumbnail).toEqual(Buffer.from(jpegThumbnail));
+  });
+
+  it.each([
+    ['empty', new Uint8Array()],
+    ['not a JPEG', Uint8Array.from([0x3c, 0x73, 0x76, 0x67])],
+    ['too large', new Uint8Array(64 * 1024 + 1).fill(0xff)],
+  ])('drops a preview that is %s', (_name, jpegThumbnail) => {
+    const media = mapWAMessage(base({ message: { imageMessage: { jpegThumbnail } } }))?.media;
+    expect(media).not.toHaveProperty('thumbnail');
+  });
+
+  it('carries an image size and the download ref', () => {
+    const m = mapWAMessage(
+      base({
+        message: {
+          imageMessage: { width: 1600, height: 900, mediaKey: Uint8Array.from([1]), url: 'u' },
+        },
+      }),
+    );
+    expect(m?.media).toMatchObject({ width: 1600, height: 900 });
+    expect(m?.media?.ref).toContain('imageMessage');
+  });
+
+  it.each([
+    ['missing', {}],
+    ['zero', { width: 0, height: 900 }],
+    ['one side only', { width: 1600 }],
+    ['too large', { width: 70000, height: 900 }],
+  ])('treats an image size that is %s as unknown', (_name, size) => {
+    const media = mapWAMessage(base({ message: { imageMessage: size } }))?.media;
+    expect(media).not.toHaveProperty('width');
+    expect(media).not.toHaveProperty('height');
+    expect(media).not.toHaveProperty('ref');
+  });
+
   it('maps image with caption and media download', () => {
     const m = mapWAMessage(
       base({ message: { imageMessage: { caption: 'look', mimetype: 'image/jpeg' } } }),
