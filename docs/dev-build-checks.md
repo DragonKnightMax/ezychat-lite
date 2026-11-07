@@ -44,7 +44,9 @@ Real phone pairing, restart/reconnection, Signal-key updates and inbound media r
 remain untested. The end-to-end and full Dev Build workbook stages remain incomplete.
 The late release review remains risk:human (40). The feature PR was merged before the
 required owner approval/review; package and desktop release workflows were cancelled.
-The v0.1.81 tag exists, but no package publication or desktop release is claimed.
+The v0.1.81 tag exists. Cancellation completed after `@ezychat/shared`, `@ezychat/wa`
+and `@ezychat/server` 0.1.81 published. Registry checks confirmed those three versions;
+`@ezychat/web` and `@ezychat/desktop` 0.1.81 were absent. No desktop release was created.
 The owner must approve any subsequent release. Do not use this entry as that approval.
 
 MCP `send_file` (branch `feat/mcp-send-file`), owner's PC, `D:\dev\test-env\lite\start-sheets-google.ps1` (worktree
