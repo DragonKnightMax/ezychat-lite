@@ -300,6 +300,9 @@ into AGENTS.md.
 
 ## Git, GitHub and CI
 
+- Never hide `git push` errors (`2>$null`), and compare the remote branch with the local head before `gh pr create`: a refused
+  push followed by `--head <name>` opens the PR on another session's branch of that name. Release branches are shared names
+  (`chore/release-<version>`): check `git ls-remote origin <branch>` first.
 - Parallel feature PRs that add a migration must agree on numbers up front: `migrate.test.ts` rejects a gap or duplicate, so the PR that merges second renumbers, stays red on that test until the first lands, then merges `main` and extends the lite-import "older Lite" drop list with the first PR's tables; conflicts in `chats/merge.ts` (each feature's `chat_jid` table) and `CHANGELOG.md` keep both sides. Two mocks cloned from one baseline merge as a two-way rename (AU/UA/DD for every file): restore each folder from its own branch, then apply the five-folder retention.
 
 - A PR whose CI never starts (no workflow run for the branch) usually has a merge conflict (`mergeable_state: dirty`):

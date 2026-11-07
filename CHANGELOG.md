@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.80] - 2026-11-08
+
 ### Added
 
 - Public WhatsApp adapters can opt into bounded media downloads with a decrypted-byte limit and cancellation signal; existing unbounded methods keep their behavior.
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   photo loads when you open the image. An image with no preview, such as an older imported one, still shows the real photo.
 - A chat with many older images now downloads each image when you reach it, not all at once, and keeps the right space
   for it, so the chat does not jump while images load.
+- The AI's check for leaked internal notes is about ten times faster on each reply.
 
 ### Fixed
 
