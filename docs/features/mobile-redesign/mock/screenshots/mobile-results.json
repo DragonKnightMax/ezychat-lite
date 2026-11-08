@@ -1,0 +1,19 @@
+{
+  "passed": 66,
+  "problems": [],
+  "metrics": {
+    "m360": {
+      "chromeBeforeFirstRow": 105,
+      "rowsVisible": 9,
+      "smallTargets": []
+    },
+    "m360Conversation": {
+      "headerHeight": 101
+    },
+    "m390": {
+      "chromeBeforeFirstRow": 105,
+      "rowsVisible": 10,
+      "smallTargets": []
+    }
+  }
+}

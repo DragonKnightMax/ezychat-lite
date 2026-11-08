@@ -16,6 +16,18 @@
   },
   "proposals": [
     {
+      "feature": "mobile-redesign",
+      "creationOrder": 39,
+      "createdAt": "2026-11-07",
+      "design": "docs/features/mobile-redesign/design.md",
+      "mock": "docs/features/mobile-redesign/mock/index.html",
+      "status": "proposal",
+      "baselineFeature": "forward-message",
+      "baselineGitRevision": "2549b7afac813d8c2c957d15d653b2a150325866",
+      "coverage": "Full app clone of the confirmed forward-message reference; phone layout (below 768 px) of the inbox: one-row list header with the WhatsApp-number switcher as the title, search on demand, filter chips (All, Unread with count, Mine, Unassigned, Groups, Tag, Resolved), number switcher bottom sheet with unread and connection per number, tag filter sheet, New chat floating button (shrinks on scroll), swipe right = Assign to me / left = Resolve with Undo, press-and-hold row action sheet, one-row chat header with a chip strip (assignee, tags, + Tag, Notes, group AI badge), assign sheet, chat Tags sheet (tick, create, Done), more-actions sheet, number badge on photos, toasts at the bottom; Lite and one-number agent; desktop 1280 unchanged; 360 and 390 px touch, light/dark, en/ms/zh-CN (mobile-shots.mjs); before shots of the baseline at 360 px (audit-shots.mjs); living design-system reference page /design-system (tokens from index.css, type, space, radius, elevation, components and states, mobile patterns, editions; light/dark, desktop and 360 px). Tags on group chats as on direct chats (owner 2026-11-07): header chip, row sheet, Group info and Customer details Tags row with one shared editor, list rows, the tag filter returning groups (stand-in route group-tags.ts writes the real customer_tags table); desktop Group info and Customer details tags.",
+      "note": "Phase 1 only (the owner's three items + quick wins). Phase 2 (composer, message actions, Customer details / Group info sheets, keyboard) is described in design.md, not mocked. Inherits forward-message's coverage gaps (message edit/delete and Safety-on-message screens). Removes scheduled-tasks (35) for retention; template-store stays (live tooling). Also updates docs/design-system.md (Mobile patterns, Editions, fixes) as part of the same confirmation."
+    },
+    {
       "feature": "forward-message",
       "creationOrder": 38,
       "createdAt": "2026-11-07",
@@ -73,7 +85,12 @@
       "note": "Parallel with partner-role (another session, own branch): the later PR to merge resolves this index (keep both entries, next creationOrder) and removes the then-oldest folder (group-management) so five remain. Inherits the coverage gaps of google-drive (message-edit-delete, whatsapp-safety, group-agents, claims-template screens). reference.json files manifest not refreshed (snapshot.mjs --check is advisory).",
       "confirmedAt": "2026-11-06",
       "gitRevision": "426c2eb766f24e520fd4f59b66ab837c11296045",
-      "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd) \"with the proposed answers\": 10 tasks per agent; skipped/failed runs in History only (no push); Business API outside the 24 h window skipped for now (template later); add_sheet_row allowed."
+      "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd) \"with the proposed answers\": 10 tasks per agent; skipped/failed runs in History only (no push); Business API outside the 24 h window skipped for now (template later); add_sheet_row allowed.",
+      "archived": {
+        "folderRemovedAt": "2026-11-07",
+        "lastRevision": "afc97fd8e1eab7617f44000a735e50a2476c5fdc",
+        "reason": "retention: sixth feature folder (mobile-redesign)"
+      }
     },
     {
       "feature": "group-agents",

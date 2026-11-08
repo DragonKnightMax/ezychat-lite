@@ -1,0 +1,18 @@
+{
+  "list": {
+    "chromeBeforeFirstRow": 259,
+    "rowsVisible": 7,
+    "smallTargets": [
+      "New chat 40x44",
+      "Inbox 336x36",
+      "Mine 110x37",
+      "Unassigned 110x37",
+      "All 110x37",
+      "Open 125x37",
+      "Resolved 125x37"
+    ]
+  },
+  "conversation": {
+    "headerHeight": 117
+  }
+}
