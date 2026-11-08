@@ -641,6 +641,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   shell without a terminal `gh run watch` can also return at once: poll `gh run view <id> --json status`, or
   `gh pr checks <pr> --json bucket` until no `pending` is left (never parse the text table: names have spaces).
   Filter with gh's own `--jq`: the owner's PC has no `jq`, and a watcher that pipes to it stays silent.
+  Right after a push, `gh pr checks` still lists the old commit's results (a stale fail or cancel): wait
+  on `gh run list --branch <b> --json headSha,status` for the new head SHA, then read the checks.
 - `gh pr checks --watch` and `gh run watch` can also return while a check is still pending or a job is
   still queued (seen with macOS CI and a queued self-hosted job), and right after `gh run rerun --failed`
   `gh run watch` still sees the old failed attempt and exits at once: read the final status after the wait,
@@ -1429,8 +1431,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   ok/thanks" with no silent action made the model send an empty reply, which failed validation and handed
   the chat over as `ai_unavailable` (~2 % of turns). Never wrap a failure without keeping its kind, original
   class and status for the log, or every cause looks like the same plain `Error`.
-- Diagnosing a live hand-off: the installed service's log (`C:\ProgramData\wa-team-inbox\logs`) is
-  admin-only. Start from the chat history (MCP `get_chat`: hand-off reason + timestamps; a few seconds
+- Diagnosing a live hand-off: the installed service's log (`C:\ProgramData\wa-team-inbox\logs`, Enterprise
+  `C:\ProgramData\ezychat-enterprise`) is admin-only; the owner's downloads land in `D:\Downloads` (read the
+  Windows Downloads folder setting, not `%USERPROFILE%\Downloads`). An `AI decision` with `toolCalls: []` where a
+  connector tool was expected means the agent was not offered it: check that agent's own connector settings. Start from the chat history (MCP `get_chat`: hand-off reason + timestamps; a few seconds
   between claim and `ai_unavailable` = a fast provider error, not a timeout), then ask the owner for
   Admin → Audit → **Download logs** (redacted zip, no admin shell) and read the `AI answer unavailable`
   line (errName, status, finishReason; no message text). Never hand the owner admin-shell commands for it:
