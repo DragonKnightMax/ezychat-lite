@@ -4,7 +4,7 @@ import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { ErrorCode, MEDIA_UPLOAD_LIMIT_BYTES } from '@ezychat/shared';
+import { ErrorCode } from '@ezychat/shared';
 import type { AppContext } from './context.js';
 import { errorHandler, sendError } from './http/errors.js';
 import { contextHostPolicy, createHostHook } from './http/host.js';
@@ -16,7 +16,11 @@ import { registerRoutes } from './routes/index.js';
 import { registerMcp } from './mcp/route.js';
 import { registerMcpOAuth } from './mcp/oauth-routes.js';
 
-export const UPLOAD_LIMIT_BYTES = MEDIA_UPLOAD_LIMIT_BYTES;
+/**
+ * The multipart file limit of a route that sets none. Routes that take files set their own: the
+ * composer and MCP uploads stream to disk up to the WhatsApp number's limit, others are small.
+ */
+export const UPLOAD_LIMIT_BYTES = 100 * 1024 * 1024;
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   const app = Fastify({

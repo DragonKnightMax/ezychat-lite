@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { activateLocale } from '@/i18n';
-import { ApiError, api, errorMessage } from './client';
+import { stubXhr } from '../test/fake-xhr';
+import { ApiError, api, apiUpload, errorMessage } from './client';
 
 function mockFetch(status: number, body: unknown) {
   const fn = vi.fn(
@@ -100,5 +101,33 @@ describe('errorMessage (translated)', () => {
     expect(errorMessage(new ApiError(429, 'rate_limited', ''))).toBe(
       'Too many attempts. Please wait and try again.',
     );
+  });
+});
+
+describe('apiUpload()', () => {
+  it('reports progress, answers the JSON body, and throws ApiError like api()', async () => {
+    const uploads = stubXhr(({ form }) =>
+      form.get('fail')
+        ? { status: 413, body: { error: { code: 'too_large_for_whatsapp', message: 'Too big' } } }
+        : { status: 201, body: { id: 'M1' } },
+    );
+    const shares: number[] = [];
+    const ok = new FormData();
+    expect(await apiUpload('/chats/a/media', ok, (s) => shares.push(s))).toEqual({ id: 'M1' });
+    expect(uploads[0]!.url).toBe('/api/chats/a/media');
+    expect(shares).toEqual([0.5, 1]);
+    const bad = new FormData();
+    bad.append('fail', '1');
+    const err = await apiUpload('/chats/a/media', bad, () => undefined).catch((e: unknown) => e);
+    expect(err).toMatchObject({ status: 413, code: 'too_large_for_whatsapp', message: 'Too big' });
+  });
+
+  it('a body that is not ours keeps its status; a network failure is "network"', async () => {
+    stubXhr(() => ({ status: 413, body: '<html>Request Entity Too Large</html>' }));
+    const html = await apiUpload('/x', new FormData(), () => undefined).catch((e: unknown) => e);
+    expect(html).toMatchObject({ status: 413, code: 'http_413' });
+    stubXhr(() => 'network-error');
+    const down = await apiUpload('/x', new FormData(), () => undefined).catch((e: unknown) => e);
+    expect(down).toMatchObject({ status: 0, code: 'network' });
   });
 });

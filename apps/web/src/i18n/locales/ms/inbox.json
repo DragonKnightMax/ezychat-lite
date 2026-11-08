@@ -157,6 +157,7 @@
       "remove": "Buang {{name}}",
       "caption": "Tambah kapsyen (pilihan)",
       "too_large": "{{name}} melebihi {{limit}} dan tidak boleh dihantar.",
+      "tunnel_limit": "{{name}} melebihi {{limit}}. Melalui alamat internet hanya fail sehingga {{limit}} boleh dihantar; fail yang lebih besar boleh dihantar di komputer yang menjalankan EzyChat atau melalui rangkaian setempat.",
       "empty": "{{name}} kosong dan tidak boleh dihantar.",
       "too_many": "Maksimum {{max}} fail sekali hantar: {{name}} tidak ditambah.",
       "drop": "Lepaskan fail untuk menghantarnya dalam sembang ini",
@@ -409,8 +410,10 @@
     "uploadErrors": {
       "too_large": "Terlalu besar untuk dihantar.",
       "too_large_as_video": "Terlalu besar untuk dihantar sebagai video melalui nombor WhatsApp ini.",
-      "too_large_for_whatsapp": "Terlalu besar untuk nombor WhatsApp ini."
-    }
+      "too_large_for_whatsapp": "Terlalu besar untuk nombor WhatsApp ini.",
+      "tunnel_too_large": "Terlalu besar untuk dihantar melalui alamat internet (sehingga 100 MB). Hantar di komputer yang menjalankan EzyChat atau melalui rangkaian setempat."
+    },
+    "uploading": "Memuat naik {{percent}}%"
   },
   "media": {
     "types": {

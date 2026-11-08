@@ -160,6 +160,7 @@
       "remove": "Remove {{name}}",
       "caption": "Add a caption (optional)",
       "too_large": "{{name}} is larger than {{limit}} and can’t be sent.",
+      "tunnel_limit": "{{name}} is larger than {{limit}}. Through the internet address only files up to {{limit}} can be sent; larger files work on the computer that runs EzyChat or on the local network.",
       "empty": "{{name}} is empty and can’t be sent.",
       "too_many": "Up to {{max}} files at a time: {{name}} was not added.",
       "drop": "Drop files to send them in this chat",
@@ -412,8 +413,10 @@
     "uploadErrors": {
       "too_large": "Too large to send.",
       "too_large_as_video": "Too large to send as a video on this WhatsApp number.",
-      "too_large_for_whatsapp": "Too large for this WhatsApp number."
-    }
+      "too_large_for_whatsapp": "Too large for this WhatsApp number.",
+      "tunnel_too_large": "Too large to send through the internet address (up to 100 MB). Send it on the computer that runs EzyChat or on the local network."
+    },
+    "uploading": "Uploading {{percent}}%"
   },
   "media": {
     "types": {

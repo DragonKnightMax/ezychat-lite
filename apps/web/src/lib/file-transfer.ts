@@ -1,5 +1,5 @@
 // Files moving into the app (drop, paste) and out of it (drag a media file to the desktop).
-import { MEDIA_UPLOAD_LIMIT_BYTES } from '@ezychat/shared';
+import { TUNNEL_UPLOAD_LIMIT_BYTES } from '@ezychat/shared';
 
 /** Files one send takes at most, as WhatsApp's own picker. */
 export const MAX_ATTACHMENTS = 10;
@@ -42,7 +42,8 @@ export function filesFromTransfer(
 
 export type RejectedFile = {
   file: File;
-  reason: 'too_large' | 'empty' | 'too_many';
+  /** `tunnel_limit`: above what the Cloudflare tunnel passes (it works on this PC or the LAN). */
+  reason: 'too_large' | 'empty' | 'too_many' | 'tunnel_limit';
   /** The limit a `too_large` file went over, in bytes. */
   limit?: number;
 };
@@ -51,18 +52,17 @@ export type RejectedFile = {
 export type MediaLimits = Partial<Record<'video' | 'image' | 'audio' | 'document', number>>;
 
 /**
- * The largest file of this type the chat's number takes: the app's upload limit, lowered by the
- * number's own limit for images, audio and documents. A video is checked against the document
- * limit only: above the video limit the server answers `too_large_as_video` (it may go as a file).
+ * The largest file of this type the chat's number takes (`mediaLimits`), or undefined when it knows
+ * none: the app has no size cap of its own. A video is checked against the document limit only:
+ * above the video limit it goes as a file (`videoNeedsFile`).
  */
-export function uploadLimitFor(mime: string, limits?: MediaLimits | null): number {
+export function uploadLimitFor(mime: string, limits?: MediaLimits | null): number | undefined {
   const kind = mime.startsWith('image/')
     ? 'image'
     : mime.startsWith('audio/')
       ? 'audio'
       : 'document';
-  const own = limits?.[kind];
-  return own ? Math.min(own, MEDIA_UPLOAD_LIMIT_BYTES) : MEDIA_UPLOAD_LIMIT_BYTES;
+  return limits?.[kind] || undefined;
 }
 
 /** A video above the number's video limit (it can still go as a file, up to the document limit). */
@@ -70,18 +70,35 @@ export function videoNeedsFile(file: File, limits?: MediaLimits | null): boolean
   return file.type.startsWith('video/') && !!limits?.video && file.size > limits.video;
 }
 
+const PRIVATE_V4 = /^(?:10\.|127\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.)/;
+
+/**
+ * The app is open through the internet address (the Cloudflare tunnel), not on this computer or the
+ * local network: loopback, private IPv4, IPv6 literals, single-label and `.local` names are local.
+ */
+export function isTunnelHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.includes(':') || PRIVATE_V4.test(host)) return false;
+  if (!host.includes('.') || host.endsWith('.local')) return false;
+  return !/^\d+\.\d+\.\d+\.\d+$/.test(host);
+}
+
 /** Splits files into the ones that can be sent and the ones refused before any upload. */
 export function checkAttachments(
   files: readonly File[],
   alreadyQueued: number,
   limits?: MediaLimits | null,
+  opts: { tunnel?: boolean } = {},
 ): { accepted: File[]; rejected: RejectedFile[] } {
   const accepted: File[] = [];
   const rejected: RejectedFile[] = [];
   for (const file of files) {
     const limit = uploadLimitFor(file.type, limits);
     if (file.size === 0) rejected.push({ file, reason: 'empty' });
-    else if (file.size > limit) rejected.push({ file, reason: 'too_large', limit });
+    else if (limit !== undefined && file.size > limit)
+      rejected.push({ file, reason: 'too_large', limit });
+    else if (opts.tunnel && file.size > TUNNEL_UPLOAD_LIMIT_BYTES)
+      rejected.push({ file, reason: 'tunnel_limit', limit: TUNNEL_UPLOAD_LIMIT_BYTES });
     else if (alreadyQueued + accepted.length >= MAX_ATTACHMENTS)
       rejected.push({ file, reason: 'too_many' });
     else accepted.push(file);

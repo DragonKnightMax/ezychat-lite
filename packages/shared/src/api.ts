@@ -376,5 +376,12 @@ export type FakeMessageChangeBody = z.infer<typeof FakeMessageChangeBody>;
 export const FakeLinkBody = z.object({ inboxId: z.number().int().positive() });
 export type FakeLinkBody = z.infer<typeof FakeLinkBody>;
 
-/** Largest file `POST /chats/:jid/media` accepts; the composer refuses bigger files before uploading. */
-export const MEDIA_UPLOAD_LIMIT_BYTES = 100 * 1024 * 1024;
+/**
+ * Largest request body a Cloudflare tunnel passes (Free and Pro plans). The app has no file size cap
+ * of its own (each WhatsApp number's `mediaLimits` decide); through the tunnel a larger file is refused
+ * by Cloudflare, so the composer says so before uploading: it works on this computer or the local
+ * network.
+ */
+export const TUNNEL_UPLOAD_LIMIT_BYTES = 100 * 1024 * 1024;
+/** Kept for existing imports: the tunnel's limit (TUNNEL_UPLOAD_LIMIT_BYTES), no longer an app cap. */
+export const MEDIA_UPLOAD_LIMIT_BYTES = TUNNEL_UPLOAD_LIMIT_BYTES;

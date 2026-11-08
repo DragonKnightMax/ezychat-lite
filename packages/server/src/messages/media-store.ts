@@ -1,4 +1,4 @@
-import { copyFileSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, linkSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { PRIMARY_INBOX_ID, parseChatKey, waMessageId } from '../inboxes/keys.js';
 
@@ -57,6 +57,25 @@ export class MediaStore {
       linkSync(src, dest);
     } catch {
       copyFileSync(src, dest);
+    }
+    return rel;
+  }
+
+  /**
+   * Moves a private file from outside the store (an MCP upload or link download) in as this message's
+   * file without reading it into memory: a rename on the same disk, else a copy, and the source is
+   * removed either way.
+   */
+  adopt(chatJid: string, msgId: string, absSource: string, ext: string): string {
+    const rel = this.relFor(chatJid, msgId, ext);
+    const dest = join(this.root, rel);
+    mkdirSync(join(this.root, chatMediaDir(chatJid)), { recursive: true });
+    rmSync(dest, { force: true });
+    try {
+      renameSync(absSource, dest);
+    } catch {
+      copyFileSync(absSource, dest);
+      rmSync(absSource, { force: true });
     }
     return rel;
   }

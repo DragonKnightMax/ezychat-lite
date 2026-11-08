@@ -23,6 +23,7 @@ import { WindowLimiter } from '../http/window-limiter.js';
 import { getChats, getMessages } from '../wa-bridge/index.js';
 import { requireMessageAccess } from '../inboxes/service.js';
 import { chatJidParam } from './chats.js';
+import { receiveMediaUpload } from './media-upload.js';
 
 const IdParams = z.object({ id: z.string().min(1).max(256) });
 
@@ -62,40 +63,32 @@ export default async function messagesRoutes(app: FastifyInstance, ctx: AppConte
     return reply.status(201).send(msg);
   });
 
+  // The file is streamed to disk and moved into the message: no size cap of our own, the chat's
+  // WhatsApp number's limits decide (413 with Forward's codes) within the free disk space (507).
   app.post('/chats/:jid/media', async (req, reply) => {
     const jid = chatJidParam(ctx, req);
-    if (!req.isMultipart()) throw errors.validation('Expected multipart/form-data');
-    const fields: Record<string, string> = {};
-    let file: { buffer: Buffer; fileName: string } | null = null;
-    for await (const part of req.parts()) {
-      if (part.type === 'file') {
-        if (part.fieldname !== 'file' || file) {
-          part.file.resume();
-          continue;
-        }
-        file = { buffer: await part.toBuffer(), fileName: part.filename || 'file' };
-      } else if (typeof part.value === 'string') {
-        fields[part.fieldname] = part.value;
-      }
+    const upload = await receiveMediaUpload(ctx, req, jid, req.user!.id);
+    try {
+      const f = parse(SendMediaFields, upload.fields);
+      if (f.voiceNote && f.caption) throw errors.validation('A voice note has no caption');
+      if (f.voiceNote && f.asFile) throw errors.validation('A voice note cannot be sent as a file');
+      const msg = await messages.sendMedia(
+        jid,
+        {
+          ...(f.voiceNote ? { buffer: upload.readVoiceNote() } : { path: upload.file.path }),
+          fileName: upload.file.fileName,
+          ...(f.caption ? { caption: f.caption } : {}),
+          ...(f.quotedId ? { quotedId: f.quotedId } : {}),
+          ...(f.voiceNote ? { voiceNote: true } : {}),
+          ...(f.asFile ? { asFile: true } : {}),
+        },
+        req.user!.id,
+        f.clientId,
+      );
+      return reply.status(201).send(msg);
+    } finally {
+      upload.discard();
     }
-    if (!file) throw errors.validation('file is required');
-    const f = parse(SendMediaFields, fields);
-    if (f.voiceNote && f.caption) throw errors.validation('A voice note has no caption');
-    if (f.voiceNote && f.asFile) throw errors.validation('A voice note cannot be sent as a file');
-    const msg = await messages.sendMedia(
-      jid,
-      {
-        buffer: file.buffer,
-        fileName: file.fileName,
-        ...(f.caption ? { caption: f.caption } : {}),
-        ...(f.quotedId ? { quotedId: f.quotedId } : {}),
-        ...(f.voiceNote ? { voiceNote: true } : {}),
-        ...(f.asFile ? { asFile: true } : {}),
-      },
-      req.user!.id,
-      f.clientId,
-    );
-    return reply.status(201).send(msg);
   });
 
   app.post('/messages/:id/retry', async (req) => {

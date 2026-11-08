@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { Message } from '@ezychat/shared';
 import { MessageBubble } from './MessageBubble';
+import { setUploadProgress } from '../lib/upload-progress';
 
 const groupMessage: Message = {
   id: 'G-1',
@@ -461,5 +462,47 @@ describe('MessageBubble forwarded and large files', () => {
     cleanup();
     bubble({ ...failed, error: null });
     expect(screen.getByText('Not sent')).toBeTruthy();
+  });
+});
+
+describe('MessageBubble upload progress', () => {
+  const sending: Message = {
+    ...groupMessage,
+    id: 'local-up-1',
+    chatJid: '60123@s.whatsapp.net',
+    fromMe: true,
+    type: 'document',
+    body: null,
+    mediaName: 'catalogue.pdf',
+    mediaStatus: 'pending',
+    status: 'pending',
+    clientId: 'up-1',
+  };
+
+  it('shows the share of a file this browser is uploading, and nothing once it is done', () => {
+    setUploadProgress('up-1', 0.42);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MessageBubble message={sending} showSender={false} outboundLabel={null} quoted={null} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId('uploading-progress').textContent).toBe('42%');
+    expect(screen.getByRole('progressbar', { name: 'Uploading 42%' })).toBeTruthy();
+    act(() => setUploadProgress('up-1', null));
+    expect(screen.queryByTestId('uploading-progress')).toBeNull();
+  });
+
+  it('words a file the tunnel refused', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MessageBubble
+          message={{ ...sending, status: 'failed', error: 'tunnel_too_large', clientId: 'up-2' }}
+          showSender={false}
+          outboundLabel={null}
+          quoted={null}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText(/Too large to send through the internet address/)).toBeTruthy();
   });
 });

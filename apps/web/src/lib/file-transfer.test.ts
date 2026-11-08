@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { MEDIA_UPLOAD_LIMIT_BYTES } from '@ezychat/shared';
+import { TUNNEL_UPLOAD_LIMIT_BYTES } from '@ezychat/shared';
 import {
   MAX_ATTACHMENTS,
   checkAttachments,
+  isTunnelHost,
   filesFromTransfer,
   formatBytes,
   hasFiles,
@@ -63,9 +64,9 @@ describe('file transfer', () => {
 
   it('refuses empty, too large and too many files before any upload', () => {
     const ok = sized('a.pdf', 10);
-    const big = sized('big.mov', MEDIA_UPLOAD_LIMIT_BYTES + 1);
+    const big = sized('big.mov', 2001);
     const empty = sized('empty.txt', 0);
-    const r = checkAttachments([ok, big, empty], 0);
+    const r = checkAttachments([ok, big, empty], 0, { document: 2000 });
     expect(r.accepted).toEqual([ok]);
     expect(r.rejected.map((x) => [x.file.name, x.reason])).toEqual([
       ['big.mov', 'too_large'],
@@ -74,9 +75,8 @@ describe('file transfer', () => {
     const full = checkAttachments([sized('b.pdf', 1), sized('c.pdf', 1)], MAX_ATTACHMENTS - 1);
     expect(full.accepted.map((f) => f.name)).toEqual(['b.pdf']);
     expect(full.rejected).toEqual([expect.objectContaining({ reason: 'too_many' })]);
-    expect(checkAttachments([sized('max.bin', MEDIA_UPLOAD_LIMIT_BYTES)], 0).accepted).toHaveLength(
-      1,
-    );
+    // no size cap of the app's own: without a number limit any size goes
+    expect(checkAttachments([sized('huge.bin', 5 * 1024 ** 3)], 0).accepted).toHaveLength(1);
   });
 
   it("a video above the number's video limit goes as a file; nothing else does", () => {
@@ -89,18 +89,17 @@ describe('file transfer', () => {
     expect(videoNeedsFile(sized('v.mp4', 70 * MB, 'video/mp4'), { document: MB })).toBe(false);
   });
 
-  it("the upload limit is 100 MB, lowered by what the chat's number takes per kind", () => {
+  it("the upload limit is what the chat's number takes per kind, nothing of our own", () => {
     const MB = 1024 * 1024;
-    expect(MEDIA_UPLOAD_LIMIT_BYTES).toBe(100 * MB);
     const cloud = { video: 16 * MB, image: 5 * MB, audio: 16 * MB, document: 100 * MB };
     expect(uploadLimitFor('image/jpeg', cloud)).toBe(5 * MB);
     expect(uploadLimitFor('audio/ogg', cloud)).toBe(16 * MB);
-    expect(uploadLimitFor('application/pdf', { document: 2 * 1024 * MB })).toBe(100 * MB);
-    // A video is checked against the file limit: above the video limit the server decides.
+    expect(uploadLimitFor('application/pdf', { document: 2 * 1024 * MB })).toBe(2 * 1024 * MB);
+    // A video is checked against the file limit: above the video limit it goes as a file.
     expect(uploadLimitFor('video/mp4', cloud)).toBe(100 * MB);
     expect(uploadLimitFor('video/mp4', { document: 50 * MB })).toBe(50 * MB);
-    expect(uploadLimitFor('image/png')).toBe(100 * MB);
-    expect(uploadLimitFor('image/png', null)).toBe(100 * MB);
+    expect(uploadLimitFor('image/png')).toBeUndefined();
+    expect(uploadLimitFor('image/png', null)).toBeUndefined();
     const r = checkAttachments(
       [sized('p.jpg', 6 * MB, 'image/jpeg'), sized('v.mp4', 70 * MB, 'video/mp4')],
       0,
@@ -162,5 +161,42 @@ describe('file transfer', () => {
     uninstall();
     uninstall = null;
     expect(drag('drop', ['Files']).defaultPrevented).toBe(false);
+  });
+});
+
+describe('the Cloudflare tunnel limit', () => {
+  const sized = (name: string, size: number) => {
+    const f = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(f, 'size', { value: size });
+    return f;
+  };
+
+  it('tells the internet address from this computer and the local network', () => {
+    for (const local of [
+      'localhost',
+      '127.0.0.1',
+      '[::1]',
+      '192.168.1.20',
+      '10.0.0.5',
+      '172.20.1.1',
+      'office-pc',
+      'office-pc.local',
+      '203.0.113.9',
+    ])
+      expect(isTunnelHost(local), local).toBe(false);
+    expect(isTunnelHost('inbox.example.com')).toBe(true);
+    expect(isTunnelHost('abc-def.trycloudflare.com')).toBe(true);
+  });
+
+  it('refuses a file above 100 MB only through the tunnel, before uploading', () => {
+    const big = sized('catalogue.pdf', TUNNEL_UPLOAD_LIMIT_BYTES + 1);
+    expect(checkAttachments([big], 0, null).accepted).toEqual([big]);
+    expect(checkAttachments([big], 0, null, { tunnel: true }).rejected).toEqual([
+      { file: big, reason: 'tunnel_limit', limit: TUNNEL_UPLOAD_LIMIT_BYTES },
+    ]);
+    // the number's own limit is named first when it is lower
+    expect(
+      checkAttachments([big], 0, { document: 1000 }, { tunnel: true }).rejected[0]!.reason,
+    ).toBe('too_large');
   });
 });

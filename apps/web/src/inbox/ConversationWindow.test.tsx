@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Chat, Inbox, Message, User } from '@ezychat/shared';
 import { InboxPage } from './InboxPage';
+import { stubXhr } from '../test/fake-xhr';
 
 const HOUR = 3_600_000;
 const me: User = {
@@ -83,16 +84,21 @@ function json(data: unknown, status = 200) {
 function setup(chat: Chat, opts: { inboxes?: Inbox[] | null; refuseSend?: boolean } = {}) {
   const { inboxes = [apiInbox], refuseSend = false } = opts;
   const sends: string[] = [];
-  const uploads: FormData[] = [];
+  const made = stubXhr(() => ({
+    status: 201,
+    body: { ...message, id: `M${made.length}`, fromMe: true, status: 'sent' },
+  }));
+  const uploads = {
+    get length() {
+      return made.length;
+    },
+    at: (i: number) => made[i]!.form,
+  };
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       if (method !== 'GET') {
-        if (url.endsWith('/media')) {
-          uploads.push(init!.body as FormData);
-          return json({ ...message, id: `M${uploads.length}`, fromMe: true, status: 'sent' }, 201);
-        }
         if (url.endsWith('/messages')) {
           sends.push(url);
           return refuseSend
@@ -223,12 +229,12 @@ describe('Conversation file drop', () => {
     expect(screen.getByTestId('attachment-tray').textContent).toContain('2 files to send');
     await user.type(screen.getByRole('textbox', { name: /message/i }), 'As promised{Enter}');
     await waitFor(() => expect(uploads).toHaveLength(2));
-    expect((uploads[0]!.get('file') as File).name).toBe('invoice.pdf');
-    expect(uploads[0]!.get('caption')).toBe('As promised');
-    expect(uploads[0]!.get('quotedId')).toBe('A1');
-    expect((uploads[1]!.get('file') as File).name).toBe('map.pdf');
-    expect(uploads[1]!.get('caption')).toBeNull();
-    expect(uploads[1]!.get('quotedId')).toBeNull();
+    expect((uploads.at(0).get('file') as File).name).toBe('invoice.pdf');
+    expect(uploads.at(0).get('caption')).toBe('As promised');
+    expect(uploads.at(0).get('quotedId')).toBe('A1');
+    expect((uploads.at(1).get('file') as File).name).toBe('map.pdf');
+    expect(uploads.at(1).get('caption')).toBeNull();
+    expect(uploads.at(1).get('quotedId')).toBeNull();
     expect(screen.queryByTestId('reply-bar')).toBeNull();
   });
 

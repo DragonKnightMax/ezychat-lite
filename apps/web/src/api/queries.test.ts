@@ -2,6 +2,8 @@ import { InfiniteQueryObserver, QueryClient, QueryClientProvider } from '@tansta
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement, type default as React } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stubXhr } from '../test/fake-xhr';
+import { uploadProgressOf as progressOf, useUploadProgress } from '../lib/upload-progress';
 import {
   DEFAULT_INBOX_CAPABILITIES,
   type Inbox,
@@ -400,17 +402,8 @@ describe('inboxes', () => {
 describe('media upload refusals', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  async function upload(status: number, code: string) {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ error: { code, message: 'Server words' } }), {
-            status,
-            headers: { 'content-type': 'application/json' },
-          }),
-      ),
-    );
+  async function upload(status: number, code: string, body?: string) {
+    stubXhr(() => ({ status, body: body ?? { error: { code, message: 'Server words' } } }));
     const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
     seed(qc, []);
     const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -424,17 +417,7 @@ describe('media upload refusals', () => {
   }
 
   it('sends asFile=1 for a video going as a file', async () => {
-    let form: FormData | null = null;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init: RequestInit) => {
-        form = init.body as FormData;
-        return new Response(JSON.stringify({ error: { code: 'x', message: 'no' } }), {
-          status: 500,
-          headers: { 'content-type': 'application/json' },
-        });
-      }),
-    );
+    const uploads = stubXhr(() => ({ status: 500, body: { error: { code: 'x', message: 'no' } } }));
     const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
     seed(qc, []);
     const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -446,8 +429,9 @@ describe('media upload refusals', () => {
         .mutateAsync({ file, clientId: 'c8', asFile: true })
         .catch(() => undefined);
     });
-    expect(form!.get('asFile')).toBe('1');
-    expect(form!.get('clientId')).toBe('c8');
+    expect(uploads[0]!.url).toBe(`/api/chats/${encodeURIComponent(JID)}/media`);
+    expect(uploads[0]!.form.get('asFile')).toBe('1');
+    expect(uploads[0]!.form.get('clientId')).toBe('c8');
   });
 
   it('keeps the code of a size refusal so the bubble words it, else the server message', async () => {
@@ -459,5 +443,28 @@ describe('media upload refusals', () => {
     expect((await upload(413, 'too_large_for_whatsapp')).error).toBe('too_large_for_whatsapp');
     expect((await upload(413, 'something_else')).error).toBe('Server words');
     expect((await upload(500, 'too_large')).error).toBe('Server words');
+    // Cloudflare's tunnel refuses a large body without our JSON
+    expect((await upload(413, '', '<html>413 Request Entity Too Large</html>')).error).toBe(
+      'tunnel_too_large',
+    );
+  });
+
+  it('reports the upload progress while it goes, and clears it when it ends', async () => {
+    const seen: Array<number | null> = [];
+    stubXhr(() => {
+      seen.push(progressOf('c10'));
+      return { status: 201, body: { id: 'M10', clientId: 'c10', chatJid: JID } };
+    });
+    const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    seed(qc, []);
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: qc }, children);
+    const { result } = renderHook(() => useSendMedia(JID), { wrapper });
+    const { result: progress } = renderHook(() => useUploadProgress('c10'));
+    await act(async () => {
+      await result.current.mutateAsync({ file: new File(['x'], 'a.pdf'), clientId: 'c10' });
+    });
+    expect(seen).toEqual([1]);
+    expect(progress.current).toBeNull();
   });
 });

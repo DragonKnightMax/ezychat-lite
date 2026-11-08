@@ -37,6 +37,10 @@ are listed here until they get a branch. Newest first; remove an item when its P
 
 ## Ideas and next steps
 
+- **MCP `send_audio` / voice note** (2026-11-08, from `feat/mcp-file-upload`): uploads take JPEG/PNG/WebP/PDF/.docx/MP4
+  only. An audio tool would need the Ogg/Opus checks of `messages/voice-note.ts` for a voice note, or a plain audio
+  file type list; and more document types for `send_file` (xlsx, pptx) if the owner wants them.
+
 - **Real-model check of the hand-off rules fixes** (PR #230, merged 2026-10-30): after the next release, run
   `try_ai_reply` on the Anchor Sprint agent (v87) with "Hi Anchor Sprint, I'd like to book a free consultation (from
   your homepage)." (expect action `answer` with a discovery question, no hand-off) and "What is the difference

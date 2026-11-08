@@ -716,6 +716,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Build, tooling and Windows
 
+- Run `prettier --write` only on the files you changed (`git diff --name-only origin/main`), never on a folder glob:
+  many files on `main` are not Prettier-clean, and a glob drags unrelated reformatting into the PR.
 - PowerShell does not wait for a GUI-subsystem program (Electron, also with `ELECTRON_RUN_AS_NODE=1`) called with
   `&`, and leaves `$LASTEXITCODE` unset, so its output and exit code are lost: pipe the call (`& $exe … | Write-Output`)
   and test the generated script with the real Electron binary (`windows.test.ts`). A test that sets `$LASTEXITCODE`
@@ -1168,6 +1170,22 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 - An MCP tool that takes a link (e.g. `send_image` `imageUrl`) downloads it only through `guardedFetch` (https,
   public address checked at connect, size and time cap) and checks the file type on the bytes; a large-body tool
   raises `bodyLimit` on its own route only, after the token check in `onRequest`, never the app-wide 1 MB.
+- A file larger than a few MB never travels as base64 or a buffered body: stream it to a private file (a child scope
+  with a pass-through content-type parser, or multipart `req.file()`), count bytes in the pipe, and send it by path
+  (`MessageService.sendMedia({ path })`). Fastify sets no request timeout, so a streamed upload needs its own idle and
+  total timeout, plus per-token concurrency and a free-disk check, or one slow sender holds a slot forever.
+- File size limits come from WhatsApp only (owner): check the target number's `WaCapabilities.mediaLimits` (an upload
+  for several numbers: the largest) and the free disk; never add an app cap. Through the Cloudflare tunnel the edge caps
+  bodies at 100 MB, so the web refuses larger files there before uploading and says where they work.
+- Invisible characters (bidi overrides U+202A–202E, U+2066–2069) in source must stay `\u` escapes: a file-writing tool
+  may turn `\u202e` into the raw character, which Sonar fails as a vulnerability (S6389). Check new files with
+  `grep -nP '[\x{202A}-\x{202E}\x{2066}-\x{2069}]'` (PCRE) or a short script before pushing.
+- Before a Dev Build re-run, stop every server you started (`pkill -f packages/server/src/cli.ts`) and give the new one a
+  fresh `--data` and port: a server left running keeps answering on its port after its data folder is deleted, and the
+  check silently measures the old one.
+- To screenshot the app "through the tunnel" locally: set the `named_tunnel_hostname` setting, launch Chromium with
+  `--host-resolver-rules=MAP <host> 127.0.0.1` and `--unsafely-treat-insecure-origin-as-secure=http://<host>:<port>`
+  (the session cookie is Secure off loopback), as `docs/features/mcp-file-upload/screens/shots.mjs` does.
 - OAuth for MCP: build the issuer and resource from `new URL(...).origin` (no default `:80`/`:443`),
   because MCP clients compare origins exactly; anyone can register an app, so the approval page shows
   the redirect host (not the app's self-chosen name) and never redirects a request it has not checked.

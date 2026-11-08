@@ -7,7 +7,7 @@ import { rateLimitKey } from '../http/rate-limit-key.js';
 import { HttpError, errors } from '../http/errors.js';
 import { originHost } from '../http/origin.js';
 import { WindowLimiter } from '../http/window-limiter.js';
-import { ErrorCode } from '@ezychat/shared';
+import { ErrorCode, MCP_BODY_LIMIT_BYTES } from '@ezychat/shared';
 import { createInboxReadPort } from './inbox.js';
 import { createAiSetupPort } from './ai-setup.js';
 import { createInboxSendPort } from './send.js';
@@ -15,11 +15,16 @@ import { createMessageFilePort } from './file.js';
 import { createMcpServer } from './server.js';
 import { resourceMetadataUrl } from './oauth-routes.js';
 import { MCP_PATH, isMcpEnabled } from './settings.js';
+import { registerUploadRoute } from './upload-route.js';
+import { uploadStore } from '../uploads/store.js';
 import { handleMcpRequest } from './transport.js';
 import { clearMcpNotice } from '../lite-import/notice.js';
 
-/** Largest /mcp request body: a 5 MB image as base64 plus the JSON-RPC envelope. */
-export const MCP_BODY_LIMIT = 8 * 1024 * 1024;
+/**
+ * Largest /mcp request body: a base64 file of up to about 6 MB plus the JSON-RPC envelope. Larger
+ * files go through POST /mcp/uploads (streamed to disk) or a link.
+ */
+export const MCP_BODY_LIMIT = MCP_BODY_LIMIT_BYTES;
 
 // resource_metadata tells an MCP client where to find the sign-in (RFC 9728, MCP authorization).
 const unauthorized = (req: FastifyRequest) =>
@@ -38,8 +43,10 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
     const tokens = getApiTokens(ctx);
     const inbox = createInboxReadPort(ctx);
     const aiSetup = createAiSetupPort(ctx);
+    // One per server: uploads waiting to be sent, and their per-token limits.
+    const uploads = uploadStore(ctx);
     // One per server: its per-token send limits must outlive each stateless request.
-    const send = createInboxSendPort(ctx);
+    const send = createInboxSendPort(ctx, { uploads });
     // Also one per server, for its per-token read limit.
     const files = createMessageFilePort(ctx);
     const log = ctx.log.child({ mod: 'mcp' });
@@ -98,7 +105,7 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
       principals.set(req, authenticate(req));
     });
 
-    // send_image and send_file take up to 5 MB as base64 (about 6.7 MB of JSON). The token is checked
+    // The send tools take up to about 6 MB as base64 (8 MB of JSON). The token is checked
     // in onRequest, before the body is read, so only a valid token can send a large body.
     scope.post(MCP_PATH, { bodyLimit: MCP_BODY_LIMIT }, async (req, reply) => {
       const principal = principals.get(req)!;
@@ -123,6 +130,8 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext): Promis
         .header('cache-control', 'no-store')
         .send(res.body);
     });
+
+    await registerUploadRoute(scope, ctx, (req) => principals.get(req)!, uploads);
 
     // Stateless JSON mode has no SSE stream or session to open or delete.
     scope.route({

@@ -520,8 +520,12 @@ adapter by `path` (Baileys `{ url }` + socket `mediaCache`: one upload per numbe
 own media file, `messages.media_size` gives `Message.mediaSize`; limits come only from `WaCapabilities.mediaLimits`
 (linked phone `LINKED_PHONE_MEDIA_LIMITS`: video 64 MB until measured, documents 2 GB; Business API
 `BUSINESS_API_MEDIA_LIMITS`: video 16 MB, document 100 MB): a video above a chat's video limit goes `sendAs: 'file'`
-(document), 413 `too_large_as_video` / `too_large_for_whatsapp`. The composer accepts uploads up to
-`MEDIA_UPLOAD_LIMIT_BYTES` (100 MB) and checks the same per-inbox limits. 30 forwards a minute per user; audit
+(document), 413 `too_large_as_video` / `too_large_for_whatsapp`. The app has no file size cap of its own (owner
+2026-11-08, "follow WhatsApp"): the composer checks the same per-inbox limits before uploading, `POST /chats/:jid/media`
+streams the file to `<data>/uploads/` (`routes/media-upload.ts`, `uploads/store.ts`) up to the chat's number's largest
+limit within the free disk (507), and `sendMedia({ path })` moves it in; the bubble shows upload progress (`apiUpload`
+XHR, `lib/upload-progress.ts`). Through the tunnel the web refuses files above `TUNNEL_UPLOAD_LIMIT_BYTES` (Cloudflare's
+100 MB) before uploading, and a 413 that is not ours becomes `tunnel_too_large`. 30 forwards a minute per user; audit
 `message.forwarded` {messageId, chatJids, messageIds}; logs ids and counts only. Web: `inbox/ForwardDialog.tsx`,
 ⋮ menu and touch bar **Forward**, the Forwarded line and "Sending … to WhatsApp" in `MessageBubble`.
 
@@ -662,11 +666,19 @@ a native module in dev, set `WATI_DESKTOP_RUNTIME=node` to run the server with s
   the scope: text into an **existing** chat, as the token owner, through the
   normal message service; idempotent per token + `requestId`; 10 a minute and 100 a day per token;
   audit `mcp.send` {tokenId, chatJid, messageId}, never the text. `send_image` (same scope and limits)
-  sends a JPEG/PNG/WebP (type read from the bytes, ≤ 5 MB) given as base64 or a public https link
-  downloaded only through `guardedFetch` (SSRF guard, 10 s, no loopback/private address); a retry with
-  the same `requestId` downloads nothing; audit adds `type: 'image'`, never the caption or link. `send_file` does the
-  same for a PDF or Word .docx (≤ 5 MB, type read from the bytes, sent as a document named `fileName`; audit
-  `type: 'document'`). `/mcp`
+  sends a JPEG/PNG/WebP (type read from the bytes) given as base64, an upload or a public https link
+  downloaded only through `guardedFetch` (SSRF guard, 60 min and 60 s idle, no loopback/private address); a retry with
+  the same `requestId` downloads nothing; audit adds `type` and `size`, never the caption, name or link. `send_file` does
+  the same for a PDF or Word .docx (sent as a document named `fileName` or the upload's name) and `send_video` for an
+  MP4 (`sendAs` video/file; omitted, a video above the number's video limit goes as a file). Each takes exactly one of
+  a link, base64 (about 6 MB, `MCP_SEND_MAX_BASE64_BYTES`: what fits the 8 MB JSON) or `uploadId`; links and uploads
+  have no cap of our own: up to the target number's `mediaLimits` (an upload: the largest of the owner's inboxes), within
+  the free disk, streamed to disk and sent by path (Forward's 413 codes). `POST /mcp/uploads` (design `docs/features/mcp-file-upload/design.md`): the `/mcp` `onRequest` checks
+  first, then `inbox:send` and a declared size, all before the body is read; raw body (`X-File-Name`) or multipart
+  (one `file` part), never parsed or buffered, streamed to `<data>/uploads/` (0700/0600, random names, emptied on
+  start), typed from the bytes (JPEG/PNG/WebP/PDF/.docx/MP4, else 415); an upload belongs to its token, is sent once
+  and expires after 1 hour; per token 30 an hour, 10 waiting, 2 at once (4 in total); 1 GB free disk kept, counting
+  declared sizes in progress (507); 60 s idle / 60 min total (408); logs ids, type and size only. `/mcp`
   accepts bodies up to 8 MB (`MCP_BODY_LIMIT`), only after the token check in `onRequest`. `send_to_new_number` (scope
   `inbox:send_new`, ticked at creation under "Can send", default off) may start a chat with a number not
   in the inbox only after `WaAdapter.checkNumber` confirms it, through the New chat service (20 checks a day per

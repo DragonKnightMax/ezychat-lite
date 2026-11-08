@@ -54,39 +54,70 @@ export async function api<T = unknown>(path: string, init: ApiInit<T> = {}): Pro
     throw new ApiError(0, 'network', 'Cannot reach the server. Check your connection.');
   }
 
-  const text = res.status === 204 ? '' : await res.text();
-  let data: unknown = undefined;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = undefined;
-    }
-  }
+  const data = parseBody(res.status === 204 ? '' : await res.text());
 
-  if (!res.ok) {
-    // The edition closed the access gate: the AccessGate swaps the app for the lock screen.
-    // No unauthorized event, so no sign-in redirect loop.
-    const gateCode = accessGateCode(res.status, data);
-    if (gateCode) {
-      dispatchAccessClosed(gateCode);
-      throw new ApiError(403, gateCode, 'The app is not available right now.');
-    }
-    if (res.status === 401 && typeof window !== 'undefined') {
-      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-    }
-    const parsed = ApiErrorSchema.safeParse(data);
-    if (parsed.success)
-      throw new ApiError(res.status, parsed.data.error.code, parsed.data.error.message);
-    throw new ApiError(
-      res.status,
-      `http_${res.status}`,
-      res.statusText || `Request failed (${res.status})`,
-    );
-  }
+  if (!res.ok) throw failure(res.status, res.statusText, data);
 
   if (init.schema) return init.schema.parse(data);
   return data as T;
+}
+
+function parseBody(text: string): unknown {
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The ApiError of a non-2xx answer (code/message from `{ error: { code, message } }`, else
+ * `http_<status>`); a closed access gate and a 401 also dispatch their window events.
+ */
+function failure(status: number, statusText: string, data: unknown): ApiError {
+  // The edition closed the access gate: the AccessGate swaps the app for the lock screen.
+  // No unauthorized event, so no sign-in redirect loop.
+  const gateCode = accessGateCode(status, data);
+  if (gateCode) {
+    dispatchAccessClosed(gateCode);
+    return new ApiError(403, gateCode, 'The app is not available right now.');
+  }
+  if (status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
+  const parsed = ApiErrorSchema.safeParse(data);
+  if (parsed.success)
+    return new ApiError(status, parsed.data.error.code, parsed.data.error.message);
+  return new ApiError(status, `http_${status}`, statusText || `Request failed (${status})`);
+}
+
+/**
+ * POST a form to `/api${path}` with upload progress (fetch reports none): `onProgress` gets the share
+ * sent so far. Same answers and errors as `api()`.
+ */
+export function apiUpload<T = unknown>(
+  path: string,
+  form: FormData,
+  onProgress: (share: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api${path}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('accept', 'application/json');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && e.total > 0) onProgress(e.loaded / e.total);
+    };
+    xhr.onerror = () =>
+      reject(new ApiError(0, 'network', 'Cannot reach the server. Check your connection.'));
+    xhr.onload = () => {
+      const data = parseBody(xhr.responseText);
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as T);
+      else reject(failure(xhr.status, xhr.statusText, data));
+    };
+    xhr.send(form);
+  });
 }
 
 type KnownErrorKey = `known.${keyof (typeof enErrors)['known']}`;

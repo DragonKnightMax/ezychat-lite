@@ -16,7 +16,6 @@ import {
 import {
   completionReady,
   matchPhrase,
-  MEDIA_UPLOAD_LIMIT_BYTES,
   type GroupMember,
   type QuickReply,
   type ReplyPhraseListItem,
@@ -49,6 +48,7 @@ import {
   checkAttachments,
   filesFromTransfer,
   formatBytes,
+  isTunnelHost,
   type MediaLimits,
 } from '@/lib/file-transfer';
 import {
@@ -220,13 +220,20 @@ export function Composer({
 
   function addFiles(incoming: readonly File[]) {
     if (disabled || incoming.length === 0) return;
-    const { accepted, rejected } = checkAttachments(incoming, filesRef.current.length, mediaLimits);
+    const { accepted, rejected } = checkAttachments(
+      incoming,
+      filesRef.current.length,
+      mediaLimits,
+      {
+        tunnel: isTunnelHost(window.location.hostname),
+      },
+    );
     for (const r of rejected)
       toast.error(
         t(`composer.files.${r.reason}`, {
           name: r.file.name,
           max: MAX_ATTACHMENTS,
-          limit: formatBytes(r.limit ?? MEDIA_UPLOAD_LIMIT_BYTES),
+          limit: formatBytes(r.limit ?? 0),
         }),
       );
     if (accepted.length) queueFiles([...filesRef.current, ...accepted]);

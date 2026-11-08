@@ -90,18 +90,23 @@ export function webClientCalls(): { calls: ClientCall[]; unresolved: string[] } 
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
         const callee = node.expression.text;
         const at = `${relative(WEB_SRC, file)}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
-        if (callee === 'api' || callee === 'fetch') {
+        if (callee === 'api' || callee === 'apiUpload' || callee === 'fetch') {
           const raws = literalPaths(node.arguments[0], checker);
           const isApiFetch = callee === 'fetch' && raws?.[0]?.startsWith('/api');
-          if (callee === 'api' || isApiFetch) {
-            // api() POSTs when a body is given; fetch() keeps GET unless told otherwise.
-            const method = methodOf(node.arguments[1], callee === 'api' ? 'POST' : 'GET');
+          const viaHelper = callee === 'api' || callee === 'apiUpload';
+          if (viaHelper || isApiFetch) {
+            // api() POSTs when a body is given; apiUpload() always POSTs a form; fetch() keeps GET
+            // unless told otherwise.
+            const method =
+              callee === 'apiUpload'
+                ? 'POST'
+                : methodOf(node.arguments[1], callee === 'api' ? 'POST' : 'GET');
             if (raws === null || method === null) unresolved.push(at);
             else
               for (const raw of raws)
                 calls.push({
                   method,
-                  path: (callee === 'api' ? '/api' + raw : raw).split('?')[0]!,
+                  path: (viaHelper ? '/api' + raw : raw).split('?')[0]!,
                   at,
                 });
           } else if (callee === 'fetch' && raws === null) {

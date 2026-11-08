@@ -157,6 +157,7 @@
       "remove": "移除 {{name}}",
       "caption": "添加说明（可选）",
       "too_large": "{{name}} 超过 {{limit}}，无法发送。",
+      "tunnel_limit": "{{name}} 超过 {{limit}}。通过互联网地址只能发送不超过 {{limit}} 的文件；更大的文件请在运行 EzyChat 的电脑上或通过本地网络发送。",
       "empty": "{{name}} 是空文件，无法发送。",
       "too_many": "每次最多 {{max}} 个文件：未添加 {{name}}。",
       "drop": "松开即可在此聊天中发送文件",
@@ -409,8 +410,10 @@
     "uploadErrors": {
       "too_large": "文件太大，无法发送。",
       "too_large_as_video": "文件太大，无法通过这个 WhatsApp 号码以视频形式发送。",
-      "too_large_for_whatsapp": "对这个 WhatsApp 号码来说文件太大。"
-    }
+      "too_large_for_whatsapp": "对这个 WhatsApp 号码来说文件太大。",
+      "tunnel_too_large": "文件太大，无法通过互联网地址发送（最多 100 MB）。请在运行 EzyChat 的电脑上或通过本地网络发送。"
+    },
+    "uploading": "正在上传 {{percent}}%"
   },
   "media": {
     "types": {

@@ -1,10 +1,15 @@
 // Shared by the send_image and send_file tests: the stored row of a send, the tool list of a token, the
 // resolved principal of a token and a local https server for the guarded download.
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:https';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import pino from 'pino';
 import type { AddressInfo } from 'node:net';
 import { generateSelfSignedCert } from '../../../e2e/partner-mcp/cert.mjs';
 import { getApiTokens, type ApiPrincipal } from '../src/api-tokens/index.js';
-import { sendClientId } from '../src/mcp/send.js';
+import { sendClientId, type MediaSource } from '../src/mcp/send.js';
+import { createUploadStore, type UploadStore } from '../src/uploads/store.js';
 import type { TestApp } from './helpers.js';
 import { rpc } from './mcp-helpers.js';
 
@@ -61,4 +66,24 @@ export function lastSendAudit(t: TestApp): { raw: string; meta: Record<string, u
     .prepare("SELECT meta FROM audit_log WHERE action = 'mcp.send' ORDER BY id DESC LIMIT 1")
     .get() as { meta: string };
   return { raw: meta, meta: JSON.parse(meta) };
+}
+
+/** An upload store in a new temporary folder (link downloads land there). */
+export function testUploadStore(
+  deps: { now?: () => number; freeBytes?: (dir: string) => number } = {},
+): { store: UploadStore; dir: string } {
+  const dir = join(mkdtempSync(join(tmpdir(), 'mcp-uploads-')), 'uploads');
+  return {
+    store: createUploadStore(dir, {
+      log: pino({ level: 'silent' }),
+      freeBytes: () => 1e12,
+      ...deps,
+    }),
+    dir,
+  };
+}
+
+/** The bytes of a downloaded file (a path on disk) or of a buffer. */
+export function bytesOf(source: MediaSource): Buffer {
+  return Buffer.isBuffer(source) ? source : readFileSync(source.path);
 }

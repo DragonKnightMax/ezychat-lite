@@ -170,6 +170,13 @@ Proposed with the mobile redesign (added when the phone layout is built): `Filte
   `24-group-tags-saved`, `25-group-info-tags`, `32-desktop-group-info-tags`
 - **Empty states** use `EmptyState` with an illustration from `public/illustrations/`.
 - **Loading** uses `Skeleton` rows, not spinners, for lists.
+- **Upload progress** of a file this browser sends sits at the top of its pending bubble, above the file's
+  "Uploading …" placeholder: a thin `Progress` bar (`h-1.5`, primary on muted, labelled "Uploading 42%") with the
+  percentage in `text-xs text-muted-foreground` beside it, gone when the upload ends; the bubble then shows the usual
+  pending clock. Don't use a spinner or a toast for it, and don't block the
+  composer. A size refusal (WhatsApp's limit, the tunnel's 100 MB) is said before uploading as an error toast that
+  names the limit and where it works, and in the failed bubble with the same words. — screenshots in
+  `docs/features/mcp-file-upload/screens/`
 - **Small screens:** Dialog → Drawer (bottom sheet) below `sm` (`ResponsiveDialog`); tables → stacked cards below
   `lg`; admin side nav → top Tabs/Sheet below `md`; the inbox switches to its phone layout below `md` (768px, see
   [Mobile patterns](#mobile-patterns)). Filters that are segmented tabs on desktop are chips on phones.

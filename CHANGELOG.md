@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AI assistant access: an AI assistant or script can upload a file to `/mcp/uploads` (as the raw file or as a form upload) and send it with `send_image`, `send_file` or the new `send_video` (MP4, sent as a file when it is too large to play as a video). Uploads and links take files as large as the WhatsApp number does; base64 stays for small files up to about 6 MB.
+- Sending a file from the message box shows its upload progress in the chat.
+
+### Changed
+
+- No file size limit of EzyChat's own: the message box and AI assistant sends follow each WhatsApp number's limits (for example 2 GB documents on a linked phone; 100 MB documents, 16 MB videos and 5 MB images on the Business API). Through the internet address (Cloudflare) files over 100 MB are refused before uploading, with a note that they work on the computer that runs EzyChat or on the local network.
+
 ## [0.1.81] - 2026-11-08
 
 ### Added

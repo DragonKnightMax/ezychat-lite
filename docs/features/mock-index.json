@@ -16,6 +16,16 @@
   },
   "proposals": [
     {
+      "feature": "mcp-file-upload",
+      "creationOrder": 40,
+      "createdAt": "2026-11-08",
+      "design": "docs/features/mcp-file-upload/design.md",
+      "mock": null,
+      "status": "design-only",
+      "coverage": "No mock (a small change; the owner asked for screenshots and states only): design.md with the security review and the composer states; screenshots at 1280/360 in screens/ (uploading progress, sent as a file, over WhatsApp's limit, tunnel 100 MB) made by screens/shots.mjs against a Dev Build.",
+      "note": "Not a mock baseline: the next clone still starts from latestConfirmed (forward-message). Removes partner-role (36) for retention; template-store stays (live tooling)."
+    },
+    {
       "feature": "mobile-redesign",
       "creationOrder": 39,
       "createdAt": "2026-11-07",
@@ -56,21 +66,6 @@
       "confirmedAt": "2026-11-06",
       "gitRevision": "e7dc8cfacdb7a4066c02016e96fc645187668270",
       "confirmation": "Owner (Jazz) confirmed the mock 2026-11-06 (relayed by the main session, session_01J4pmGkCf1Mvdepudm8WQAd): \"The owner CONFIRMED the New chat mock on 2026-11-06, with one change\": the daily new-number limit for personal WhatsApp is an admin setting (default 20, 0 = no limit, ban warning, audited before/after, shared with MCP send_to_new_number); suggested answers stand (counts in memory; Business API only 5/hour per user; default country from the inbox's own number, +60 fallback; assigned to the starter, AI waits); limited agents (chat_scope 'chosen') never start a new chat."
-    },
-    {
-      "feature": "partner-role",
-      "creationOrder": 36,
-      "createdAt": "2026-11-06",
-      "design": "docs/features/partner-role/design.md",
-      "mock": "docs/features/partner-role/mock/index.html",
-      "status": "confirmed",
-      "baselineFeature": "google-drive",
-      "baselineGitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
-      "coverage": "Full app clone of the confirmed google-drive reference with the confirmed sql-accounting mock (e33aabbd) merged in; limited chat access: Members list note (Only N chosen chats / No chats chosen), Edit member 'Chats this member can see' (All chats default, Only chosen chats with list, remove, add search, none-chosen warning, 12 chosen with a long group name), the limited agent's view (only chosen chats, a chosen chat as a normal agent, Group info member without Open chat / Message, another chat's link 'You can't open this chat', nothing chosen 'No chats yet'); desktop 1280 / mobile 360, light/dark (member-chats-shots.mjs, 40 shots); en/ms/zh-CN.",
-      "note": "Folder keeps the name partner-role (PR #314); scope simplified by the owner 2026-11-06 to one agent setting (no new role). Stand-in routes /api/mock/member-chats*. Built in parallel with scheduled-tasks (35) from the same google-drive baseline: the next clone starts from this mock and copies in scheduled-tasks' files (its design.md lists them). Inherits the coverage gaps of google-drive.",
-      "confirmedAt": "2026-11-06",
-      "gitRevision": "846a09cc9561a7a65e984572591e3ee458f47d2d",
-      "confirmation": "Owner (Jazz) 2026-11-06, relayed by the main session: \"The owner CONFIRMED the simplified limited-agent mock (2026-11-06) with your proposed answers\" (chosen chats from any inbox replace inbox access; assign only chosen chats, removal unassigns) plus: no notification of any kind for chats a limited agent cannot see."
     },
     {
       "feature": "scheduled-tasks",
@@ -671,6 +666,25 @@
       "archivedAt": "2026-11-07",
       "archivedRevision": "2bb1c87",
       "archivedBy": "forward-message (five-folder retention; template-store kept as tooling)"
+    },
+    {
+      "feature": "partner-role",
+      "creationOrder": 36,
+      "createdAt": "2026-11-06",
+      "design": "docs/features/partner-role/design.md",
+      "mock": "docs/features/partner-role/mock/index.html",
+      "status": "confirmed",
+      "baselineFeature": "google-drive",
+      "baselineGitRevision": "442b6317254a1a86b7df66bb86335f2d0047caec",
+      "coverage": "Full app clone of the confirmed google-drive reference with the confirmed sql-accounting mock (e33aabbd) merged in; limited chat access: Members list note (Only N chosen chats / No chats chosen), Edit member 'Chats this member can see' (All chats default, Only chosen chats with list, remove, add search, none-chosen warning, 12 chosen with a long group name), the limited agent's view (only chosen chats, a chosen chat as a normal agent, Group info member without Open chat / Message, another chat's link 'You can't open this chat', nothing chosen 'No chats yet'); desktop 1280 / mobile 360, light/dark (member-chats-shots.mjs, 40 shots); en/ms/zh-CN.",
+      "note": "Folder keeps the name partner-role (PR #314); scope simplified by the owner 2026-11-06 to one agent setting (no new role). Stand-in routes /api/mock/member-chats*. Built in parallel with scheduled-tasks (35) from the same google-drive baseline: the next clone starts from this mock and copies in scheduled-tasks' files (its design.md lists them). Inherits the coverage gaps of google-drive.",
+      "confirmedAt": "2026-11-06",
+      "gitRevision": "846a09cc9561a7a65e984572591e3ee458f47d2d",
+      "confirmation": "Owner (Jazz) 2026-11-06, relayed by the main session: \"The owner CONFIRMED the simplified limited-agent mock (2026-11-06) with your proposed answers\" (chosen chats from any inbox replace inbox access; assign only chosen chats, removal unassigns) plus: no notification of any kind for chats a limited agent cannot see.",
+      "archived": true,
+      "archivedAt": "2026-11-08",
+      "archivedRevision": "3a287f59cf49ad7f7c7220c6fbe53a809b287047",
+      "archivedBy": "mcp-file-upload (five-folder retention; template-store kept as tooling)"
     }
   ]
 }

@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useCustomerProfile } from '../api/queries';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { copyText } from '@/lib/clipboard';
@@ -37,6 +38,7 @@ import { ReactionPicker } from './ReactionPicker';
 import { DeletedBody, EditedLabel, MessageMoreMenu } from './MessageActions';
 import { NO_RIGHTS, forwardLocked, forwardable, type MessageChangeProps } from './message-changes';
 import { formatBytes } from '../lib/file-transfer';
+import { useUploadProgress } from '../lib/upload-progress';
 import { useGuardedLinkClick } from './navigation-guard';
 import type { Directory } from './useDirectory';
 import { SWIPE_TRIGGER_PX, useSwipeReply } from './useSwipeReply';
@@ -410,6 +412,8 @@ export function MessageBubble({
         )}
         {/* "Forwarded" / "Forwarded many times", as WhatsApp shows it. */}
         {m.forwarded && !deleted && <ForwardedLabel many={m.forwarded.manyTimes} />}
+        {/* The composer's file still uploading to EzyChat (from this browser). */}
+        {out && m.status === 'pending' && <UploadingProgress clientId={m.clientId} />}
         {/* A large file still going up to WhatsApp (no progress: Baileys reports none). */}
         {out && m.status === 'pending' && (m.mediaSize ?? 0) >= LARGE_FILE_BYTES && (
           <SendingLarge size={m.mediaSize!} />
@@ -544,7 +548,12 @@ export function MessageBubble({
 export const LARGE_FILE_BYTES = 20 * 1024 * 1024;
 
 /** Upload refusals the app words itself; any other error is shown as the server wrote it. */
-const UPLOAD_ERRORS = ['too_large', 'too_large_as_video', 'too_large_for_whatsapp'] as const;
+const UPLOAD_ERRORS = [
+  'too_large',
+  'too_large_as_video',
+  'too_large_for_whatsapp',
+  'tunnel_too_large',
+] as const;
 type UploadError = (typeof UPLOAD_ERRORS)[number];
 
 /** Why a message was not sent, in plain words. */
@@ -566,6 +575,29 @@ function ForwardedLabel({ many }: Readonly<{ many: boolean }>) {
       <Forward className="size-3.5 shrink-0" aria-hidden="true" />
       {many ? t('forward.forwardedMany') : t('forward.forwarded')}
     </p>
+  );
+}
+
+/**
+ * The upload of a file this browser is sending: a bar and the percentage above the file's
+ * "Uploading …" placeholder, until it arrived.
+ */
+export function UploadingProgress({ clientId }: Readonly<{ clientId: string | null | undefined }>) {
+  const { t } = useTranslation('inbox');
+  const share = useUploadProgress(clientId);
+  if (share === null) return null;
+  const percent = Math.round(share * 100);
+  return (
+    <div className="mb-1 flex min-w-40 items-center gap-2" data-testid="uploading-progress">
+      <Progress
+        value={percent}
+        aria-label={t('message.uploading', { percent })}
+        className="h-1.5 flex-1"
+      />
+      <span className="text-xs tabular-nums text-muted-foreground" aria-hidden="true">
+        {percent}%
+      </span>
+    </div>
   );
 }
 

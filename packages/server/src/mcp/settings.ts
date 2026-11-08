@@ -3,6 +3,8 @@ import type { AppContext } from '../context.js';
 
 export const MCP_ENABLED_SETTING = 'mcp_enabled';
 export const MCP_PATH = '/mcp';
+/** Binary or multipart file uploads for the send tools (`uploadId`). */
+export const MCP_UPLOADS_PATH = '/mcp/uploads';
 
 /** AI assistant (MCP) access is off until an admin turns it on. */
 export function isMcpEnabled(ctx: AppContext): boolean {

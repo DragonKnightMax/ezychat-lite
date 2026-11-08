@@ -67,7 +67,8 @@ import {
   type User,
   type WaStatus,
 } from '@ezychat/shared';
-import { ApiError, api } from './client';
+import { ApiError, api, apiUpload } from './client';
+import { setUploadProgress } from '@/lib/upload-progress';
 import { unsubscribePush } from '../pwa/push';
 import { clearUserCaches } from '../auth/user-caches';
 
@@ -654,6 +655,18 @@ const SIZE_REFUSALS: ReadonlySet<string> = new Set([
   'too_large_for_whatsapp',
 ]);
 
+/**
+ * The error a failed upload's bubble keeps: WhatsApp's size refusals by code, a 413 that is not ours
+ * (Cloudflare's tunnel limit answers without our JSON) as `tunnel_too_large`, else the message.
+ */
+export function uploadFailure(e: unknown): string {
+  if (e instanceof ApiError && e.status === 413) {
+    if (SIZE_REFUSALS.has(e.code)) return e.code;
+    if (e.code === 'http_413') return 'tunnel_too_large';
+  }
+  return e instanceof Error ? e.message : 'Upload failed';
+}
+
 export function useSendMedia(jid: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -668,7 +681,10 @@ export function useSendMedia(jid: string) {
       const form = new FormData();
       for (const [key, value] of Object.entries(fields)) form.append(key, value);
       form.append('file', input.file, input.file.name);
-      return api<Message>(`/chats/${enc(jid)}/media`, { method: 'POST', form });
+      const done = () => setUploadProgress(input.clientId, null);
+      return apiUpload<Message>(`/chats/${enc(jid)}/media`, form, (share) =>
+        setUploadProgress(input.clientId, share),
+      ).finally(done);
     },
     onMutate: (input) => {
       const mime = input.file.type;
@@ -710,12 +726,7 @@ export function useSendMedia(jid: string) {
         {
           status: 'failed',
           // WhatsApp's size refusals keep their code: the bubble words them (MessageBubble).
-          error:
-            e instanceof ApiError && e.status === 413 && SIZE_REFUSALS.has(e.code)
-              ? e.code
-              : e instanceof Error
-                ? e.message
-                : 'Upload failed',
+          error: uploadFailure(e),
         },
       );
     },
