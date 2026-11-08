@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { InfiniteQueryObserver, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement, type default as React } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -85,6 +85,34 @@ describe('message cache', () => {
     const all = cached(qc);
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ id: 'WA-1', status: 'delivered', clientId: 'c1' });
+  });
+
+  it('a live message that arrives while the first fetch is in flight triggers a refetch', async () => {
+    const qc = new QueryClient();
+    let calls = 0;
+    const observer = new InfiniteQueryObserver(qc, {
+      queryKey: qk.messages(JID),
+      initialPageParam: null as string | null,
+      getNextPageParam: () => undefined,
+      queryFn: async () => {
+        calls += 1;
+        await new Promise((r) => setTimeout(r, 20));
+        return { messages: calls === 1 ? [] : [msg({ id: 'live-1' })], nextBefore: null };
+      },
+    });
+    const unsub = observer.subscribe(() => undefined);
+    await new Promise((r) => setTimeout(r, 5));
+    upsertMessageInCache(qc, msg({ id: 'live-1' }));
+    await waitFor(() => expect(calls).toBe(2));
+    await waitFor(() => expect(cached(qc).map((x) => x.id)).toEqual(['live-1']));
+    expect(calls).toBe(2);
+    unsub();
+  });
+
+  it('a live message with no messages query at all does nothing', () => {
+    const qc = new QueryClient();
+    upsertMessageInCache(qc, msg({ id: 'live-1' }));
+    expect(qc.getQueryCache().find({ queryKey: qk.messages(JID) })).toBeUndefined();
   });
 
   it('a newer status from the server replaces the cached one', () => {

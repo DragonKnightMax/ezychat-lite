@@ -222,6 +222,16 @@ function applyPatch(x: Message, patch: Partial<Message>): Message {
 
 /** Insert or replace a message in the messages cache of its chat ("Delete for me": remove it). */
 export function upsertMessageInCache(qc: QueryClient, m: Message): void {
+  // No pages yet: the first fetch may have started before this message was stored, so its
+  // answer could miss it. Restart it (a fetch without data is not restarted by a plain
+  // invalidate) instead of dropping the event.
+  if (!qc.getQueryData<MessagesData>(qk.messages(m.chatJid))?.pages.length) {
+    const queryKey = qk.messages(m.chatJid);
+    void qc
+      .cancelQueries({ queryKey }, { revert: true })
+      .then(() => qc.invalidateQueries({ queryKey }));
+    return;
+  }
   qc.setQueryData<MessagesData>(qk.messages(m.chatJid), (old) => {
     if (!old || old.pages.length === 0) return old;
     if (m.hidden)

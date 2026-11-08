@@ -18,7 +18,7 @@ One row per item; the daily run works it top to bottom. Detail for fixed items i
 | L-2 | e2e | `e2e/devbuild-multi-inbox-check.mjs` fails from step 2 on a fresh `--max-inboxes 3` server | low | small | open | 2026-11-07 |
 | L-3 | web i18n | "Hand-off" vs "Hand-over" wording differs; ms/zh `ai.agents.handoffTitle` still English | low | small | open (touches a screen: needs e2e round) | 2026-11-07 |
 | L-4 | web | A failed file upload cannot be sent again (Retry does not resend the local file) | med | major | recorded-major (composer tray redesign) | 2026-11-07 |
-| L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | open | 2026-11-07 |
+| L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | in PR (techdebt/live-message-before-fetch) | 2026-11-07 |
 | L-6 | e2e | `e2e/reactions.spec.ts` flaky | low | small | open | 2026-11-07 |
 | L-7 | wa | Reactions mapping untested against real WhatsApp | med | major | recorded-major (needs real WhatsApp) | 2026-11-07 |
 | L-8 | desktop | `status-sections.ts` TODO(phase 4b): import types from `@ezychat/desktop` once published | low | small | open | 2026-11-07 |
@@ -29,6 +29,7 @@ SonarCloud was not queried and lint/typecheck were not run (docs-only change); r
 
 ### Run log
 
+- 2026-11-07 (2nd run): L-5 fixed: a live message with no cached pages now restarts the first fetch. Web tests, typecheck, lint and e2e (159 passed) ran; SonarCloud not queried.
 - 2026-11-07: no `techdebt/` PRs open; no code fixed; backlog table created from this file, `docs/backlog.md` and a TODO scan.
 
 ## Fixed

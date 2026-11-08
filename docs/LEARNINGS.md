@@ -1573,6 +1573,8 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   QueryClient set".
 - The persisted query cache (`api/query-persist.ts`) saves with a delay, so a reload can restore state from before the last mutation: never persist state a route guard acts on in a transitional form (e.g. `mustChangePassword`), and when an e2e step reloads right after a mutation and lands on an old page, suspect the restored copy first.
 
+- A live event that patches a react-query cache must handle "no data yet" (a first fetch in flight): `setQueryData` on an empty entry is a no-op and a plain `invalidateQueries` does not restart a fetch that has no data, so `cancelQueries({ revert: true })` first (`upsertMessageInCache`).
+
 - Every round trip counts over a slow tunnel (~0.7 s each): the live connection reloads every query when it joins,
   so a list already on screen waits for that reload (with a short fallback) instead of loading itself; an infinite
   list reloads every loaded page, so persist and restore page 1 only. One open loaded `/api/chats` up to 6 times.
