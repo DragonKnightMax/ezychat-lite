@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { chatItem, customerJid, expect, fakeIncoming, inboxHeading, test } from './helpers';
 
 /** A 1×1 PNG, as a screenshot on the clipboard. */
@@ -6,7 +7,7 @@ const PIXEL_PNG =
 
 /** A drag-and-drop or paste event carrying real files, as the OS hands them to the page. */
 async function sendFiles(
-  target: import('@playwright/test').Locator,
+  target: Locator,
   kind: 'drop' | 'paste',
   files: Array<{ name: string; type: string; text?: string; base64?: string }>,
 ) {

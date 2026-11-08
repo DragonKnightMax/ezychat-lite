@@ -15,20 +15,22 @@ One row per item; the daily run works it top to bottom. Detail for fixed items i
 | id | area | finding | severity | size | status | last checked |
 | --- | --- | --- | --- | --- | --- | --- |
 | L-1 | desktop/updater | Blocked installer (antivirus): result not shown in the app language; same version offered again at once | med | major | recorded-major (needs owner decision on a delay before offering releases) | 2026-11-07 |
-| L-2 | e2e | `e2e/devbuild-multi-inbox-check.mjs` fails from step 2 on a fresh `--max-inboxes 3` server | low | small | open | 2026-11-07 |
+| L-2 | e2e | `e2e/devbuild-multi-inbox-check.mjs` failed from step 2 on a fresh `--max-inboxes 3` server | low | small | closed: no longer reproduces, all 20 steps pass on main 5fc6f2c (2026-11-08) | 2026-11-08 |
 | L-3 | web i18n | "Hand-off" vs "Hand-over" wording differs; ms/zh `ai.agents.handoffTitle` still English | low | small | open (touches a screen: needs e2e round) | 2026-11-07 |
 | L-4 | web | A failed file upload cannot be sent again (Retry does not resend the local file) | med | major | recorded-major (composer tray redesign) | 2026-11-07 |
-| L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | in PR (techdebt/live-message-before-fetch) | 2026-11-07 |
+| L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | fixed in #336 (2026-11-07) | 2026-11-08 |
 | L-6 | e2e | `e2e/reactions.spec.ts` flaky | low | small | open | 2026-11-07 |
 | L-7 | wa | Reactions mapping untested against real WhatsApp | med | major | recorded-major (needs real WhatsApp) | 2026-11-07 |
-| L-8 | desktop | `status-sections.ts` TODO(phase 4b): import types from `@ezychat/desktop` once published | low | small | open | 2026-11-07 |
+| L-8 | desktop | `status-sections.ts` TODO(phase 4b): Enterprise keeps a copy of the status-section types; `@ezychat/desktop` 0.1.80 exports only Model/Context/Provider, not Field/Button/Result/Tone | low | major | recorded-major (extension API: export the remaining types from `apps/desktop/src/index.ts` in Lite, release, then Enterprise deletes its copy) | 2026-11-08 |
 | L-9 | web | Flag emoji show as letters on Windows (needs bundled flag font) | low | small | open | 2026-11-07 |
+| L-11 | e2e | ESLint warning: `import()` type annotation in `e2e/file-transfer.spec.ts` | low | small | fixed in this PR (2026-11-08) | 2026-11-08 |
 | L-10 | deps | 10 Dependabot PRs open (#302-#311) and older PRs #201, #237, #240, #249, #273 | low | small | open (not techdebt/ PRs; not merged by this run) | 2026-11-07 |
 
 SonarCloud was not queried and lint/typecheck were not run (docs-only change); re-check next run.
 
 ### Run log
 
+- 2026-11-08: no `techdebt/` PRs open. L-11 lint warning fixed (type import in the e2e spec); L-2 closed (does not reproduce); L-5 status corrected; L-8 recorded-major. Lint, typecheck run; SonarCloud has 2143 open issues (e.g. nested ternary `MediaView.tsx:335`, complexity in `lite-import/merge-tables.ts`), not triaged yet.
 - 2026-11-07 (2nd run): L-5 fixed: a live message with no cached pages now restarts the first fetch. Web tests, typecheck, lint and e2e (159 passed) ran; SonarCloud not queried.
 - 2026-11-07: no `techdebt/` PRs open; no code fixed; backlog table created from this file, `docs/backlog.md` and a TODO scan.
 
