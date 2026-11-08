@@ -42,13 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Start a chat with a new number.** **New** next to the Inbox title starts a WhatsApp chat with a number that is not
-  in your inbox yet, one number at a time (Malaysian numbers can start with 0). On a linked phone, EzyChat checks the
-  number is on WhatsApp, warns about the ban risk and opens the chat assigned to you; on the WhatsApp Business API the
-  first message is an approved template, and the chat starts once it is sent. A number that already has a chat opens
-  that chat. Admins can always do it; **Settings → General → New chats** lets team members do it too (off by default)
-  and sets **New chats per day, per WhatsApp number** (20 by default, 0 = no limit, shared with AI assistants).
-  Agents limited to chosen chats cannot start new chats.
+- **Start a chat with a new number.** The **New chat** icon next to the Inbox title starts a WhatsApp chat with a number
+  that is not in your inbox yet, one number at a time (Malaysian numbers can start with 0). On a linked phone, EzyChat
+  checks the number is on WhatsApp, warns about the ban risk and opens the chat assigned to you; on the WhatsApp
+  Business API the first message is an approved template, and the chat starts once it is sent. A number that already has
+  a chat opens that chat. Admins can always do it; **Settings → General → New chats** lets team members do it too (off
+  by default) and sets **New chats per day, per WhatsApp number** (20 by default, 0 = no limit, shared with AI
+  assistants). Agents limited to chosen chats cannot start new chats.
 - **Give an agent only the chats you choose.** In Members → Edit, an agent's new setting **Chats this member can see**
   is All chats (as before) or **Only chosen chats**, with a list you add direct chats and groups to. Use it for an
   outside or support agent: they work as usual in those chats, and every other chat stays invisible to them, with no
