@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.82] - 2026-11-09
+
 ### Added
 
+- Mac: EzyChat Lite is now signed with an Apple Developer ID and notarized by Apple. A downloaded installer opens like any other Mac app: drag it to Applications and open it, with no trip to System Settings → Privacy & Security → Open Anyway.
 - AI assistant access: an AI assistant or script can upload a file to `/mcp/uploads` (as the raw file or as a form upload) and send it with `send_image`, `send_file` or the new `send_video` (MP4, sent as a file when it is too large to play as a video). Uploads and links take files as large as the WhatsApp number does; base64 stays for small files up to about 6 MB.
 - Sending a file from the message box shows its upload progress in the chat.
 
