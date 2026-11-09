@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.80",
-    "@ai-sdk/openai": "4.0.94",
+    "@ai-sdk/openai": "4.0.109",
     "@ezychat/shared": "0.1.83",
     "@ezychat/wa": "0.1.83",
     "@fastify/cookie": "^11.1.5",
