@@ -206,7 +206,7 @@ into AGENTS.md.
   both feature folders, renumber the later one, archive the next oldest, and note in `latestConfirmed` which
   parallel feature's screens the next clone must add.
 - Bringing a parallel confirmed mock into a new clone: per differing file run `git merge-file <latest> <shared
-  baseline> <parallel>` (the shared baseline folder is still in the tree), merge catalogs by key, then
+baseline> <parallel>` (the shared baseline folder is still in the tree), merge catalogs by key, then
   `snapshot.mjs --check`. A confirmed baseline may already fail its own `--check`: record that drift as inherited
   (copied unchanged) instead of re-hashing it away. When the shared baseline folder is already pruned, read it from
   its recorded revision (`git fetch --depth=1 origin <sha>` in a shallow cloud clone, then `git show <sha>:<path>`).
@@ -1629,6 +1629,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   list reloads every loaded page, so persist and restore page 1 only. One open loaded `/api/chats` up to 6 times.
   The PWA caches (`sw-routes.ts`) never store a `no-store` answer, are cleared at sign-out and on a user switch,
   and a media file is cacheable only once WhatsApp Safety's AI check has answered (`safety.cacheable`).
+- A WhatsApp block belongs to one inbox (one WhatsApp number), but `safety_numbers` is keyed by the customer's
+  `wa_jid`: record `blocked_inbox_id` and ask `isBlocked(waJid, inboxId)`, or a block on Sales silences the AI and shows
+  "blocked" in the same customer's Support chat. Blocking from the chat moves the chat's flagged items like Admin →
+  Safety (open → blocked → reported/open); a new field in a shared response gets a zod default.
 - A list row with a label and action buttons (join requests, approvals): keep a phone number `whitespace-nowrap` and the
   buttons in one `ml-auto shrink-0` group, so a narrow panel moves the whole group below instead of truncating the
   number or putting one button per line (a `min-w-*` on the label did the latter at 360 px).

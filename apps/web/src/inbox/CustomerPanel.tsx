@@ -33,6 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useMediaQuery } from '@/lib/use-media-query';
 import { formatRelative } from '../lib/format';
+import { BlockNumber } from './BlockNumber';
 import { PanelHeader } from './PanelHeader';
 import { TagInput } from './TagInput';
 import type { Directory } from './useDirectory';
@@ -679,13 +680,16 @@ function CustomerBody({
               {errorMessage(query.error)}
             </Banner>
           ) : hasDetails(data.profile) ? (
-            <CustomerDetails
-              profile={data.profile}
-              whatsappName={data.whatsappName}
-              whatsappPhone={data.whatsappPhone ?? null}
-              whatsapp={data.whatsapp}
-              directory={directory}
-            />
+            <>
+              <CustomerDetails
+                profile={data.profile}
+                whatsappName={data.whatsappName}
+                whatsappPhone={data.whatsappPhone ?? null}
+                whatsapp={data.whatsapp}
+                directory={directory}
+              />
+              <BlockNumber jid={jid} />
+            </>
           ) : (
             <div className="space-y-4">
               {/* Compact empty state: what is missing, why it matters, one action. */}
@@ -708,6 +712,7 @@ function CustomerBody({
                   </p>
                 )
               )}
+              <BlockNumber jid={jid} />
             </div>
           )}
         </div>

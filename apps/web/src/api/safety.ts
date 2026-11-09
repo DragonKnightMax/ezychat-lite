@@ -7,6 +7,7 @@ import {
   type ReportPeriod,
   type SafetyAction,
   type SafetyActionBody,
+  type SafetyChatAction,
 } from '@ezychat/shared';
 import { api } from './client';
 
@@ -73,6 +74,24 @@ export function useSafetyAction() {
     onSuccess: (state) => {
       qc.setQueryData(safetyKeys.state, state);
       // The chat bars and the report follow (blocked, reported).
+      void qc.invalidateQueries({ queryKey: ['safety'] });
+    },
+  });
+}
+
+/** Admins: block or unblock any direct chat's number (the Customer panel), flagged or not. */
+export function useSafetyChatAction(jid: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ action, spam }: { action: SafetyChatAction; spam?: boolean }) =>
+      api(`/safety/chats/${encodeURIComponent(jid)}/${action}`, {
+        method: 'POST',
+        body: action === 'block' ? { spam: spam === true } : {},
+        schema: SafetyChatState,
+      }),
+    onSuccess: (state) => {
+      qc.setQueryData(safetyKeys.chat(jid), state);
+      // Admin → Safety (blocked numbers) and the report follow.
       void qc.invalidateQueries({ queryKey: ['safety'] });
     },
   });

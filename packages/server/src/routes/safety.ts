@@ -4,6 +4,8 @@ import {
   ReportQuery,
   SafetyAction,
   SafetyActionBody,
+  SafetyChatAction,
+  SafetyChatActionBody,
   SafetySettingsBody,
   type SafetyChatState,
   type SafetyReport,
@@ -20,6 +22,7 @@ import { computeSafetyReport } from '../reports/safety.js';
 import { chatJidParam } from './chats.js';
 
 const ItemParams = z.object({ id: z.coerce.number().int().positive(), action: SafetyAction });
+const ChatActionParams = z.object({ action: SafetyChatAction });
 
 /**
  * WhatsApp Safety (docs/features/whatsapp-safety/design.md). Admins: the flagged messages, blocked
@@ -37,6 +40,22 @@ export default async function safetyRoutes(app: FastifyInstance, ctx: AppContext
     '/safety/chats/:jid',
     { preHandler: requireUser(ctx) },
     async (req): Promise<SafetyChatState> => safety().chatState(chatJidParam(ctx, req)),
+  );
+
+  // Admins: block or unblock any direct chat's number, flagged or not (the Customer panel).
+  app.post(
+    '/safety/chats/:jid/:action',
+    { preHandler: requireAdmin(ctx) },
+    async (req): Promise<SafetyChatState> => {
+      const { action } = parse(ChatActionParams, req.params);
+      return safety().actOnChat(
+        chatJidParam(ctx, req),
+        action,
+        parse(SafetyChatActionBody, req.body ?? {}),
+        req.user!,
+        clientIp(req),
+      );
+    },
   );
 
   app.get('/safety', { preHandler: requireAdmin(ctx) }, async (): Promise<SafetyState> =>

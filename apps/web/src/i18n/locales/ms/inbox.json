@@ -1208,5 +1208,18 @@
     "sendingLarge": "Menghantar {{size}} ke WhatsApp…",
     "thisNumber": "nombor WhatsApp ini",
     "loadFailed": "Sembang tidak dapat dimuatkan. Tutup dan cuba lagi."
+  },
+  "block": {
+    "title": "Sekat nombor",
+    "hint": "Spam atau mesej yang tidak diingini? Sekat nombor ini di WhatsApp.",
+    "button": "Sekat nombor",
+    "cannot": "Nombor WhatsApp ini tidak dapat menyekat sembang ini sekarang. Pada Business API, anda hanya boleh menyekat dalam masa 24 jam selepas mesej terakhir mereka.",
+    "confirmTitle": "Sekat nombor ini?",
+    "confirmBody": "WhatsApp berhenti menghantar mesej dan panggilan nombor ini ke peti masuk ini, dan ejen AI berhenti membalasnya. Anda boleh nyahsekat di sini pada bila-bila masa.",
+    "spam": "Tandakan juga sebagai spam",
+    "spamHint": "EzyChat menandakan mesejnya untuk pasukan anda. WhatsApp sendiri tidak dimaklumkan.",
+    "confirm": "Sekat",
+    "done": "Nombor disekat.",
+    "isBlocked": "Nombor ini disekat di WhatsApp."
   }
 }

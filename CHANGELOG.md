@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Block any number: an admin can block a chat's number on WhatsApp from the Customer panel (Block number), for spam or unwanted messages, not only numbers WhatsApp Safety flagged. Blocking can also mark the number as spam, so EzyChat flags its messages for your team. The AI agent stops replying to a blocked number, and Unblock is in the same place.
+
 ## [0.1.82] - 2026-11-09
 
 ### Added

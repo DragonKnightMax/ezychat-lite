@@ -1215,5 +1215,18 @@
     "sendingLarge": "Sending {{size}} to WhatsApp…",
     "thisNumber": "this WhatsApp number",
     "loadFailed": "Chats could not be loaded. Close and try again."
+  },
+  "block": {
+    "title": "Block number",
+    "hint": "Spam or unwanted messages? Block this number on WhatsApp.",
+    "button": "Block number",
+    "cannot": "This WhatsApp number can't block this chat right now. On the Business API you can block only within 24 hours of their last message.",
+    "confirmTitle": "Block this number?",
+    "confirmBody": "WhatsApp stops delivering this number's messages and calls to this inbox, and the AI agent stops replying to it. You can unblock it here at any time.",
+    "spam": "Also mark as spam",
+    "spamHint": "EzyChat flags its messages for your team. WhatsApp itself is not told.",
+    "confirm": "Block",
+    "done": "Number blocked.",
+    "isBlocked": "This number is blocked on WhatsApp."
   }
 }

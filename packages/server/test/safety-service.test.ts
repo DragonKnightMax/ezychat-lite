@@ -506,3 +506,144 @@ describe('Reports → WhatsApp Safety', () => {
     expect(kindOf(['financeUrgency'], 'impersonation', true)).toBe('other');
   });
 });
+
+describe('Block any chat (Customer panel)', () => {
+  const SPAM = '601164988966@s.whatsapp.net';
+  const chatAct = (jid: string, action: string, cookie: string, payload: object = {}) =>
+    t.app.inject({
+      method: 'POST',
+      url: `/api/safety/chats/${encodeURIComponent(jid)}/${action}`,
+      headers: authHeaders(cookie),
+      payload,
+    });
+  const bar = async (jid: string) => {
+    const r = await t.app.inject({
+      method: 'GET',
+      url: `/api/safety/chats/${encodeURIComponent(jid)}`,
+      headers: authHeaders(admin.cookie),
+    });
+    return SafetyChatState.parse(r.json());
+  };
+
+  it('blocks an unflagged chat on WhatsApp, marks it as spam on request, then unblocks it', async () => {
+    await incoming(SPAM, { text: 'Digital Software Branding: grow your business!' });
+    expect(await bar(SPAM)).toMatchObject({ blocked: null, scam: false, canBlock: true });
+
+    const r = await chatAct(SPAM, 'block', admin.cookie, { spam: true });
+    expect(r.statusCode).toBe(200);
+    expect(t.wa.blocked.has(SPAM)).toBe(true);
+    expect(SafetyChatState.parse(r.json())).toMatchObject({ scam: true, blocked: { auto: false } });
+    expect(t.ctx.services.safety!.isBlocked(SPAM, 1)).toBe(true);
+    // Admin → Safety lists it with the other blocked numbers.
+    expect((await state()).blocked).toEqual([
+      expect.objectContaining({ waJid: SPAM, auto: false, itemId: null }),
+    ]);
+
+    const un = await chatAct(SPAM, 'unblock', admin.cookie);
+    expect(un.statusCode).toBe(200);
+    expect(t.wa.blocked.has(SPAM)).toBe(false);
+    expect(SafetyChatState.parse(un.json())).toMatchObject({ blocked: null, scam: true });
+    expect(t.ctx.services.safety!.isBlocked(SPAM, 1)).toBe(false);
+
+    const audit = t.ctx.db
+      .prepare("SELECT action, meta FROM audit_log WHERE action LIKE 'safety.chat.%' ORDER BY id")
+      .all() as Array<{ action: string; meta: string }>;
+    expect(audit.map((a) => a.action)).toEqual(['safety.chat.block', 'safety.chat.unblock']);
+    expect(JSON.parse(audit[0]!.meta)).toEqual({ chatJid: SPAM, spam: true });
+  });
+
+  it('blocks without marking spam when not asked', async () => {
+    await incoming(SPAM, { text: 'hello' });
+    const r = await chatAct(SPAM, 'block', admin.cookie);
+    expect(SafetyChatState.parse(r.json())).toMatchObject({
+      scam: false,
+      blocked: { auto: false },
+    });
+  });
+
+  it('is for admins only, and refuses a group or an unknown chat', async () => {
+    await incoming(SPAM, { text: 'hello' });
+    expect((await chatAct(SPAM, 'block', agent.cookie)).statusCode).toBe(403);
+    expect(t.wa.blocked.has(SPAM)).toBe(false);
+    expect((await chatAct(SPAM, 'mute', admin.cookie)).statusCode).toBe(400);
+    expect((await chatAct('60100000000@s.whatsapp.net', 'block', admin.cookie)).statusCode).toBe(
+      404,
+    );
+    t.ctx.db
+      .prepare(
+        "INSERT INTO chats (jid, wa_jid, type, name, inbox_id, status, updated_at) VALUES ('1203@g.us', '1203@g.us', 'group', 'Team', 1, 'open', 0)",
+      )
+      .run();
+    const group = await chatAct('1203@g.us', 'block', admin.cookie);
+    expect(group.statusCode).toBe(409);
+  });
+});
+
+describe('Block any chat: per inbox and the flagged items', () => {
+  const X = '60177000111@s.whatsapp.net';
+  const chatAct = (jid: string, action: string, payload: object = {}) =>
+    t.app.inject({
+      method: 'POST',
+      url: `/api/safety/chats/${encodeURIComponent(jid)}/${action}`,
+      headers: authHeaders(admin.cookie),
+      payload,
+    });
+  const bar = async (jid: string) =>
+    SafetyChatState.parse(
+      (
+        await t.app.inject({
+          method: 'GET',
+          url: `/api/safety/chats/${encodeURIComponent(jid)}`,
+          headers: authHeaders(admin.cookie),
+        })
+      ).json(),
+    );
+
+  it('a block on one inbox is not a block of the same customer on another inbox', async () => {
+    await incoming(X, { text: 'hello sales' });
+    // The same customer also writes to inbox 2 (chat key `<waJid>#2`).
+    t.ctx.db
+      .prepare(
+        "INSERT INTO inboxes (id, name, tone, auth_dir, created_at, removed_at) VALUES (2, 'Support', 'info', 'x', 0, NULL)",
+      )
+      .run();
+    t.ctx.db
+      .prepare(
+        "INSERT INTO chats (jid, wa_jid, type, name, inbox_id, status, updated_at) VALUES (?, ?, 'dm', 'X', 2, 'open', 0)",
+      )
+      .run(`${X}#2`, X);
+    expect((await chatAct(X, 'block')).statusCode).toBe(200);
+
+    const safety = t.ctx.services.safety!;
+    expect(safety.isBlocked(X, 1)).toBe(true);
+    expect(safety.isBlocked(X, 2)).toBe(false);
+    // The other inbox's chat is not shown as blocked, cannot unblock it, and cannot block again
+    // until the block on inbox 1 is undone.
+    expect(await bar(`${X}#2`)).toMatchObject({ blocked: null, canBlock: false });
+    expect((await chatAct(`${X}#2`, 'unblock')).statusCode).toBe(409);
+    expect(t.wa.blocked.has(X)).toBe(true);
+  });
+
+  it('an older block with no inbox still counts for every inbox', () => {
+    t.ctx.db
+      .prepare(
+        'INSERT INTO safety_numbers (wa_jid, blocked_at, blocked_inbox_id) VALUES (?, 1, NULL)',
+      )
+      .run(X);
+    expect(t.ctx.services.safety!.isBlocked(X, 1)).toBe(true);
+    expect(t.ctx.services.safety!.isBlocked(X, 2)).toBe(true);
+  });
+
+  it('blocking and unblocking from the chat moves its flagged item like Admin → Safety does', async () => {
+    await incoming(X, { text: LURE_TEXT, file: lureZip() });
+    const item = (await state()).items[0]!;
+    expect(item.status).toBe('open');
+
+    await chatAct(X, 'block', { spam: true });
+    expect((await state()).items[0]).toMatchObject({ status: 'blocked', blocked: true });
+
+    await chatAct(X, 'unblock');
+    // Marked as spam: back to Reported, like Unblock in Admin → Safety.
+    expect((await state()).items[0]).toMatchObject({ status: 'reported', blocked: false });
+  });
+});

@@ -941,6 +941,8 @@ export function createAiService(
       chat?.type === 'dm' &&
       chat.status === 'open' &&
       (chat.assignedTo === null || chat.assignedTo === agent.userId) &&
+      // A blocked number gets no AI answer (also a reply that was already scheduled).
+      !ctx.services.safety?.isBlocked(chat.waJid, chat.inboxId) &&
       !!s &&
       !s.paused &&
       !!s.last_customer_message_id &&
@@ -1932,7 +1934,8 @@ export function createAiService(
       !user ||
       chat.type !== 'dm' ||
       chat.status !== 'open' ||
-      (chat.assignedTo !== null && chat.assignedTo !== user.id)
+      (chat.assignedTo !== null && chat.assignedTo !== user.id) ||
+      ctx.services.safety?.isBlocked(chat.waJid, chat.inboxId)
     )
       return;
     if (state(chat.jid)?.paused) {

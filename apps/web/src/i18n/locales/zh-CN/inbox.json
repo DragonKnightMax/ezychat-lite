@@ -1208,5 +1208,18 @@
     "sendingLarge": "正在发送 {{size}} 到 WhatsApp…",
     "thisNumber": "这个 WhatsApp 号码",
     "loadFailed": "无法加载聊天。请关闭后再试。"
+  },
+  "block": {
+    "title": "屏蔽号码",
+    "hint": "垃圾信息或骚扰消息？在 WhatsApp 上屏蔽这个号码。",
+    "button": "屏蔽号码",
+    "cannot": "这个 WhatsApp 号码现在无法屏蔽此聊天。使用 Business API 时，只能在对方最后一条消息后的 24 小时内屏蔽。",
+    "confirmTitle": "屏蔽这个号码？",
+    "confirmBody": "WhatsApp 将不再把这个号码的消息和来电送到此收件箱，AI 客服也会停止回复它。你可以随时在这里解除屏蔽。",
+    "spam": "同时标记为垃圾信息",
+    "spamHint": "EzyChat 会为你的团队标记它的消息。不会通知 WhatsApp。",
+    "confirm": "屏蔽",
+    "done": "号码已屏蔽。",
+    "isBlocked": "这个号码已在 WhatsApp 上屏蔽。"
   }
 }

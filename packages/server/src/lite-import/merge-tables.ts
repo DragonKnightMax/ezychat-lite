@@ -449,7 +449,13 @@ export function mergeTables(input: MergeInput): MergeOutcome {
     for (const a of rows(lite, 'SELECT * FROM jid_aliases')) addAlias(a);
     const addNumber = inserter(target, 'safety_numbers', { verb: 'INSERT OR IGNORE' });
     for (const n of rows(lite, 'SELECT * FROM safety_numbers'))
-      addNumber({ ...n, scam_by: maps.user(n.scam_by), blocked_by: maps.user(n.blocked_by) });
+      // Inbox ids differ between the two installs: an imported block counts for every inbox (null).
+      addNumber({
+        ...n,
+        scam_by: maps.user(n.scam_by),
+        blocked_by: maps.user(n.blocked_by),
+        ...('blocked_inbox_id' in n ? { blocked_inbox_id: null } : {}),
+      });
   });
 
   // ── Chats and everything keyed by chat or message ─────────────────────────────────────────

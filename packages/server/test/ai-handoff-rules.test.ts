@@ -257,3 +257,38 @@ describe('after a hand-off the AI stays silent; the team sees the chat is still 
     expect(chatWaitingAfterHandoff(t.ctx.db, jid)).toBe(true);
   });
 });
+
+describe('A blocked number gets no AI answer', () => {
+  const block = (spam = true) =>
+    t.ctx.services.safety!.actOnChat(jid, 'block', { spam }, { id: actor.userId }, null);
+
+  it('does not answer a message from a number an admin blocked', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await incoming('b0', 'hello');
+    await block();
+    await incoming('b1', 'Grow your business with our software!');
+    await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS * 2);
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(t.wa.sent).toHaveLength(0);
+  });
+
+  it('drops a reply that was already scheduled when the number is blocked', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await incoming('b2', 'Digital Software Branding: buy now');
+    await block();
+    await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS * 2);
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(t.wa.sent).toHaveLength(0);
+  });
+
+  // Blocked only: a number also marked as spam stays flagged, and the AI leaves flagged messages alone.
+  it('answers again once the number is unblocked', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await incoming('b3', 'hello');
+    await block(false);
+    await t.ctx.services.safety!.actOnChat(jid, 'unblock', {}, { id: actor.userId }, null);
+    await incoming('b4', 'Do you sell GPUs?');
+    await vi.advanceTimersByTimeAsync(AI_FALLBACK_MS * 2);
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+});

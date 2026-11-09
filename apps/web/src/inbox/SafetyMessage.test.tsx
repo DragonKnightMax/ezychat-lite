@@ -53,7 +53,14 @@ const fetcher = vi.fn(async (url: string) => {
 beforeEach(() => {
   role.current = 'admin';
   mediaStatus = 200;
-  chat = { enabled: true, scam: false, blocked: null, maybeHacked: false, itemId: 4 };
+  chat = {
+    enabled: true,
+    scam: false,
+    blocked: null,
+    maybeHacked: false,
+    itemId: 4,
+    canBlock: true,
+  };
   vi.stubGlobal('fetch', fetcher);
   vi.stubGlobal(
     'URL',
@@ -154,7 +161,10 @@ it('shows the chat bar: hacked customer with Copy warning, blocked with Unblock,
   expect(bar.textContent).toContain('Blocked automatically');
   await userEvent.click(screen.getByRole('button', { name: 'Unblock' }));
   await waitFor(() =>
-    expect(fetcher).toHaveBeenCalledWith('/api/safety/items/4/unblock', expect.anything()),
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/safety/chats/601%40s.whatsapp.net/unblock',
+      expect.objectContaining({ method: 'POST' }),
+    ),
   );
   cleanup();
   client.clear();
@@ -174,4 +184,32 @@ it('shows the chat bar: hacked customer with Copy warning, blocked with Unblock,
   expect((await screen.findByTestId('safety-chat-bar')).textContent).toContain(
     'reported this number as a scam',
   );
+});
+
+it('shows a blocked number even with WhatsApp Safety off, but not a reported one', async () => {
+  chat = { ...chat, enabled: false, itemId: null, blocked: { by: 'Aisyah', at: 1, auto: false } };
+  wrap(<SafetyChatBar jid="604@s.whatsapp.net" />);
+  expect((await screen.findByTestId('safety-chat-bar')).textContent).toContain(
+    'Blocked by Aisyah.',
+  );
+  // No flagged item: Unblock still works through the chat.
+  await userEvent.click(screen.getByRole('button', { name: 'Unblock' }));
+  await waitFor(() =>
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/safety/chats/604%40s.whatsapp.net/unblock',
+      expect.objectContaining({ method: 'POST' }),
+    ),
+  );
+  cleanup();
+  client.clear();
+
+  chat = { ...chat, blocked: null, scam: true };
+  wrap(<SafetyChatBar jid="605@s.whatsapp.net" />);
+  await waitFor(() =>
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/safety/chats/605%40s.whatsapp.net',
+      expect.anything(),
+    ),
+  );
+  expect(screen.queryByTestId('safety-chat-bar')).toBeNull();
 });
