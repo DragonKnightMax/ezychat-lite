@@ -1,0 +1,221 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * "Calm Desk" design tokens — see docs/design-system.md.
+ * Feature code uses token classes only (bg-primary, text-muted-foreground, bg-outbound, ...).
+ * The device preference resolves to data-theme="light" or "dark"; System follows the OS.
+ * The media-query fallback applies before JavaScript loads.
+ */
+
+:root {
+  color-scheme: light;
+  --radius: 0.625rem; /* 10px */
+
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #f0fdfa; /* subtle teal hover/selection surface (shadcn semantics) */
+  --accent-foreground: #134e4a;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #8696ab;
+  --ring: #0f766e;
+
+  --outbound: #f0fdfa;
+  --outbound-foreground: #0f172a;
+  --note: #fffbeb;
+  --note-border: #fcd34d;
+  --note-foreground: #78350f;
+  --success: #15803d;
+  --warning: #92400e;
+  --danger: #dc2626;
+  /* Modal backdrop: rgb, because oklab(0 0 0 / x) paints transparent in current Chrome. */
+  --overlay: rgb(0 0 0 / 0.5);
+  --info: #0369a1;
+  --unread: #0f766e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --background: #0b1220;
+    --foreground: #f1f5f9;
+    --surface: #111827;
+    --card: #111827;
+    --card-foreground: #f1f5f9;
+    --popover: #111827;
+    --popover-foreground: #f1f5f9;
+    --primary: #14b8a6;
+    --primary-foreground: #04201d;
+    --secondary: #1f2937;
+    --secondary-foreground: #f1f5f9;
+    --muted: #1f2937;
+    --muted-foreground: #94a3b8;
+    --accent: #12302d;
+    --accent-foreground: #ccfbf1;
+    --destructive: #ef4444;
+    --border: #243042;
+    --input: #64748b;
+    --ring: #14b8a6;
+
+    --outbound: #0f2e2b;
+    --outbound-foreground: #f1f5f9;
+    --note: #2b2111;
+    --note-border: #b45309;
+    --note-foreground: #fde68a;
+    --success: #22c55e;
+    --warning: #fbbf24;
+    --danger: #ef4444;
+    --info: #38bdf8;
+    --unread: #2dd4bf;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0b1220;
+  --foreground: #f1f5f9;
+  --surface: #111827;
+  --card: #111827;
+  --card-foreground: #f1f5f9;
+  --popover: #111827;
+  --popover-foreground: #f1f5f9;
+  --primary: #14b8a6;
+  --primary-foreground: #04201d;
+  --secondary: #1f2937;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1f2937;
+  --muted-foreground: #94a3b8;
+  --accent: #12302d;
+  --accent-foreground: #ccfbf1;
+  --destructive: #ef4444;
+  --border: #243042;
+  --input: #64748b;
+  --ring: #14b8a6;
+
+  --outbound: #0f2e2b;
+  --outbound-foreground: #f1f5f9;
+  --note: #2b2111;
+  --note-border: #b45309;
+  --note-foreground: #fde68a;
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  --unread: #2dd4bf;
+}
+
+@theme inline {
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: var(--radius);
+  --radius-xl: 16px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-outbound: var(--outbound);
+  --color-outbound-foreground: var(--outbound-foreground);
+  --color-note: var(--note);
+  --color-note-border: var(--note-border);
+  --color-note-foreground: var(--note-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-overlay: var(--overlay);
+  --color-info: var(--info);
+  --color-unread: var(--unread);
+}
+
+/* Safe-area helpers (iOS notch / home indicator). Use on headers, composers, full-screen sheets.
+   NOTE: these SET padding on that side, so they override p-, px- and py- utilities on the same element —
+   put regular padding on an inner wrapper. */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+@utility safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  :root {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: 16px;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (min-width: 768px) {
+    body {
+      font-size: 14px;
+    }
+  }
+  /* Inputs >= 16px so iOS Safari doesn't zoom on focus. */
+  input,
+  textarea,
+  select {
+    font-size: max(1rem, 16px);
+  }
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

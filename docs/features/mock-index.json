@@ -16,6 +16,18 @@
   },
   "proposals": [
     {
+      "feature": "github",
+      "creationOrder": 41,
+      "createdAt": "2026-11-10",
+      "design": "docs/features/github/design.md",
+      "mock": "docs/features/github/mock/index.html",
+      "status": "proposal",
+      "baselineFeature": "forward-message",
+      "baselineGitRevision": "2549b7afac813d8c2c957d15d653b2a150325866",
+      "coverage": "Full app clone of the confirmed forward-message reference; Admin → Connectors gallery card (GitHub under Other), connector page Overview (four look-ups; GitHub account card: Sign in with GitHub and Use a token instead, device code dialog with waiting / cancelled / expired, app not installed with Install on GitHub and Check again, connected with the App, token form with classic / not accepted / no repositories errors, connected with a token, token expiring, sign-in expired, unreachable, Disconnect confirm; Your data), Settings per AI agent (repositories none / picker with search, owners, private-public, at most 20, refresh and a link to share more on GitHub / chosen / no longer shared, who-can-be-told notice, Issues and Pull requests switches, instructions link, Save bar, paused banner), Mock only chat simulator (issue, pull request, other repo refused, issue text with orders read as information, paused hand-over), Activity, agent page Connectors row; localStorage; desktop 1280 / mobile 360 touch, light/dark (github-shots.mjs)",
+      "note": "Requester (Frankie) 2026-11-10: \"Open PR and build\" after the screenshots, decisions Q1-Q3 and the spike; repository owner (Jazz) not yet asked, so latestConfirmed stays forward-message. Connector list entry: anchorsprint/ezychat-connectors PR #6."
+    },
+    {
       "feature": "mcp-file-upload",
       "creationOrder": 40,
       "createdAt": "2026-11-08",

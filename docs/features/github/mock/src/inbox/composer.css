@@ -1,0 +1,32 @@
+/* A scrollbar appears only once a draft reaches the composer's height limit. */
+:is(.composer-input, .emoji-scroll) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+/* Chromium's native "thin" styling overrides the custom button-free scrollbar. */
+@supports selector(::-webkit-scrollbar) {
+  :is(.composer-input, .emoji-scroll) {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
+:is(.composer-input, .emoji-scroll)::-webkit-scrollbar {
+  width: 6px;
+}
+
+:is(.composer-input, .emoji-scroll)::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 999px;
+}
+
+:is(.composer-input, .emoji-scroll)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:is(.composer-input, .emoji-scroll)::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
