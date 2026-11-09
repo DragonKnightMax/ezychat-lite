@@ -24,10 +24,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { resolveTool } from './build-summary.mjs';
 
@@ -39,6 +39,14 @@ const SIGNER = /CN="?Anchor Sprint Pte\. Ltd\./;
 const MAC_SIGNER = 'Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q)';
 const REPORTER_FILE = join(homedir(), '.ezychat', 'mcafee-reporter.json');
 const WINDOWS_POWERSHELL = String.raw`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`;
+// Microsoft's code-signing root (Artifact Signing and its timestamps chain to it), public, from
+// microsoft.com/pkiops; SHA-256 fingerprint 53:67:F2:0C:7A:DE:0E:2B:CA:79:09:15:05:6D:08:6B:72:0C:33:C1:FA:2A:26:61:AC:F7:87:E3:29:2E:12:70.
+// Windows trusts it already; osslsigncode on a Mac needs it next to the system list.
+const MICROSOFT_ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  'certs',
+  'microsoft-identity-verification-root-2020.pem',
+);
 
 export const KINDS = {
   win: { suffix: 'win-x64.exe', label: 'Windows installer' },
@@ -88,6 +96,17 @@ export function selectKinds(only) {
   const kinds = only.split(',').map((k) => k.trim());
   for (const kind of kinds) if (!KINDS[kind]) throw new Error(`unknown file type: ${kind}`);
   return kinds;
+}
+
+/**
+ * Status and signer subject from `osslsigncode verify` output, in the terms of Get-AuthenticodeSignature: Valid only
+ * when it ended with "Succeeded" (signature and timestamp chain verified). The signer is the first Subject after
+ * "Signer #0" (the timestamp signer comes later).
+ */
+export function osslsigncodeStatus(output, exitCode) {
+  const ok = exitCode === 0 && /^Succeeded\s*$/m.test(output);
+  const subject = output.match(/Signer #0:\s*\n\s*Subject:\s*(.+)/)?.[1]?.trim() ?? '';
+  return { status: ok ? 'Valid' : 'NotValid', subject };
 }
 
 /** Null when the file may be reported as signed; otherwise why not. */
@@ -215,15 +234,33 @@ function powershell(command, env) {
 }
 
 function checkSignature(file) {
-  if (process.platform !== 'win32')
-    throw new Error(
-      `${basename(file)}: a Windows file is checked with Windows PowerShell; run this on Windows, or pass --only mac-arm64,mac-x64`,
-    );
+  if (process.platform !== 'win32') return checkSignatureElsewhere(file);
   const [status, subject] = powershell(
     '$s = Get-AuthenticodeSignature -LiteralPath $env:TARGET_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"',
     { TARGET_FILE: file },
   ).split('|');
   const problem = signatureProblem(status, subject ?? '');
+  if (problem) throw new Error(`${basename(file)}: ${problem}`);
+}
+
+// Off Windows: osslsigncode (Homebrew) checks the signature and the timestamp against the system list plus Microsoft's
+// root, the same chain Windows checks.
+function checkSignatureElsewhere(file) {
+  const ca = join(mkdtempSync(join(tmpdir(), 'ezychat-ca-')), 'ca.pem');
+  const system = ['/etc/ssl/cert.pem', '/etc/ssl/certs/ca-certificates.crt'].find((f) =>
+    existsSync(f),
+  );
+  if (!system) throw new Error('no system certificate list for osslsigncode');
+  writeFileSync(ca, readFileSync(system, 'utf8') + readFileSync(MICROSOFT_ROOT, 'utf8'));
+  const r = spawnSync('osslsigncode', ['verify', '-CAfile', ca, '-TSA-CAfile', ca, '-in', file], {
+    encoding: 'utf8',
+  });
+  if (r.error)
+    throw new Error(
+      `${basename(file)}: osslsigncode is needed to check a Windows file off Windows (brew install osslsigncode)`,
+    );
+  const { status, subject } = osslsigncodeStatus(`${r.stdout}${r.stderr}`, r.status);
+  const problem = signatureProblem(status, subject);
   if (problem) throw new Error(`${basename(file)}: ${problem}`);
 }
 

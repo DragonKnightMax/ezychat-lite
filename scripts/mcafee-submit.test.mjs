@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  osslsigncodeStatus,
   macSignatureProblem,
   checkReporter,
   checkVersion,
@@ -90,6 +91,35 @@ describe('signatureProblem', () => {
     ).toBeNull();
     expect(signatureProblem('NotSigned', '')).toContain('NotSigned');
     expect(signatureProblem('Valid', 'CN=Someone Else')).toContain('Someone Else');
+  });
+});
+
+describe('osslsigncodeStatus', () => {
+  const output = [
+    'Signer #0:',
+    '\t\tSubject: CN=Anchor Sprint Pte. Ltd.,O=Anchor Sprint Pte. Ltd.,L=Singapore,C=SG',
+    'Timestamp verified using:',
+    '\tSigner #0:',
+    '\t\tSubject: CN=Microsoft Public RSA Timestamping CA 2020,O=Microsoft Corporation,C=US',
+    'Timestamp Server Signature verification: ok',
+    'Signature verification: ok',
+    'Number of verified signatures: 1',
+    'Succeeded',
+  ].join('\n');
+
+  it('is Valid only when osslsigncode succeeded, and names the file signer, not the timestamp signer', () => {
+    const result = osslsigncodeStatus(output, 0);
+    expect(result).toEqual({
+      status: 'Valid',
+      subject: 'CN=Anchor Sprint Pte. Ltd.,O=Anchor Sprint Pte. Ltd.,L=Singapore,C=SG',
+    });
+    expect(signatureProblem(result.status, result.subject)).toBeNull();
+  });
+
+  it('is not Valid when the check failed or the exit code says so', () => {
+    expect(osslsigncodeStatus(output.replace('Succeeded', 'Failed'), 1).status).toBe('NotValid');
+    expect(osslsigncodeStatus(output, 1).status).toBe('NotValid');
+    expect(osslsigncodeStatus('', 255)).toEqual({ status: 'NotValid', subject: '' });
   });
 });
 
