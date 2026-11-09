@@ -33,6 +33,13 @@ a merge alone is not a request.
    Developer ID and notarized by Apple" (Lite 0.1.82 and Enterprise 0.1.30 onwards); an older ad-hoc build, or a
    run on Windows, claims no Mac signature.
 
+   Before publishing (owner rule from 2026-11-09: McAfee gets the installers first):
+   - Lite: push the tag by hand (`release.yml` then leaves a draft), run `--edition lite --version <x.y.z>` (it finds the
+     draft and downloads through the API), then publish that draft (`docs/release.md` §3).
+   - Enterprise: run Installers from `main` (`gh workflow run installers.yml --ref main`; no tag, so nothing is
+     published), run `--edition enterprise --run <run id>`, then publish the same run in the Enterprise repo with
+     `node scripts/publish-release.mjs --run <run id>` (a logged-in wrangler), and put the Windows hold back.
+
 4. Read the output. `SUBMITTED` means that the page said "The form has been submitted." `STOPPED` means that the run
    ended there and later files were not sent: fix the cause and run the same command again. Reports already sent are
    remembered in the work folder and are skipped.

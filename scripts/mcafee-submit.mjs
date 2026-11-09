@@ -4,6 +4,7 @@
 //
 //   node scripts/mcafee-submit.mjs [--edition lite|enterprise|all] [--version 0.1.79]
 //     [--only win,mac-arm64,mac-x64] [--dry-run] [--work <dir>]
+//   node scripts/mcafee-submit.mjs --edition enterprise --run <Installers run id>   (before publishing)
 //
 // --dry-run does everything except clicking Submit. Every file is downloaded and checked before the first report
 // goes out, and a report that went out is remembered in <work>/results.json, so a rerun does not send it twice.
@@ -13,6 +14,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   createReadStream,
+  copyFileSync,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -193,6 +195,33 @@ export function checkReporter(reporter) {
       throw new Error(`reporter file has no ${field}`);
   }
   return reporter;
+}
+
+const ENTERPRISE_REPO = 'anchorsprint/ezychat-enterprise';
+
+/**
+ * Enterprise before it is published: the installers and latest.json of one Installers run (a build from main, which
+ * never publishes), copied into the work folder, so the report goes out first and the very same files are published
+ * afterwards (`node scripts/publish-release.mjs --run <id>` in the Enterprise repo).
+ */
+function loadEnterpriseRun(runId, work) {
+  if (!/^\d+$/.test(runId)) throw new Error(`not a run id: ${runId}`);
+  const from = mkdtempSync(join(tmpdir(), 'ezychat-run-'));
+  execFileSync(resolveTool('gh'), ['run', 'download', runId, '-R', ENTERPRISE_REPO, '-D', from], {
+    stdio: 'inherit',
+  });
+  const files = readdirSync(from, { recursive: true })
+    .map(String)
+    .filter((f) => !statSync(join(from, f)).isDirectory());
+  const manifestPath = files.find((f) => basename(f) === 'latest.json');
+  if (!manifestPath) throw new Error(`run ${runId} has no latest.json`);
+  const feed = JSON.parse(readFileSync(join(from, manifestPath), 'utf8'));
+  const version = checkVersion(feed.version);
+  const dir = join(work, `enterprise-${version}`);
+  mkdirSync(dir, { recursive: true });
+  for (const f of files) copyFileSync(join(from, f), join(dir, basename(f)));
+  console.log(`run ${runId}: EzyChat Enterprise ${version}, the files of that build`);
+  return { version, assets: pickAssets('enterprise', version, feed.assets) };
 }
 
 async function loadRelease(edition, version) {
@@ -407,6 +436,7 @@ async function main() {
     options: {
       edition: { type: 'string', default: 'all' },
       version: { type: 'string' },
+      run: { type: 'string' },
       only: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
       work: { type: 'string', default: join(tmpdir(), 'ezychat-mcafee') },
@@ -419,6 +449,8 @@ async function main() {
       '--version needs --edition lite or enterprise: the two have different versions',
     );
   if (values.version) checkVersion(values.version);
+  if (values.run && (values.edition !== 'enterprise' || values.version))
+    throw new Error('--run is for --edition enterprise only, without --version (the run names it)');
   const kinds = selectKinds(values.only);
   const reporter = checkReporter(JSON.parse(readFileSync(REPORTER_FILE, 'utf8')));
   const dryRun = values['dry-run'];
@@ -426,7 +458,9 @@ async function main() {
   // Prepare everything first: a bad file then stops the run before any report goes out.
   const jobs = [];
   for (const edition of editions) {
-    const release = await loadRelease(edition, values.version);
+    const release = values.run
+      ? loadEnterpriseRun(values.run, values.work)
+      : await loadRelease(edition, values.version);
     const dir = join(values.work, `${edition}-${release.version}`);
     mkdirSync(dir, { recursive: true });
     for (const asset of release.assets.filter((a) => kinds.includes(a.kind))) {
