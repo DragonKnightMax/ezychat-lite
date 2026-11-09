@@ -38,6 +38,13 @@ const ENTERPRISE_FEED = 'https://dl.ezychat.ai/enterprise';
 const SIGNER = /CN="?Anchor Sprint Pte\. Ltd\./;
 const MAC_SIGNER = 'Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q)';
 const REPORTER_FILE = join(homedir(), '.ezychat', 'mcafee-reporter.json');
+// System tools by fixed path, never through PATH. osslsigncode comes from Homebrew (Apple silicon or Intel).
+const ZIP = '/usr/bin/zip';
+const HDIUTIL = '/usr/bin/hdiutil';
+const CODESIGN = '/usr/bin/codesign';
+const SPCTL = '/usr/sbin/spctl';
+const XCRUN = '/usr/bin/xcrun';
+const OSSLSIGNCODE = ['/opt/homebrew/bin/osslsigncode', '/usr/local/bin/osslsigncode'];
 const WINDOWS_POWERSHELL = String.raw`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`;
 // Microsoft's code-signing root (Artifact Signing and its timestamps chain to it), public, from
 // microsoft.com/pkiops; SHA-256 fingerprint 53:67:F2:0C:7A:DE:0E:2B:CA:79:09:15:05:6D:08:6B:72:0C:33:C1:FA:2A:26:61:AC:F7:87:E3:29:2E:12:70.
@@ -105,7 +112,10 @@ export function selectKinds(only) {
  */
 export function osslsigncodeStatus(output, exitCode) {
   const ok = exitCode === 0 && /^Succeeded\s*$/m.test(output);
-  const subject = output.match(/Signer #0:\s*\n\s*Subject:\s*(.+)/)?.[1]?.trim() ?? '';
+  const lines = output.split('\n').map((line) => line.trim());
+  const signer = lines.indexOf('Signer #0:');
+  const next = signer === -1 ? '' : (lines[signer + 1] ?? '');
+  const subject = next.startsWith('Subject:') ? next.slice('Subject:'.length).trim() : '';
   return { status: ok ? 'Valid' : 'NotValid', subject };
 }
 
@@ -134,22 +144,24 @@ export function macSignatureProblem({ codesign, spctl, stapled }) {
 export function reportText({ edition, asset, zipName, macSigned = false }) {
   const { label } = KINDS[asset.kind];
   const windows = asset.kind === 'win';
+  let heading = 'Allowlist request: business software, Mac installer.';
+  let publisher = 'Publisher: Anchor Sprint Pte. Ltd.';
+  if (windows) {
+    heading = 'Allowlist request: signed business software.';
+    publisher =
+      'Publisher / code signature: Anchor Sprint Pte. Ltd. (valid Authenticode signature).';
+  } else if (macSigned) {
+    heading = 'Allowlist request: signed business software, Mac installer.';
+    publisher = `Publisher / code signature: Anchor Sprint Pte. Ltd. (${MAC_SIGNER}, notarized by Apple).`;
+  }
   return [
-    windows
-      ? 'Allowlist request: signed business software.'
-      : macSigned
-        ? 'Allowlist request: signed business software, Mac installer.'
-        : 'Allowlist request: business software, Mac installer.',
+    heading,
     '',
     `This is the ${label} of a new release. We ask you to allowlist it, so that McAfee does not block it. ` +
       'McAfee already whitelisted an installer of the same publisher (EzyChat-Enterprise-0.1.26-win-x64.exe, your answer of 5 Nov 2026).',
     '',
     `Product: ${PRODUCTS[edition].text}`,
-    windows
-      ? 'Publisher / code signature: Anchor Sprint Pte. Ltd. (valid Authenticode signature).'
-      : macSigned
-        ? `Publisher / code signature: Anchor Sprint Pte. Ltd. (${MAC_SIGNER}, notarized by Apple).`
-        : 'Publisher: Anchor Sprint Pte. Ltd.',
+    publisher,
     '',
     ...(zipName
       ? [`Attached: ${zipName} (a ZIP with this one file, because the form does not accept .dmg)`]
@@ -252,7 +264,12 @@ function checkSignatureElsewhere(file) {
   );
   if (!system) throw new Error('no system certificate list for osslsigncode');
   writeFileSync(ca, readFileSync(system, 'utf8') + readFileSync(MICROSOFT_ROOT, 'utf8'));
-  const r = spawnSync('osslsigncode', ['verify', '-CAfile', ca, '-TSA-CAfile', ca, '-in', file], {
+  const tool = OSSLSIGNCODE.find((path) => existsSync(path));
+  if (!tool)
+    throw new Error(
+      `${basename(file)}: osslsigncode is needed to check a Windows file off Windows (brew install osslsigncode)`,
+    );
+  const r = spawnSync(tool, ['verify', '-CAfile', ca, '-TSA-CAfile', ca, '-in', file], {
     encoding: 'utf8',
   });
   if (r.error)
@@ -277,7 +294,7 @@ function zipFile(file) {
       },
     );
   // -j: the file alone, without its folders; -X: no extra file attributes.
-  else execFileSync('zip', ['-j', '-X', '-q', partial, file]);
+  else execFileSync(ZIP, ['-j', '-X', '-q', partial, file]);
   renameSync(partial, zip);
   return zip;
 }
@@ -289,7 +306,7 @@ function zipFile(file) {
 function checkMacSignature(file) {
   if (process.platform !== 'darwin') return false;
   const mount = mkdtempSync(join(tmpdir(), 'ezychat-dmg-'));
-  execFileSync('hdiutil', [
+  execFileSync(HDIUTIL, [
     'attach',
     '-nobrowse',
     '-readonly',
@@ -308,14 +325,15 @@ function checkMacSignature(file) {
       return { ok: r.status === 0, text: `${r.stdout}${r.stderr}` };
     };
     const problem = macSignatureProblem({
-      codesign: run('codesign', ['-dvv', path]).text,
-      spctl: run('spctl', ['--assess', '--type', 'execute', '-vv', path]).text,
-      stapled: run('xcrun', ['stapler', 'validate', path]).ok,
+      codesign: run(CODESIGN, ['-dvv', path]).text,
+      spctl: run(SPCTL, ['--assess', '--type', 'execute', '-vv', path]).text,
+      stapled: run(XCRUN, ['stapler', 'validate', path]).ok,
     });
-    console.log(`${basename(file)}: ${problem ?? `signed (${MAC_SIGNER}) and notarized`}`);
+    const verdict = problem ?? `signed (${MAC_SIGNER}) and notarized`;
+    console.log(`${basename(file)}: ${verdict}`);
     return problem === null;
   } finally {
-    execFileSync('hdiutil', ['detach', mount, '-quiet']);
+    execFileSync(HDIUTIL, ['detach', mount, '-quiet']);
   }
 }
 
