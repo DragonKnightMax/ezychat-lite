@@ -19,7 +19,7 @@ One row per item; the daily run works it top to bottom. Detail for fixed items i
 | L-3 | web i18n | "Hand-off" vs "Hand-over" wording differs; ms/zh `ai.agents.handoffTitle` still English | low | small | open (touches a screen: needs e2e round) | 2026-11-07 |
 | L-4 | web | A failed file upload cannot be sent again (Retry does not resend the local file) | med | major | recorded-major (composer tray redesign) | 2026-11-07 |
 | L-5 | web | A live event arriving before the first messages fetch is dropped (`upsertMessageInCache`) | med | small | fixed in #336 (2026-11-07) | 2026-11-08 |
-| L-6 | e2e | `e2e/reactions.spec.ts` flaky | low | small | open | 2026-11-07 |
+| L-6 | e2e | `e2e/reactions.spec.ts` flaky | low | small | open: with `--repeat-each` 3 of 13 teammate-reaction runs failed because the 3rd `PUT /messages/:id/reaction` got 429 (30 a minute per user is shared by the repeats, so that is an artefact of repeating). A plain run did not fail; the first test (`fake-reaction` 👍 badge missing, 1 of 8 per project) has no trace yet | 2026-11-09 |
 | L-7 | wa | Reactions mapping untested against real WhatsApp | med | major | recorded-major (needs real WhatsApp) | 2026-11-07 |
 | L-8 | desktop | `status-sections.ts` TODO(phase 4b): Enterprise keeps a copy of the status-section types; `@ezychat/desktop` 0.1.80 exports only Model/Context/Provider, not Field/Button/Result/Tone | low | major | recorded-major (extension API: export the remaining types from `apps/desktop/src/index.ts` in Lite, release, then Enterprise deletes its copy) | 2026-11-08 |
 | L-9 | web | Flag emoji show as letters on Windows (needs bundled flag font) | low | small | open | 2026-11-07 |
@@ -30,6 +30,7 @@ SonarCloud was not queried and lint/typecheck were not run (docs-only change); r
 
 ### Run log
 
+- 2026-11-09: no Lite `techdebt/` PRs open. Sonar (655 major+ issues, no bugs/vulnerabilities): the `lock.test.ts` stale/garbage-lock tests had no assertion (S2699); they now assert the lock is taken over and released. S1994 in `google-sheets/match.ts:48` checked: false positive. L-6 re-investigated (see table). L-3 is partly stale (ms/zh `handoffTitle` already translated).
 - 2026-11-08: no `techdebt/` PRs open. L-11 lint warning fixed (type import in the e2e spec); L-2 closed (does not reproduce); L-5 status corrected; L-8 recorded-major. Lint, typecheck run; SonarCloud has 2143 open issues (e.g. nested ternary `MediaView.tsx:335`, complexity in `lite-import/merge-tables.ts`), not triaged yet.
 - 2026-11-07 (2nd run): L-5 fixed: a live message with no cached pages now restarts the first fetch. Web tests, typecheck, lint and e2e (159 passed) ran; SonarCloud not queried.
 - 2026-11-07: no `techdebt/` PRs open; no code fixed; backlog table created from this file, `docs/backlog.md` and a TODO scan.

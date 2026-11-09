@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { acquireLock, LockedError } from './lock.js';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -27,12 +27,18 @@ describe('acquireLock', () => {
   it('takes over a stale lock (dead pid)', () => {
     const dir = tmp();
     writeFileSync(join(dir, 'server.lock'), '999999999');
-    acquireLock(dir).release();
+    const l = acquireLock(dir);
+    expect(readFileSync(join(dir, 'server.lock'), 'utf8')).toBe(String(process.pid));
+    l.release();
+    expect(existsSync(join(dir, 'server.lock'))).toBe(false);
   });
 
   it('takes over a garbage lock file', () => {
     const dir = tmp();
     writeFileSync(join(dir, 'server.lock'), 'not-a-pid');
-    acquireLock(dir).release();
+    const l = acquireLock(dir);
+    expect(readFileSync(join(dir, 'server.lock'), 'utf8')).toBe(String(process.pid));
+    l.release();
+    expect(existsSync(join(dir, 'server.lock'))).toBe(false);
   });
 });
