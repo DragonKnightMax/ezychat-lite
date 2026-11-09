@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for the Developer ID build (electron-builder.yml mac.entitlements and
+  entitlementsInherit; release.yml turns the hardened runtime on when the signing secrets exist).
+  - allow-jit, allow-unsigned-executable-memory: V8 in Electron and in the server (ELECTRON_RUN_AS_NODE).
+  - disable-library-validation: the server loads Node-API addons and their dylibs (better-sqlite3,
+    @node-rs/argon2, sherpa-onnx with onnxruntime) from app.asar.unpacked.
+  - device.audio-input: voice notes; without it the hardened runtime blocks the microphone even after
+    the user allows it (NSMicrophoneUsageDescription).
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+  </dict>
+</plist>

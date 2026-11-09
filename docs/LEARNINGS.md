@@ -1016,6 +1016,14 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   ID + notarization removes that prompt. Gatekeeper checks only downloaded (quarantined) apps: a local
   build never shows the prompt, so test macOS releases from the downloaded DMG. Homebrew is no way around
   it: 5.0 removed `--no-quarantine` and disables casks that fail Gatekeeper (from September 2026).
+- macOS Developer ID (Anchor Sprint Pte. Ltd., team 4N9HTT975Q): release.yml overrides the ad-hoc default
+  with `-c.mac.identity=… -c.mac.hardenedRuntime=true -c.mac.notarize=true` only when `CSC_LINK` exists
+  (secrets in the `release` environment; `APPLE_API_KEY` is the .p8 text, written to a temp file because
+  electron-builder wants a path). Pass `CSC_LINK` only to the macOS job, or electron-builder also tries the
+  .p12 on Windows. The hardened runtime needs `build/entitlements.mac.plist` (JIT and unsigned memory for V8,
+  disable-library-validation for the Node-API addons, audio-input or voice notes lose the microphone).
+  Verify with `spctl --assess --type execute` ("Notarized Developer ID") and `xcrun stapler validate`, and
+  load every native addon inside the signed app with `ELECTRON_RUN_AS_NODE=1`.
 - Packaging: asar-unpack native loaders with their `.node`; pin esbuild's `ws` build; mac builds need an
   explicit `--mac dmg:<arch>` and a native-runner smoke; smoke packaged servers with
   `ELECTRON_RUN_AS_NODE=1` on a temp data dir. A feature that adds a native module or worker is smoked

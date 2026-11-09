@@ -89,13 +89,17 @@ nsis:
 mac:
   icon: build/icon.png
   category: public.app-category.business
-  # No Apple Developer ID yet: sign ad-hoc ('-'). With identity null the bundle was never signed (only
-  # the linker's signature on the executable), and Apple Silicon reports such an app as "damaged".
-  # Ad-hoc signing seals the whole bundle; macOS then shows the normal "unidentified developer"
-  # prompt (System Settings -> Privacy & Security -> Open Anyway).
+  # Default (local builds, forks): sign ad-hoc ('-'). With identity null the bundle was never signed
+  # (only the linker's signature on the executable), and Apple Silicon reports such an app as "damaged".
+  # Ad-hoc signing seals the whole bundle; macOS then shows the "unidentified developer" prompt
+  # (System Settings -> Privacy & Security -> Open Anyway).
+  # Releases: release.yml overrides identity, hardenedRuntime and notarize when the Developer ID
+  # secrets exist (step "Package native architecture"), so the app opens without that prompt.
   hardenedRuntime: false
   gatekeeperAssess: false
   identity: '-'
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   # macOS asks before the microphone is used for a voice note; without this text it refuses.
   extendInfo:
     NSMicrophoneUsageDescription: EzyChat Lite uses the microphone only while you record a voice note.

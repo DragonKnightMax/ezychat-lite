@@ -92,19 +92,47 @@ jobs:
           AZURE_SIGN_PROFILE: ${{ vars.AZURE_SIGN_PROFILE }}
           AZURE_SIGN_PUBLISHER: ${{ vars.AZURE_SIGN_PUBLISHER }}
           AZURE_SIGN_LOGIN: azure-cli
+      # macOS: with the Developer ID secrets of the `release` environment (Anchor Sprint Pte. Ltd., team
+      # 4N9HTT975Q; docs/release.md) the app is signed with the hardened runtime, notarized by Apple and
+      # stapled, so it opens without "Open Anyway". Without them (forks, first setup) it stays ad-hoc
+      # signed as in electron-builder.yml. CSC_LINK only on macOS: electron-builder would also try the
+      # .p12 for Windows, which Azure Artifact Signing signs.
       - name: Package native architecture
         working-directory: apps/desktop
-        run: npx electron-builder --config electron-builder.yml --${{ matrix.platform }} ${{ matrix.target }}:${{ matrix.arch }} --publish never
+        shell: bash
+        run: |
+          args=()
+          if [ "$RUNNER_OS" = macOS ] && [ -n "$CSC_LINK" ]; then
+            umask 077
+            printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple-api-key.p8"
+            export APPLE_API_KEY="$RUNNER_TEMP/apple-api-key.p8"
+            args=(-c.mac.identity="Anchor Sprint Pte. Ltd. (4N9HTT975Q)" -c.mac.hardenedRuntime=true -c.mac.notarize=true)
+            echo "MAC_DEVELOPER_ID=1" >> "$GITHUB_ENV"
+          fi
+          npx electron-builder --config electron-builder.yml --${{ matrix.platform }} ${{ matrix.target }}:${{ matrix.arch }} --publish never "${args[@]}"
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY_P8: ${{ runner.os == 'macOS' && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       - name: Verify the macOS app signature
         if: runner.os == 'macOS'
-        # An unsealed bundle opens as "damaged" on Apple Silicon; never publish one.
+        # An unsealed bundle opens as "damaged" on Apple Silicon; never publish one. A Developer ID build
+        # must also pass Gatekeeper (notarized) and carry its stapled ticket (opens offline).
         run: |
           shopt -s nullglob
           apps=(apps/desktop/release/mac*/*.app)
           [ ${#apps[@]} -gt 0 ] || { echo "::error::no packaged .app found"; exit 1; }
-          for app in "${apps[@]}"; do codesign --verify --deep --strict --verbose=2 "$app"; done
+          for app in "${apps[@]}"; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            if [ "${MAC_DEVELOPER_ID:-}" = 1 ]; then
+              codesign -dvv "$app" 2>&1 | grep -q 'Authority=Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q)'
+              spctl --assess --type execute --verbose=2 "$app"
+              xcrun stapler validate "$app"
+            fi
+          done
       - name: Verify the Windows installer signature
         if: runner.os == 'Windows' && vars.AZURE_SIGN_ACCOUNT != ''
         shell: pwsh
