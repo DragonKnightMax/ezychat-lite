@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  macSignatureProblem,
   checkReporter,
   checkVersion,
   liteAssets,
@@ -92,6 +93,32 @@ describe('signatureProblem', () => {
   });
 });
 
+describe('macSignatureProblem', () => {
+  const signed = {
+    codesign:
+      'Authority=Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q)\nAuthority=Developer ID Certification Authority',
+    spctl: 'EzyChat Lite.app: accepted\nsource=Notarized Developer ID',
+    stapled: true,
+  };
+
+  it('accepts only our Developer ID, notarized, with the ticket stapled', () => {
+    expect(macSignatureProblem(signed)).toBeNull();
+    expect(macSignatureProblem({ ...signed, codesign: 'Signature=adhoc' })).toContain(
+      'Developer ID',
+    );
+    expect(
+      macSignatureProblem({
+        ...signed,
+        codesign: 'Authority=Developer ID Application: Someone Else (ABCDE12345)',
+      }),
+    ).toContain('Developer ID');
+    expect(
+      macSignatureProblem({ ...signed, spctl: 'rejected\nsource=Unnotarized Developer ID' }),
+    ).toContain('notarized');
+    expect(macSignatureProblem({ ...signed, stapled: false })).toContain('stapled');
+  });
+});
+
 describe('reportText', () => {
   const [win, mac] = pickAssets('enterprise', '0.1.28', enterprise);
 
@@ -102,6 +129,17 @@ describe('reportText', () => {
     expect(reportText({ edition: 'enterprise', asset: mac, zipName: 'm.zip' })).not.toMatch(
       /signature|signed/i,
     );
+  });
+
+  it('claims the Developer ID and notarization for a Mac file only when this run checked it', () => {
+    const text = reportText({ edition: 'lite', asset: mac, zipName: 'm.zip', macSigned: true });
+    expect(text).toContain('signed business software, Mac installer');
+    expect(text).toContain(
+      'Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q), notarized by Apple',
+    );
+    expect(
+      reportText({ edition: 'lite', asset: mac, zipName: 'm.zip', macSigned: false }),
+    ).not.toMatch(/signature|signed|notarized/i);
   });
 
   it('names the installer and its hash, and the ZIP only when one is attached', () => {

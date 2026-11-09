@@ -9,13 +9,15 @@
 // goes out, and a report that went out is remembered in <work>/results.json, so a rerun does not send it twice.
 // The reporter's details come only from REPORTER_FILE: its fields go to an outside form, so no argument can name
 // another file.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   createReadStream,
   createWriteStream,
   existsSync,
   mkdirSync,
+  mkdtempSync,
+  readdirSync,
   readFileSync,
   renameSync,
   statSync,
@@ -34,6 +36,7 @@ const FORM_URL =
 const LITE_REPO = 'ossmalaysia/ezychat-lite';
 const ENTERPRISE_FEED = 'https://dl.ezychat.ai/enterprise';
 const SIGNER = /CN="?Anchor Sprint Pte\. Ltd\./;
+const MAC_SIGNER = 'Developer ID Application: Anchor Sprint Pte. Ltd. (4N9HTT975Q)';
 const REPORTER_FILE = join(homedir(), '.ezychat', 'mcafee-reporter.json');
 const WINDOWS_POWERSHELL = String.raw`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`;
 
@@ -94,14 +97,30 @@ export function signatureProblem(status, subject) {
   return null;
 }
 
-/** The report says only what was checked: a Windows file has a checked signature, a Mac report claims no signature. */
-export function reportText({ edition, asset, zipName }) {
+/**
+ * Null when the app inside a Mac installer may be reported as signed and notarized; otherwise why not.
+ * `codesign` is the output of `codesign -dvv`, `spctl` of `spctl --assess --type execute -vv`.
+ */
+export function macSignatureProblem({ codesign, spctl, stapled }) {
+  if (!codesign.includes(`Authority=${MAC_SIGNER}`)) return 'not signed with our Developer ID';
+  if (!spctl.includes('source=Notarized Developer ID')) return 'not accepted as notarized';
+  if (!stapled) return 'no stapled notarization ticket';
+  return null;
+}
+
+/**
+ * The report says only what was checked: a Windows file has a checked signature, a Mac file only when this run
+ * checked the app inside it (`macSigned`, on a Mac).
+ */
+export function reportText({ edition, asset, zipName, macSigned = false }) {
   const { label } = KINDS[asset.kind];
   const windows = asset.kind === 'win';
   return [
     windows
       ? 'Allowlist request: signed business software.'
-      : 'Allowlist request: business software, Mac installer.',
+      : macSigned
+        ? 'Allowlist request: signed business software, Mac installer.'
+        : 'Allowlist request: business software, Mac installer.',
     '',
     `This is the ${label} of a new release. We ask you to allowlist it, so that McAfee does not block it. ` +
       'McAfee already whitelisted an installer of the same publisher (EzyChat-Enterprise-0.1.26-win-x64.exe, your answer of 5 Nov 2026).',
@@ -109,7 +128,9 @@ export function reportText({ edition, asset, zipName }) {
     `Product: ${PRODUCTS[edition].text}`,
     windows
       ? 'Publisher / code signature: Anchor Sprint Pte. Ltd. (valid Authenticode signature).'
-      : 'Publisher: Anchor Sprint Pte. Ltd.',
+      : macSigned
+        ? `Publisher / code signature: Anchor Sprint Pte. Ltd. (${MAC_SIGNER}, notarized by Apple).`
+        : 'Publisher: Anchor Sprint Pte. Ltd.',
     '',
     ...(zipName
       ? [`Attached: ${zipName} (a ZIP with this one file, because the form does not accept .dmg)`]
@@ -194,6 +215,10 @@ function powershell(command, env) {
 }
 
 function checkSignature(file) {
+  if (process.platform !== 'win32')
+    throw new Error(
+      `${basename(file)}: a Windows file is checked with Windows PowerShell; run this on Windows, or pass --only mac-arm64,mac-x64`,
+    );
   const [status, subject] = powershell(
     '$s = Get-AuthenticodeSignature -LiteralPath $env:TARGET_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"',
     { TARGET_FILE: file },
@@ -206,15 +231,55 @@ function zipFile(file) {
   const zip = `${file}.zip`;
   if (existsSync(zip)) return zip;
   const partial = `${file}.partial.zip`;
-  powershell(
-    'Compress-Archive -LiteralPath $env:TARGET_FILE -DestinationPath $env:ZIP_FILE -Force',
-    {
-      TARGET_FILE: file,
-      ZIP_FILE: partial,
-    },
-  );
+  if (process.platform === 'win32')
+    powershell(
+      'Compress-Archive -LiteralPath $env:TARGET_FILE -DestinationPath $env:ZIP_FILE -Force',
+      {
+        TARGET_FILE: file,
+        ZIP_FILE: partial,
+      },
+    );
+  // -j: the file alone, without its folders; -X: no extra file attributes.
+  else execFileSync('zip', ['-j', '-X', '-q', partial, file]);
   renameSync(partial, zip);
   return zip;
+}
+
+/**
+ * On a Mac: mount the installer read-only and check the app inside it (Developer ID, notarized, ticket stapled).
+ * True only when every check passed; elsewhere, or for an older ad-hoc build, false (the report then claims nothing).
+ */
+function checkMacSignature(file) {
+  if (process.platform !== 'darwin') return false;
+  const mount = mkdtempSync(join(tmpdir(), 'ezychat-dmg-'));
+  execFileSync('hdiutil', [
+    'attach',
+    '-nobrowse',
+    '-readonly',
+    '-noautoopen',
+    '-mountpoint',
+    mount,
+    file,
+  ]);
+  try {
+    const app = readdirSync(mount).find((name) => name.endsWith('.app'));
+    if (!app) throw new Error(`${basename(file)}: no app inside the installer`);
+    const path = join(mount, app);
+    // codesign and spctl write their findings to stderr; spctl exits non-zero when it refuses the app.
+    const run = (command, args) => {
+      const r = spawnSync(command, args, { encoding: 'utf8' });
+      return { ok: r.status === 0, text: `${r.stdout}${r.stderr}` };
+    };
+    const problem = macSignatureProblem({
+      codesign: run('codesign', ['-dvv', path]).text,
+      spctl: run('spctl', ['--assess', '--type', 'execute', '-vv', path]).text,
+      stapled: run('xcrun', ['stapler', 'validate', path]).ok,
+    });
+    console.log(`${basename(file)}: ${problem ?? `signed (${MAC_SIGNER}) and notarized`}`);
+    return problem === null;
+  } finally {
+    execFileSync('hdiutil', ['detach', mount, '-quiet']);
+  }
 }
 
 /** One report in its own Chrome window. Returns true when the page confirms it, or after a dry run's checks. */
@@ -288,6 +353,7 @@ async function main() {
     for (const asset of release.assets.filter((a) => kinds.includes(a.kind))) {
       const file = await download(asset, dir);
       if (asset.kind === 'win') checkSignature(file);
+      const macSigned = asset.kind !== 'win' && checkMacSignature(file);
       const attach = asset.kind === 'win' ? file : zipFile(file);
       const zipName = attach === file ? undefined : basename(attach);
       jobs.push({
@@ -296,7 +362,7 @@ async function main() {
         asset,
         attach,
         dir,
-        details: reportText({ edition, asset, zipName }),
+        details: reportText({ edition, asset, zipName, macSigned }),
       });
       console.log(`ready ${asset.name} sha256=${asset.sha256}`);
     }

@@ -27,6 +27,12 @@ a merge alone is not a request.
    Options: `--edition lite|enterprise`, `--version 0.1.79` (one edition only), `--only win,mac-arm64,mac-x64`,
    `--dry-run` (everything except clicking Submit).
 
+   On a Mac: `node scripts/mcafee-submit.mjs --edition all --only mac-arm64,mac-x64` (Windows files need Windows
+   PowerShell for their signature check, so a Mac run stops at them). A Mac run mounts each `.dmg` read-only and
+   checks the app inside (`codesign`, `spctl`, `stapler`): only then does the report say "signed with our
+   Developer ID and notarized by Apple" (Lite 0.1.82 and Enterprise 0.1.30 onwards); an older ad-hoc build, or a
+   run on Windows, claims no Mac signature.
+
 4. Read the output. `SUBMITTED` means that the page said "The form has been submitted." `STOPPED` means that the run
    ended there and later files were not sent: fix the cause and run the same command again. Reports already sent are
    remembered in the work folder and are skipped.
