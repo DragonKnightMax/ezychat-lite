@@ -1,6 +1,6 @@
 {
   "name": "@ezychat/server",
-  "version": "0.1.82",
+  "version": "0.1.83",
   "type": "module",
   "description": "EzyChat core: the inbox server (Fastify, Socket.IO, SQLite) and its extension API.",
   "license": "MIT",
@@ -41,8 +41,8 @@
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.80",
     "@ai-sdk/openai": "4.0.94",
-    "@ezychat/shared": "0.1.82",
-    "@ezychat/wa": "0.1.82",
+    "@ezychat/shared": "0.1.83",
+    "@ezychat/wa": "0.1.83",
     "@fastify/cookie": "^11.1.5",
     "@fastify/helmet": "^13.1.1",
     "@fastify/multipart": "^10.1.4",
