@@ -789,6 +789,14 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   from disk (`setInputFiles`, about 70 s per file); a tab that reports viewport 0x0 or times out on screenshots is in
   a hidden window, so open a new tab. Other vendors: the false-positive contact list in the
   Google Threat Intelligence (VirusTotal) docs.
+- McAfee's form often answers the report right after a successful one with "Time out! Please refresh the page and
+  submit." (nothing was sent; the script then stops on its 480 s wait). Read `after.png` before any rerun, then rerun
+  the same command: `results.json` skips what went out. From a Mac, `mcafee-submit.mjs --only mac-arm64,mac-x64`
+  checks the app inside each `.dmg` and only then names the Developer ID and notarization in the report.
+- A GitHub release asset can answer 504 on its `releases/download/...` link for one file while the asset API
+  (`Accept: application/octet-stream`) serves it and its digest matches; re-uploading with `--clobber` did not help and
+  the link recovered by itself within about 15 minutes. That link is what the in-app updater downloads, so after a
+  release probe every versioned file (`curl -r 0-100`, expect 206) and recheck a failing one before re-uploading.
 - An antivirus that blocks the update installer (Windows Update helper `helper-error.log`: "the file contains a virus
   or potentially unwanted software") can leave `Program Files\<product>` empty: the rollback ran although nothing was
   replaced (`$replacementStarted` was set before `Start-Process`), and its `Remove-Item $installDir -Recurse` deleted
