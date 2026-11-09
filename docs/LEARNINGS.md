@@ -206,7 +206,7 @@ into AGENTS.md.
   both feature folders, renumber the later one, archive the next oldest, and note in `latestConfirmed` which
   parallel feature's screens the next clone must add.
 - Bringing a parallel confirmed mock into a new clone: per differing file run `git merge-file <latest> <shared
-  baseline> <parallel>` (the shared baseline folder is still in the tree), merge catalogs by key, then
+baseline> <parallel>` (the shared baseline folder is still in the tree), merge catalogs by key, then
   `snapshot.mjs --check`. A confirmed baseline may already fail its own `--check`: record that drift as inherited
   (copied unchanged) instead of re-hashing it away. When the shared baseline folder is already pruned, read it from
   its recorded revision (`git fetch --depth=1 origin <sha>` in a shallow cloud clone, then `git show <sha>:<path>`).
