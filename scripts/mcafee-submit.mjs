@@ -86,9 +86,21 @@ export function liteAssets(release) {
   return release.assets.map((a) => ({
     name: a.name,
     url: a.browser_download_url,
+    // A draft's files are not public yet: they download through the API with the owner's gh login.
+    apiUrl: release.draft ? a.url : undefined,
     size: a.size,
     sha256: (a.digest ?? '').replace(/^sha256:/, ''),
   }));
+}
+
+/**
+ * The release of a tag from GitHub's release list, a draft included (`releases/tags/` does not find drafts): report the
+ * installers before the release is published, so the files users get are the ones McAfee checked.
+ */
+export function releaseOfTag(releases, version) {
+  const release = releases.find((r) => r.tag_name === `v${version}`);
+  if (!release) throw new Error(`no release or draft for v${version}`);
+  return release;
 }
 
 /** A version goes into URLs and folder names, so it is x.y.z and nothing else, also when a release feed supplies it. */
@@ -185,13 +197,18 @@ export function checkReporter(reporter) {
 
 async function loadRelease(edition, version) {
   if (edition === 'lite') {
-    const path = version ? `tags/v${version}` : 'latest';
-    const release = JSON.parse(
-      execFileSync(resolveTool('gh'), ['api', `repos/${LITE_REPO}/releases/${path}`], {
-        encoding: 'utf8',
-        maxBuffer: 2 ** 26,
-      }),
-    );
+    const gh = (path) =>
+      JSON.parse(
+        execFileSync(resolveTool('gh'), ['api', `repos/${LITE_REPO}/${path}`], {
+          encoding: 'utf8',
+          maxBuffer: 2 ** 26,
+        }),
+      );
+    const release = version
+      ? releaseOfTag(gh('releases?per_page=30'), version)
+      : gh('releases/latest');
+    if (release.draft)
+      console.log(`v${version}: a draft (not public yet); files come through the API`);
     const found = checkVersion(release.tag_name.replace(/^v/, ''));
     return { version: found, assets: pickAssets(edition, found, liteAssets(release)) };
   }
@@ -220,8 +237,15 @@ async function matches(file, asset) {
 async function download(asset, dir) {
   const file = join(dir, asset.name);
   if (await matches(file, asset)) return file;
-  const response = await fetch(asset.url);
-  if (!response.ok) throw new Error(`${asset.url} answered ${response.status}`);
+  const response = asset.apiUrl
+    ? await fetch(asset.apiUrl, {
+        headers: {
+          accept: 'application/octet-stream',
+          authorization: `Bearer ${execFileSync(resolveTool('gh'), ['auth', 'token'], { encoding: 'utf8' }).trim()}`,
+        },
+      })
+    : await fetch(asset.url);
+  if (!response.ok) throw new Error(`${asset.apiUrl ?? asset.url} answered ${response.status}`);
   await pipeline(Readable.fromWeb(response.body), createWriteStream(file));
   if (!(await matches(file, asset)))
     throw new Error(`${asset.name}: the download differs from the release's SHA-256 or size`);

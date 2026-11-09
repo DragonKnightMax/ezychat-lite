@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  releaseOfTag,
   osslsigncodeStatus,
   macSignatureProblem,
   checkReporter,
@@ -191,5 +192,30 @@ describe('checkReporter', () => {
     const reporter = { fullName: 'A', email: 'a@b.c', company: 'C' };
     expect(checkReporter(reporter)).toBe(reporter);
     expect(() => checkReporter({ ...reporter, email: ' ' })).toThrow('email');
+  });
+});
+
+describe('releaseOfTag', () => {
+  it('finds a draft by its tag, which releases/tags/ does not, and stops when there is none', () => {
+    const list = [
+      { tag_name: 'v0.1.83', draft: true },
+      { tag_name: 'v0.1.82', draft: false },
+    ];
+    expect(releaseOfTag(list, '0.1.83')).toEqual({ tag_name: 'v0.1.83', draft: true });
+    expect(() => releaseOfTag(list, '0.1.84')).toThrow('no release or draft for v0.1.84');
+  });
+
+  it("downloads a draft's files through the API, a published one through its public link", () => {
+    const asset = {
+      name: 'a.exe',
+      browser_download_url: 'https://pub',
+      url: 'https://api',
+      size: 1,
+    };
+    expect(liteAssets({ draft: true, assets: [asset] })[0]).toMatchObject({
+      url: 'https://pub',
+      apiUrl: 'https://api',
+    });
+    expect(liteAssets({ draft: false, assets: [asset] })[0]?.apiUrl).toBeUndefined();
   });
 });
