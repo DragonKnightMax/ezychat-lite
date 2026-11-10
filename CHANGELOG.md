@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A reaction (or an edited message) that arrived while the chat was still loading could vanish until the chat was opened again; it now stays.
+
 ## [0.1.83] - 2026-11-09
 
 ### Added

@@ -479,6 +479,58 @@ it('replaces the reactions of a cached message when someone reacts, changes or r
   qc.clear();
 });
 
+it.each(['message:reactions', 'message:updated'] as const)(
+  'keeps a %s change that arrives while a reload of its chat is running (the reload started before it)',
+  async (event) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const jid = '601@s.whatsapp.net';
+    const before = { id: 'M1', chatJid: jid, clientId: null, body: 'Yes', reactions: [] };
+    const reactions = [{ emoji: '👍', senderJid: jid, senderName: 'Farah', fromMe: false, at: 2 }];
+    const after = { ...before, body: 'Yes, Saturday', reactions };
+    const page = (m: unknown) => ({
+      pages: [{ messages: [m], nextBefore: null }],
+      pageParams: [null],
+    });
+    // The first load shows the message; a reload starts before the change and answers after it.
+    let releaseReload!: () => void;
+    const reloadAnswer = new Promise<void>((r) => (releaseReload = r));
+    const load = vi
+      .fn()
+      .mockImplementationOnce(async () => page(before))
+      .mockImplementationOnce(async () => {
+        await reloadAnswer;
+        return page(before);
+      })
+      .mockImplementation(async () => page(after));
+    function Messages() {
+      const { data } = useQuery({ queryKey: ['messages', jid], queryFn: load });
+      const m = data?.pages[0]?.messages[0] as typeof after | undefined;
+      return <span>{m ? `${m.body}:${m.reactions.map((r) => r.emoji).join('')}` : 'none'}</span>;
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <RealtimeProvider>
+          <Messages />
+        </RealtimeProvider>
+      </QueryClientProvider>,
+    );
+    await screen.findByText('Yes:');
+    act(() => void qc.invalidateQueries({ queryKey: ['messages', jid] }));
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    act(() =>
+      event === 'message:reactions'
+        ? socket.listeners.get(event)!({ chatJid: jid, messageId: 'M1', reactions })
+        : socket.listeners.get(event)!(after),
+    );
+    await screen.findByText(event === 'message:reactions' ? 'Yes:👍' : 'Yes, Saturday:👍');
+    // The stale reload answers afterwards: one more load follows it, so the change still shows.
+    await act(async () => releaseReload());
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(3));
+    await screen.findByText('Yes, Saturday:👍');
+    qc.clear();
+  },
+);
+
 it('refreshes a group AI state on a group line and when a teammate writes during a pause', async () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const group = '120363000000000001@g.us';

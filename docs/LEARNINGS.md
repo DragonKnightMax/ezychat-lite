@@ -1759,9 +1759,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   API or tool that returns it must say so, and tests must find the row by `client_id`.
 - A socket event that arrives while its list is still loading is lost: the load's older answer replaces the
   patched cache, and React Query reuses a running first load instead of restarting it on
-  `invalidateQueries`. Wait for the running load to end, then reload (`reloadAfterRunningLoad`). An e2e
-  test that fails only in the full run is usually such a race: read its failure screenshot, never just
-  rerun it.
+  `invalidateQueries`. Wait for the running load to end, then reload (`reloadAfterRunningLoad`). This holds
+  for every event that patches a cached list (new message, update, reaction), not only for new rows: a
+  badge that shows and then vanishes in an e2e run is this race. An e2e test that fails only in the full
+  run is usually such a race: read its failure screenshot, never just rerun it.
 
 - Electron fires `will-frame-navigate` before `will-navigate`; `preventDefault()` in the first cancels the
   second, so a link handler only in `will-navigate` never runs (every `mailto:` button did nothing). Handle
