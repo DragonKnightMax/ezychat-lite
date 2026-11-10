@@ -3,6 +3,7 @@
 // dark: gallery card, Overview not signed in, device code, not installed, connected, Settings (no repos,
 // picker, repos chosen and saved), Activity, agent page row, sign-in expired, GitHub down, token form
 // with the classic-token error. Reports page errors and horizontal overflow.
+// Needs the built web app (npm run build -w apps/web): the dev build serves apps/web/dist.
 // Usage: node e2e/github-screens.mjs <port> <outDir>
 /* global document -- used inside page.evaluate (runs in the browser) */
 import { chromium } from '@playwright/test';
@@ -55,11 +56,6 @@ for (const scheme of ['light', 'dark'])
     await req('POST', '/api/connectors/github/disconnect');
     await req('POST', '/api/dev/fake-github', { mode: 'ok', installed: true });
     const agent = (await (await req('GET', '/api/ai')).json()).agents[0];
-    await req('PUT', `/api/connectors/github/agents/${agent.id}`, {
-      repos: [],
-      issues: true,
-      pulls: true,
-    }).catch(() => {});
 
     const page = await ctx.newPage();
     page.on('pageerror', (e) => problems.push(`${suffix} pageerror: ${e.message}`));
@@ -110,6 +106,12 @@ for (const scheme of ['light', 'dark'])
       await req('POST', '/api/dev/fake-github', { installed: true });
       await account().getByRole('button', { name: 'Check again' }).click();
       await account().getByRole('button', { name: 'Disconnect' }).waitFor();
+      // Settings are kept across sign-ins: start each run with no repositories (needs a sign-in).
+      await req('PUT', `/api/connectors/github/agents/${agent.id}`, {
+        repos: [],
+        issues: true,
+        pulls: true,
+      });
       await shot('05-connected', { fullPage: true });
     });
     await step('settings', async () => {
