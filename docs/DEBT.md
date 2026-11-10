@@ -24,12 +24,15 @@ One row per item; the daily run works it top to bottom. Detail for fixed items i
 | L-8 | desktop | `status-sections.ts` TODO(phase 4b): Enterprise keeps a copy of the status-section types; `@ezychat/desktop` 0.1.80 exports only Model/Context/Provider, not Field/Button/Result/Tone | low | major | recorded-major (extension API: export the remaining types from `apps/desktop/src/index.ts` in Lite, release, then Enterprise deletes its copy) | 2026-11-08 |
 | L-9 | web | Flag emoji show as letters on Windows (needs bundled flag font) | low | small | open | 2026-11-07 |
 | L-11 | e2e | ESLint warning: `import()` type annotation in `e2e/file-transfer.spec.ts` | low | small | fixed in this PR (2026-11-08) | 2026-11-08 |
+| L-12 | web | SonarCloud bugs S1082 (`MediaView.tsx:123,134`): the photo viewer's backdrop and photo had click handlers without a keyboard role; S2699: the "Claude key in the OpenAI field" test asserted nothing | low | small | fixed in this PR (2026-11-10) | 2026-11-10 |
+| L-13 | server | SonarCloud: 82 cognitive-complexity findings (S3776), 3 deep nestings in `connectors/mcp/net.ts` (S2004), empty placeholder-adapter methods in `inboxes/types.ts` (S1186) | low | major | recorded-major (split per module with no behaviour change, together with the "Very large modules" item below) | 2026-11-10 |
 | L-10 | deps | 10 Dependabot PRs open (#302-#311) and older PRs #201, #237, #240, #249, #273 | low | small | open (not techdebt/ PRs; not merged by this run) | 2026-11-07 |
 
 SonarCloud was not queried and lint/typecheck were not run (docs-only change); re-check next run.
 
 ### Run log
 
+- 2026-11-10: no `techdebt/` PRs open in either repo. Sonar: 2 open bugs (both S1082 in `MediaView.tsx`), 162 critical (82 S3776). L-12 fixed: one click handler on the dialog closes it when the backdrop itself was clicked (no handlers on plain elements, no `stopPropagation`), new test pins photo-click / backdrop-click / Esc; the empty test now asserts the Claude key is caught and never sent. L-13 recorded-major. Web unit tests, lint, typecheck and e2e ran.
 - 2026-11-09: no Lite `techdebt/` PRs open. Sonar (655 major+ issues, no bugs/vulnerabilities): the `lock.test.ts` stale/garbage-lock tests had no assertion (S2699); they now assert the lock is taken over and released. S1994 in `google-sheets/match.ts:48` checked: false positive. L-6 re-investigated (see table). L-3 is partly stale (ms/zh `handoffTitle` already translated).
 - 2026-11-08: no `techdebt/` PRs open. L-11 lint warning fixed (type import in the e2e spec); L-2 closed (does not reproduce); L-5 status corrected; L-8 recorded-major. Lint, typecheck run; SonarCloud has 2143 open issues (e.g. nested ternary `MediaView.tsx:335`, complexity in `lite-import/merge-tables.ts`), not triaged yet.
 - 2026-11-07 (2nd run): L-5 fixed: a live message with no cached pages now restarts the first fetch. Web tests, typecheck, lint and e2e (159 passed) ran; SonarCloud not queried.

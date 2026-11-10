@@ -160,6 +160,24 @@ describe('MediaView with WhatsApp thumbnail', () => {
     expect(dialog.querySelector('.animate-spin')).toBeNull();
   });
 
+  it('a click on the photo keeps it open; a click beside it or Esc closes it', async () => {
+    show({ ...image, mediaStatus: 'ok', mediaUrl: real });
+    fireEvent.click(screen.getByRole('button', { name: /open image/i }));
+    let dialog = await screen.findByRole('dialog');
+    const photo = dialog.querySelector('img')!;
+    fireEvent.load(photo);
+    fireEvent.click(photo);
+    expect(screen.getByRole('dialog')).toBe(dialog);
+
+    fireEvent.click(photo.parentElement!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: /open image/i }));
+    dialog = await screen.findByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('falls back to the real photo when the thumbnail cannot load', () => {
     show({ ...image, mediaStatus: 'ok', mediaUrl: real });
     fireEvent.error(screen.getByRole('img'));
