@@ -1709,7 +1709,15 @@
       "find": "查找文件",
       "findHint": "在您选择的文件中找到合适的文件。",
       "read": "读取文件",
-      "readHint": "读取您选择的 Google 文档、表格、PDF、Word 或文本文件并据此回答。"
+      "readHint": "读取您选择的 Google 文档、表格、PDF、Word 或文本文件并据此回答。",
+      "searchIssues": "搜索议题",
+      "searchIssuesHint": "在代理的仓库中按关键词、标签或状态查找议题。",
+      "listIssues": "列出议题",
+      "listIssuesHint": "列出代理某个仓库中打开或已关闭的议题。",
+      "readIssue": "读取议题或拉取请求",
+      "readIssueHint": "读取一个议题或拉取请求：状态、标签和最新 5 条评论。",
+      "searchPulls": "搜索拉取请求",
+      "searchPullsHint": "按关键词、作者或状态查找拉取请求，不包含代码。"
     },
     "items": {
       "google-calendar": {
@@ -1743,6 +1751,14 @@
         "short": "从 SQL Account 获取库存、价格，以及客户本人的发票和订单。",
         "long": "您的 AI 客服根据 SQL Account 回答：所有人可查库存和价格，每位客户只能查自己的发票和订单。",
         "privacy": "{{product}} 只把一次查询所需的内容（商品名称、客户代码、单据号码）发送给 SQL Account，绝不发送聊天内容。"
+      },
+      "github": {
+        "name": "GitHub",
+        "short": "在您选择的仓库中查询议题和拉取请求。",
+        "long": "AI 代理可以在您为它们各自选择的仓库中，查询议题和拉取请求的状态、标签和最新评论。每个代理的指令决定何时查询。",
+        "privacy": "{{product}} 只能读取您在 GitHub 上允许的仓库，每个 AI 代理只能读取您为它选择的仓库。",
+        "privacy2": "它只向 GitHub 发送查询所需的搜索词和编号，从不发送聊天内容。议题和拉取请求的文字只被当作信息，绝不当作给 AI 的指令。",
+        "privacy3": "登录信息加密保存在这台电脑上。活动记录只保留谁和何时。"
       }
     },
     "gc": {
@@ -2435,6 +2451,150 @@
         "someone": "AI 客服"
       },
       "agentCard": "已开启 {{on}}/{{total}} 类记录"
+    },
+    "github": {
+      "accountTitle": "GitHub 账号",
+      "accountDescription": "整个团队使用一个 GitHub 登录。",
+      "what1": "让 AI 代理查询议题和拉取请求",
+      "what2": "由您在 GitHub 上和为每个代理选择仓库",
+      "what3": "只读：不会修改 GitHub 上的任何内容",
+      "signIn": "使用 GitHub 登录",
+      "useToken": "改用令牌",
+      "signInHint": "GitHub 会显示一个代码供您确认。这台电脑上无需安装任何东西。",
+      "signedIn": "已作为 {{login}} 登录 GitHub",
+      "viaApp": "已通过 GitHub 应用“EzyChat by Anchor Sprint”登录",
+      "viaToken": "已通过令牌登录",
+      "tokenExpires": "令牌将于 {{date}} 过期",
+      "tokenExpired": "令牌已于 {{date}} 过期",
+      "state": {
+        "connected": "正常",
+        "expiring": "令牌即将过期",
+        "expired": "请重新登录",
+        "unavailable": "无法连接 GitHub",
+        "no_installation": "在 GitHub 上安装"
+      },
+      "install": {
+        "title": "在 GitHub 上安装“EzyChat by Anchor Sprint”",
+        "body": "您已登录，但 GitHub 应用“EzyChat by Anchor Sprint”还未安装在您的任何账号或组织上。请安装它并选择它可以读取的仓库。",
+        "button": "在 GitHub 上安装",
+        "check": "重新检查",
+        "orgNote": "如果是组织，需要由所有者安装或批准您的请求。"
+      },
+      "expiringTitle": "您的令牌将于 {{date}} 过期",
+      "expiringBody": "请在 GitHub 上创建新令牌并粘贴到这里，让 AI 继续回答。",
+      "newToken": "粘贴新令牌",
+      "expiredTitle": "请重新登录 GitHub",
+      "expiredTokenTitle": "您的令牌已过期",
+      "expiredBody": "AI 停止在 GitHub 上查询，并把这些对话转给您的团队。",
+      "signInAgain": "重新登录",
+      "unavailableTitle": "无法连接 GitHub",
+      "unavailableBody": "在 GitHub 恢复之前，AI 会把 GitHub 相关问题转给您的团队。",
+      "reposShared_one": "GitHub 与 {{product}} 共享了 {{count}} 个仓库。",
+      "reposShared_other": "GitHub 与 {{product}} 共享了 {{count}} 个仓库。",
+      "changeOnGitHub": "在 GitHub 上更改",
+      "perAgent": "在“设置”标签页为每个 AI 代理选择仓库。",
+      "disconnectTitle": "断开 GitHub？",
+      "disconnectApp": "登录信息会从这台电脑删除，AI 不再使用 GitHub。若也要从 GitHub 移除该应用，请在 GitHub 设置中卸载“EzyChat by Anchor Sprint”。",
+      "disconnectToken": "令牌会从这台电脑删除，AI 不再使用 GitHub。如不再需要，也请在 GitHub 上删除该令牌。",
+      "disconnected": "已断开 GitHub",
+      "neverChanges": "{{product}} 绝不修改 GitHub 上的任何内容，也绝不读取代码。",
+      "device": {
+        "title": "使用 GitHub 登录",
+        "description": "在 GitHub 上确认此代码，允许 {{product}} 读取您允许的仓库。",
+        "step1": "1. 复制这个代码：",
+        "copy": "复制代码",
+        "copied": "代码已复制",
+        "step2": "2. 打开 GitHub，粘贴代码并批准：",
+        "open": "打开 GitHub",
+        "waiting": "正在等待您在 GitHub 上操作… 代码 15 分钟内有效。",
+        "deniedTitle": "您在 GitHub 上取消了",
+        "deniedBody": "没有共享任何内容。准备好后再试一次。",
+        "expiredTitle": "代码已过期",
+        "expiredBody": "代码 15 分钟内有效。请获取新代码。",
+        "again": "获取新代码",
+        "failedTitle": "登录未完成",
+        "failedBody": "GitHub 未按预期回应。请获取新代码重试。"
+      },
+      "token": {
+        "title": "使用令牌",
+        "description": "适用于不允许 GitHub 应用的组织。",
+        "step1": "打开 GitHub → Fine-grained personal access tokens → Generate new token",
+        "step2": "选择账号或组织，然后选 Only select repositories。",
+        "step3": "Repository permissions：Issues → Read-only，Pull requests → Read-only。",
+        "step4": "设置过期时间，生成令牌并复制。",
+        "label": "细粒度令牌",
+        "readOnly": "即使令牌权限更多，{{product}} 也只读取。",
+        "save": "检查并保存",
+        "error": {
+          "classic": "这是经典令牌。请使用细粒度令牌（以 github_pat_ 开头）。",
+          "invalid": "GitHub 不接受此令牌。请检查是否完整复制且未过期。",
+          "no_repos": "此令牌看不到任何仓库。请在 GitHub 上编辑并添加仓库。"
+        }
+      },
+      "notConnected": "请先登录 GitHub",
+      "notConnectedHint": "然后为每个 AI 代理选择仓库。",
+      "pausedTitle": "GitHub 已暂停",
+      "pausedExpired": "请在“概览”标签页重新登录。在此之前，{{name}} 会把 GitHub 相关问题转给您的团队。",
+      "pausedDown": "无法连接 GitHub。在它恢复之前，{{name}} 会把 GitHub 相关问题转给您的团队。",
+      "repos": {
+        "title": "仓库",
+        "description": "{{name}} 可以在这些仓库中查询议题和拉取请求。",
+        "none": "还没有仓库。请选择 {{name}} 可以查看的仓库。",
+        "choose": "选择仓库",
+        "remove": "移除 {{repo}}",
+        "private": "私有",
+        "public": "公开",
+        "gone": "GitHub 上已不再共享。{{name}} 会跳过它。",
+        "hint": "最多 {{max}} 个，从 GitHub 与 {{product}} 共享的仓库中选择。",
+        "whoTitle": "谁可能被告知",
+        "whoBody": "任何与 {{name}} 聊天的人，都可能被告知这些议题和拉取请求的内容，包括私有仓库中的内容。",
+        "notAccessible": "您选择的某个仓库已不再在 GitHub 上共享。请移除后再保存。"
+      },
+      "access": {
+        "title": "{{name}} 可以查询什么",
+        "description": "两者都是查询。不会修改 GitHub 上的任何内容。",
+        "issues": "议题",
+        "issuesHint": "搜索、列出和读取议题。",
+        "pulls": "拉取请求",
+        "pullsHint": "搜索和读取拉取请求，绝不读取代码。"
+      },
+      "needRepo": "请先选择仓库。",
+      "when": {
+        "note": "{{name}} 查询什么、何时查询，由它的指令决定。",
+        "open": "编辑 {{name}} 的指令"
+      },
+      "picker": {
+        "title": "选择仓库",
+        "description": "GitHub 与 {{product}} 共享的仓库。{{name}} 只能查看您选择的仓库。",
+        "search": "搜索仓库",
+        "refresh": "从 GitHub 刷新列表",
+        "refreshed": "已从 GitHub 刷新列表",
+        "add_one": "添加 {{count}} 个仓库",
+        "add_other": "添加 {{count}} 个仓库",
+        "noMatch": "没有匹配的仓库。",
+        "allAdded": "所有共享的仓库都已添加。",
+        "missing": "找不到仓库？",
+        "editApp": "在 GitHub 上与“EzyChat by Anchor Sprint”共享",
+        "editToken": "在 GitHub 上把它加入您的令牌"
+      },
+      "saved": "GitHub 设置已保存",
+      "agentCard": {
+        "noRepos": "未选择仓库",
+        "both_one": "{{count}} 个仓库中的议题和拉取请求",
+        "both_other": "{{count}} 个仓库中的议题和拉取请求",
+        "issues_one": "{{count}} 个仓库中的议题",
+        "issues_other": "{{count}} 个仓库中的议题",
+        "pulls_one": "{{count}} 个仓库中的拉取请求",
+        "pulls_other": "{{count}} 个仓库中的拉取请求"
+      },
+      "act": {
+        "searched": "{{agent}} 为 {{customer}} 搜索了 GitHub",
+        "read": "{{agent}} 为 {{customer}} 读取了一个议题或拉取请求",
+        "refused": "{{agent}} 为 {{customer}} 查询未分配的仓库，被拒绝",
+        "failed": "{{agent}} 无法为 {{customer}} 连接 GitHub，已转交",
+        "hint": "谁和何时。仓库名称、标题和内容都留在 GitHub。",
+        "emptyHint": "查询会显示在这里。"
+      }
     }
   },
   "reports": {

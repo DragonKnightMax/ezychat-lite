@@ -40,19 +40,24 @@ const SECRET_FIELDS = [
   'client_secret',
   'googleOAuth',
   'googlePicker',
+  // GitHub connector (device flow).
+  'deviceCode',
+  'device_code',
 ];
 
 const OAUTH_URL =
   /(https?:\/\/(?:auth\.openai\.com\/oauth\/(?:authorize|token)|(?:localhost|127\.0\.0\.1):1455\/auth\/callback))\?[^\s"'<>]*/gi;
 // Personal access tokens (api-tokens/service.ts); the 12-character display prefix stays visible.
 const PAT = /\bezc_pat_[A-Za-z0-9_-]{8,}/g;
+// GitHub tokens: fine-grained (github_pat_) and classic/App/OAuth (ghp_, gho_, ghu_, ghs_, ghr_).
+const GITHUB_TOKEN = /\b(?:github_pat_[A-Za-z0-9_]{8,}|gh[pousr]_[A-Za-z0-9]{8,})/g;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 // A real token shape: 16+ token characters, or 8+ with a digit or token punctuation.
 const BEARER =
   /\bBearer\s+(?:[A-Za-z0-9._~+/=-]{16,}|(?=[A-Za-z0-9]*[._~+/=0-9-])[A-Za-z0-9._~+/=-]{8,})/gi;
 // JSON-embedded token fields, also inside a stringified (escaped) JSON message.
 const JSON_TOKEN =
-  /(\\?"(?:access_token|refresh_token|id_token|code_verifier|code_challenge)\\?"\s*:\s*\\?")[^"\\]*/gi;
+  /(\\?"(?:access_token|refresh_token|id_token|code_verifier|code_challenge|device_code)\\?"\s*:\s*\\?")[^"\\]*/gi;
 // code= and state= are common words, so they only count as URL query parameters.
 const QUERY_PARAM = /(?<=^|[?&#])(code|state)=[^&\s"']+/gi;
 const QUERY_SECRET_KEYS = new Set([
@@ -78,6 +83,7 @@ export function redactSecretText(text: string): string {
   return text
     .replace(OAUTH_URL, '$1?[REDACTED]')
     .replace(PAT, 'ezc_pat_[REDACTED]')
+    .replace(GITHUB_TOKEN, '[REDACTED_GITHUB_TOKEN]')
     .replace(JWT, '[REDACTED_JWT]')
     .replace(BEARER, 'Bearer [REDACTED]')
     .replace(JSON_TOKEN, '$1[REDACTED]')

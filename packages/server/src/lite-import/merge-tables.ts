@@ -48,6 +48,8 @@ export const TABLE_PLAN: Readonly<Record<string, { merged: true } | { skip: stri
   drive_saved_files: { merged: true },
   drive_folders: { merged: true },
   drive_activity: { merged: true },
+  github_agent_settings: { merged: true },
+  github_activity: { merged: true },
   connector_connections: { merged: true },
   connector_agent_settings: { merged: true },
   connector_activity: { merged: true },
@@ -429,6 +431,14 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       const addFolder = inserter(target, 'drive_folders', { verb: 'INSERT OR IGNORE' });
       for (const f of rows(lite, 'SELECT * FROM drive_folders')) addFolder(f);
     }
+    // GitHub: each agent's repositories and switches (GitHub's own repository ids). The sign-in
+    // (setting github_auth) is not imported: the admin signs in again, and a repository the new
+    // sign-in does not share shows as no longer shared.
+    const addGitHub = inserter(target, 'github_agent_settings', { verb: 'INSERT OR IGNORE' });
+    for (const s of rows(lite, 'SELECT * FROM github_agent_settings')) {
+      const agentId = maps.agent(s.agent_id);
+      if (agentId !== null) addGitHub({ ...s, agent_id: agentId });
+    }
   });
 
   // ── Shared tables: contacts, aliases, Safety numbers (target wins, empty fields filled) ─────
@@ -645,6 +655,7 @@ export function mergeTables(input: MergeInput): MergeOutcome {
       }
     }
     byChatAndAgent('drive_activity', false);
+    byChatAndAgent('github_activity', false);
     byChatAndAgent('connector_activity', false);
     byChatAndAgent('connector_calls', false);
     byChatAndAgent('connector_values', false);

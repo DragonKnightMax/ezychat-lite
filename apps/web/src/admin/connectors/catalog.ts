@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ContactRound,
   CreditCard,
+  GitPullRequest,
   HardDrive,
   Plug,
   Puzzle,
@@ -11,13 +12,18 @@ import {
   Table2,
   type LucideIcon,
 } from 'lucide-react';
-import type { ConnectorEntry, GoogleCalendarState, SqlAccountState } from '@ezychat/shared';
+import type {
+  ConnectorEntry,
+  GitHubState,
+  GoogleCalendarState,
+  SqlAccountState,
+} from '@ezychat/shared';
 
 /**
  * Admin → Connectors: what the app itself provides next to the connector list (design
  * docs/features/connector-list/design.md). The list (server, `GET /api/connectors/list`) gives
  * every partner and coming-soon connector; the app keeps only its own features here: the built-in
- * Google Calendar, Google Sheets, Google Drive and SQL Account (their pages and tabs live in the app) and the custom MCP connector (Enterprise,
+ * Google Calendar, Google Sheets, Google Drive, SQL Account and GitHub (their pages and tabs live in the app) and the custom MCP connector (Enterprise,
  * linked by its web extension through `connectorLinks`). Texts are catalog keys under
  * `connectors.items.<id>` and `connectors.tools.<tool>` (admin namespace).
  */
@@ -57,15 +63,26 @@ export const CATEGORY_ICON: Record<ConnectorCategory, LucideIcon> = {
   other: Puzzle,
 };
 
-/** What the AI may do with the built-in Google Calendar, Google Sheets and Google Drive. */
+/** What the AI may do with the built-in Google Calendar, Google Sheets, Google Drive and GitHub. */
 export type ConnectorTool =
-  'checkFree' | 'book' | 'readRows' | 'addLead' | 'save' | 'find' | 'read';
+  | 'checkFree'
+  | 'book'
+  | 'readRows'
+  | 'addLead'
+  | 'save'
+  | 'find'
+  | 'read'
+  | 'searchIssues'
+  | 'listIssues'
+  | 'readIssue'
+  | 'searchPulls';
 
 export const CONNECTOR_IDS = [
   'google-calendar',
   'google-sheets',
   'sql-account',
   'google-drive',
+  'github',
   'custom-mcp',
 ] as const;
 export type ConnectorId = (typeof CONNECTOR_IDS)[number];
@@ -114,6 +131,19 @@ export const CONNECTORS: readonly CatalogConnector[] = [
       { key: 'read', access: 'read' },
     ],
   },
+  // Lite only for now (owner 2026-11-10): the gallery and its page check the edition.
+  {
+    id: 'github',
+    icon: GitPullRequest,
+    category: 'other',
+    edition: 'core',
+    tools: [
+      { key: 'searchIssues', access: 'read' },
+      { key: 'listIssues', access: 'read' },
+      { key: 'readIssue', access: 'read' },
+      { key: 'searchPulls', access: 'read' },
+    ],
+  },
   { id: 'custom-mcp', icon: Plug, category: 'custom', edition: 'enterprise', tools: [] },
 ];
 
@@ -142,7 +172,7 @@ export type ConnectorStatus =
  */
 export function connectorStatus(
   c: CatalogConnector,
-  state: GoogleCalendarState | SqlAccountState | undefined,
+  state: GoogleCalendarState | SqlAccountState | GitHubState | undefined,
   extensionLink: string | undefined,
 ): ConnectorStatus {
   if (extensionLink) return 'linked';
@@ -150,6 +180,10 @@ export function connectorStatus(
   if (c.id === 'sql-account') {
     if (state === 'connected') return 'connected';
     return state === undefined || state === 'disconnected' ? 'notConnected' : 'attention';
+  }
+  if (c.id === 'github') {
+    if (state === 'connected' || state === 'expiring') return 'connected';
+    return state === undefined || state === 'not_connected' ? 'notConnected' : 'attention';
   }
   const google = state;
   if (c.id === 'google-calendar' || c.id === 'google-sheets' || c.id === 'google-drive') {

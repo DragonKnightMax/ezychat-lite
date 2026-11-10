@@ -62,6 +62,8 @@ import { initSqlAccount } from './connectors/sql-account/service.js';
 initializers.push(initSqlAccount);
 import { initGoogleDrive } from './connectors/google-drive/service.js';
 initializers.push(initGoogleDrive);
+import { initGitHub } from './connectors/github/service.js';
+initializers.push(initGitHub);
 
 import { initConnectorList } from './connectors/list/service.js';
 initializers.push(initConnectorList);

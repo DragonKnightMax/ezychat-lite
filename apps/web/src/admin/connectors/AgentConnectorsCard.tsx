@@ -2,11 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plug } from 'lucide-react';
 import { SQL_OBJECTS, sqlAccessOf } from '@ezychat/shared';
-import type { DriveAgentSettings, SheetsAgentSettings } from '@ezychat/shared';
+import type { DriveAgentSettings, GitHubAgentView, SheetsAgentSettings } from '@ezychat/shared';
 import { useConnectorGallery, useConnectorsAgentSettings } from '../../api/connector-list';
 import {
   useBookingSettings,
   useDriveSettings,
+  useGitHub,
+  useGitHubAgent,
   useGoogleCalendar,
   useGoogleDrive,
   useGoogleSheets,
@@ -15,6 +17,7 @@ import {
 import { useSqlAccount, useSqlAgentSettings } from '../../api/sql-account';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEdition } from '@/lib/version';
 import { findConnector } from './catalog';
 import { ConnectorIcon, ConnectorStatusBadge } from './connector-ui';
 import { entryIcon, isLinked, withToolDefaults } from './list';
@@ -59,6 +62,17 @@ function driveLine(t: Translate, settings: DriveAgentSettings): string {
   return t('connectors.agentCard.off');
 }
 
+/** GitHub: what it looks up in how many repositories GitHub still shares, or Off. */
+function githubLine(t: Translate, view: GitHubAgentView): string {
+  const { repos, issues, pulls } = view.settings;
+  if (repos.length === 0) return t('connectors.github.agentCard.noRepos');
+  const count = repos.filter((r) => !view.unavailableRepoIds.includes(r.id)).length;
+  if (issues && pulls) return t('connectors.github.agentCard.both', { count });
+  if (issues) return t('connectors.github.agentCard.issues', { count });
+  if (pulls) return t('connectors.github.agentCard.pulls', { count });
+  return t('connectors.agentCard.off');
+}
+
 /**
  * Agent page → Connectors: one summary row per connected connector (what this agent may do there)
  * that opens the connector's Settings tab for this agent. Settings live on the connector's page.
@@ -85,6 +99,13 @@ export function AgentConnectorsCard({
   const driveSettings = useDriveSettings(agentId, driveLinked).data;
   const gd = findConnector('google-drive')!;
   const driveSummary = driveSettings ? driveLine(t, driveSettings) : null;
+  // GitHub is offered in Lite only for now (owner 2026-11-10).
+  const lite = useEdition() === 'lite';
+  const github = useGitHub(lite);
+  const githubState = github.data?.state;
+  const githubLinked = lite && (linkedState(githubState) || githubState === 'expiring');
+  const githubView = useGitHubAgent(agentId, githubLinked).data;
+  const ghc = findConnector('github')!;
   const sql = useSqlAccount();
   const sqlState = sql.data?.state;
   const sqlLinked = sqlState !== undefined && sqlState !== 'disconnected';
@@ -165,6 +186,27 @@ export function AgentConnectorsCard({
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           </Link>
         )}
+        {githubLinked && (
+          <Link
+            to={`/admin/connectors/github?tab=settings&agent=${agentId}`}
+            className={ROW}
+            data-testid="agent-connector-github"
+          >
+            <ConnectorIcon c={ghc} />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex flex-wrap items-center gap-2 font-medium">
+                {t('connectors.items.github.name')}
+                {(githubState === 'expired' || githubState === 'unavailable') && (
+                  <ConnectorStatusBadge status="attention" />
+                )}
+              </span>
+              {githubView && (
+                <span className="text-sm text-muted-foreground">{githubLine(t, githubView)}</span>
+              )}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
+        )}
         {sqlLinked && (
           <Link
             to={`/admin/connectors/sql-account?tab=settings&agent=${agentId}`}
@@ -220,9 +262,14 @@ export function AgentConnectorsCard({
             </Link>
           );
         })}
-        {!connected && !sheetsLinked && !driveLinked && !sqlLinked && partners.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t('connectors.agentCard.none')}</p>
-        )}
+        {!connected &&
+          !sheetsLinked &&
+          !driveLinked &&
+          !githubLinked &&
+          !sqlLinked &&
+          partners.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t('connectors.agentCard.none')}</p>
+          )}
         <Button asChild variant="outline" size="touch" className="self-start">
           <Link to="/admin/connectors">
             <Plug aria-hidden />

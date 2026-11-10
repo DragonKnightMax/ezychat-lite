@@ -1,4 +1,5 @@
 import { mergeCalendarRows } from '../connectors/google-calendar/repo.js';
+import { mergeGitHubRows } from '../connectors/github/repo.js';
 import { mergeDriveRows } from '../connectors/google-drive/repo.js';
 import { mergeSheetsRows } from '../connectors/google-sheets/repo.js';
 import { mergeSqlAccountRows } from '../connectors/sql-account/repo.js';
@@ -208,6 +209,8 @@ export function mergeChat(
     mergeSqlAccountRows(db, from, to);
     // Google Drive saved files and activity lines (no foreign key either).
     mergeDriveRows(db, from, to);
+    // GitHub activity lines (no foreign key either).
+    mergeGitHubRows(db, from, to);
     // Partner (MCP) connector activity, returned values and call counts (no foreign key either).
     mergeConnectorRows(db, from, to);
     // WhatsApp Safety findings follow their messages (no foreign key).

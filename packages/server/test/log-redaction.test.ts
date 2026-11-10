@@ -114,3 +114,14 @@ it('redacts Claude access tokens anywhere in text but keeps the display prefix',
   expect(redactLogLine(JSON.stringify({ msg: `token=${secret}` }))).not.toContain(secret);
   expect(redactSecretText('token ezc_pat_Ab3_ was revoked')).toBe('token ezc_pat_Ab3_ was revoked');
 });
+
+it('redacts GitHub tokens and device codes', () => {
+  const pat = 'github_pat_11ABCDEFG0123456789_abcdefXYZ';
+  for (const secret of [pat, 'ghp_abcdEFGH1234ijkl', 'ghu_abcdEFGH1234', 'ghr_1234abcdEFGH'])
+    expect(redactSecretText(`pasted ${secret} here`)).toBe('pasted [REDACTED_GITHUB_TOKEN] here');
+  expect(redactLogLine(JSON.stringify({ msg: `"device_code":"abc123"`, deviceCode: 'x' }))).toBe(
+    JSON.stringify({ msg: `"device_code":"[REDACTED]"`, deviceCode: '[REDACTED]' }) + '\n',
+  );
+  // Words that only look alike stay.
+  expect(redactSecretText('the github_pat_ prefix')).toBe('the github_pat_ prefix');
+});

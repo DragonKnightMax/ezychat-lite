@@ -7,6 +7,7 @@ import {
 } from '../../connectors/google-calendar/tools.js';
 import type { SheetRecordContext } from '../../connectors/google-sheets/record.js';
 import { driveAgentTools, driveLookupsAvailable } from '../../connectors/google-drive/tools.js';
+import { githubAgentTools, githubLookupsAvailable } from '../../connectors/github/tools.js';
 import { sheetsAgentTools, sheetsLookupsAvailable } from '../../connectors/google-sheets/tools.js';
 import { sqlAgentTools, sqlLookupsAvailable } from '../../connectors/sql-account/tools.js';
 import {
@@ -24,7 +25,7 @@ import {
 /**
  * Every look-up source an agent may use besides its Business context: core connectors (Google
  * Calendar with Check free times on, Google Sheets with a tab on Read, Google Drive with picked files to
- * read) and extension look-ups (`hasAgentLookups`).
+ * read, GitHub with a chosen repository) and extension look-ups (`hasAgentLookups`).
  */
 export function agentLookupsAvailable(
   ctx: AppContext,
@@ -36,6 +37,7 @@ export function agentLookupsAvailable(
     sheetsLookupsAvailable(ctx, agentId) ||
     sqlLookupsAvailable(ctx, agentId) ||
     driveLookupsAvailable(ctx, agentId) ||
+    githubLookupsAvailable(ctx, agentId) ||
     mcpConnectorLookupsAvailable(ctx, agentId) ||
     extensionLookupsAvailable(ctx, agent, agentId ?? undefined)
   );
@@ -66,6 +68,8 @@ export async function agentTurnTools(
   const sheets = await sheetsAgentTools(ctx, log, input, options);
   const sql = await sqlAgentTools(ctx, log, input, options);
   const drive = driveAgentTools(ctx, log, input, options);
+  // Look-ups only, so group turns keep them too.
+  const github = githubAgentTools(ctx, log, input, options);
   const listed = await mcpConnectorAgentTools(ctx, log, input, options);
   const extension = await extensionAgentTools(ctx, log, input, options);
   return {
@@ -73,6 +77,7 @@ export async function agentTurnTools(
       ...extension.tools,
       ...listed.tools,
       ...sql.tools,
+      ...github.tools,
       ...drive.tools,
       ...sheets.tools,
       ...calendar.tools,
@@ -82,6 +87,7 @@ export async function agentTurnTools(
       sheets.failed() ||
       sql.failed() ||
       drive.failed() ||
+      github.failed() ||
       listed.failed() ||
       extension.failed(),
     used: () => [
@@ -89,6 +95,7 @@ export async function agentTurnTools(
       ...sheets.used(),
       ...sql.used(),
       ...drive.used(),
+      ...github.used(),
       ...listed.used(),
       ...extension.used(),
     ],
@@ -97,6 +104,7 @@ export async function agentTurnTools(
       ...sheets.calls(),
       ...sql.calls(),
       ...drive.calls(),
+      ...github.calls(),
       ...listed.calls(),
       ...extension.calls(),
     ],
@@ -105,6 +113,7 @@ export async function agentTurnTools(
       await sheets.dispose();
       await sql.dispose();
       await drive.dispose();
+      await github.dispose();
       await listed.dispose();
       await extension.dispose();
     },

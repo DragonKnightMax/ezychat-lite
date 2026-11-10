@@ -405,6 +405,32 @@
     }
   },
   {
+    "id": "github",
+    "schemaVersion": 1,
+    "minAppVersion": "0.0.0",
+    "kind": "builtin",
+    "editions": ["lite"],
+    "builtinId": "github",
+    "name": "GitHub",
+    "summary": {
+      "en": "Look up issues and pull requests in the repositories you choose.",
+      "ms": "Semak isu dan permintaan tarik dalam repositori yang anda pilih.",
+      "zh-CN": "在您选择的仓库中查询议题和拉取请求。"
+    },
+    "description": {
+      "en": "Sign in with GitHub and choose which repositories EzyChat may read, on your own account or your organisation. Then pick, for each AI agent, the repositories it may look in. The AI answers with the status, labels and latest comments of issues and pull requests, and never changes anything on GitHub.",
+      "ms": "Log masuk dengan GitHub dan pilih repositori yang boleh dibaca oleh EzyChat, dalam akaun anda sendiri atau organisasi anda. Kemudian pilih, bagi setiap ejen AI, repositori yang boleh disemaknya. AI menjawab dengan status, label dan komen terkini bagi isu dan permintaan tarik, dan tidak pernah mengubah apa-apa di GitHub.",
+      "zh-CN": "使用 GitHub 登录，并选择 EzyChat 可以读取的仓库（您自己的账号或您的组织）。然后为每个 AI 代理选择它可以查看的仓库。AI 会告知议题和拉取请求的状态、标签和最新评论，绝不修改 GitHub 上的任何内容。"
+    },
+    "category": "other",
+    "privacy": {
+      "en": "EzyChat can read only the repositories you allow on GitHub, and each AI agent only those you pick for it. It sends GitHub only the search words and issue or pull request numbers a look-up needs, never the chat text, and never reads code. The sign-in is stored encrypted on this computer.",
+      "ms": "EzyChat hanya boleh membaca repositori yang anda benarkan di GitHub, dan setiap ejen AI hanya repositori yang anda pilih untuknya. Ia hanya menghantar kepada GitHub kata carian dan nombor isu atau permintaan tarik yang diperlukan oleh satu semakan, tidak pernah teks sembang, dan tidak pernah membaca kod. Log masuk disimpan secara tersulit di komputer ini.",
+      "zh-CN": "EzyChat 只能读取您在 GitHub 上允许的仓库，每个 AI 代理只能读取您为它选择的仓库。它只向 GitHub 发送查询所需的搜索词以及议题或拉取请求编号，从不发送聊天内容，也从不读取代码。登录信息加密保存在这台电脑上。"
+    },
+    "stage": "beta"
+  },
+  {
     "id": "bukku",
     "schemaVersion": 1,
     "minAppVersion": "0.0.0",

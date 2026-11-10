@@ -80,7 +80,8 @@ describe('connector list', () => {
     });
     await s.refresh();
     expect(server.calls).toEqual([]);
-    expect(ConnectorGallery.parse(s.gallery()).connectors).toHaveLength(16);
+    // GitHub is Lite only (the test app is Lite).
+    expect(ConnectorGallery.parse(s.gallery()).connectors).toHaveLength(17);
     expect(s.entry('google-calendar')?.kind).toBe('builtin');
     expect(s.entry('hitpay')?.kind).toBe('coming_soon');
     expect(s.entry('custom-mcp')).toBeNull();
@@ -97,6 +98,7 @@ describe('connector list', () => {
       'shopify',
       'autocount',
       'sql-account',
+      'github',
       'bukku',
       'xero',
       'zoho-books',
@@ -127,12 +129,20 @@ describe('connector list', () => {
       'google-sheets',
       'google-drive',
       'sql-account',
+      'github',
     ]);
     // SQL Account (built in, beta: untested against a real SQL Account API yet).
     expect(entries.find((e) => e.id === 'sql-account')).toMatchObject({
       kind: 'builtin',
       builtinId: 'sql-account',
       category: 'accounting',
+    });
+    // GitHub (built in, Lite only for the first release: owner decision Q3).
+    expect(entries.find((e) => e.id === 'github')).toMatchObject({
+      kind: 'builtin',
+      builtinId: 'github',
+      editions: ['lite'],
+      category: 'other',
     });
   });
 

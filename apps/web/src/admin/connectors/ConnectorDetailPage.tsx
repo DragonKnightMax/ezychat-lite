@@ -4,9 +4,11 @@ import {
   CalendarCheck,
   CalendarSearch,
   FileText,
+  GitPullRequest,
   ListPlus,
   MessageSquare,
   Save,
+  Search,
   ShieldAlert,
   TableProperties,
   TriangleAlert,
@@ -18,6 +20,8 @@ import type {
   CalendarBooking,
   ConnectorEntry,
   DriveActivity,
+  GitHubActivity,
+  GitHubState,
   GoogleCalendarState,
   GoogleDriveState,
   SheetsActivity,
@@ -27,6 +31,8 @@ import {
   useCalendarActivity,
   useCalendarBookings,
   useDriveActivity,
+  useGitHub,
+  useGitHubActivity,
   useGoogleCalendar,
   useGoogleDrive,
   useGoogleSheets,
@@ -41,6 +47,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatRelative, formatTimeRange } from '@/lib/format';
+import { useEdition } from '@/lib/version';
 import { ErrorState, ListSkeleton } from '../adminUi';
 import { AgentPicker } from './AgentPicker';
 import { BookingSettingsCard } from './BookingSettingsCard';
@@ -56,6 +63,8 @@ import {
   useBuiltinEntry,
   useConnectorLinks,
 } from './connector-ui';
+import { GitHubAccountCard } from './GitHubAccountCard';
+import { GitHubSettingsTab } from './GitHubSettingsCard';
 import { GoogleCalendarAccountCard } from './GoogleCalendarAccountCard';
 import { GoogleDriveAccountCard } from './GoogleDriveAccountCard';
 import { GoogleSheetsAccountCard } from './GoogleSheetsAccountCard';
@@ -68,7 +77,7 @@ type Tab = (typeof TABS)[number];
 /** Google Sheets and Google Drive have no Bookings tab. */
 const SHEETS_TABS = ['overview', 'settings', 'activity'] as const;
 
-type ConnectorState = GoogleCalendarState | GoogleDriveState | SqlAccountState;
+type ConnectorState = GoogleCalendarState | GoogleDriveState | SqlAccountState | GitHubState;
 
 /** The built-in connectors' own pages (each with its tabs). */
 const BUILTIN_TABS: Partial<
@@ -81,6 +90,7 @@ const BUILTIN_TABS: Partial<
   'google-sheets': (props) => <GoogleSheetsTabs {...props} />,
   'google-drive': (props) => <GoogleDriveTabs {...props} />,
   'sql-account': ({ entry }) => <SqlAccountTabs entry={entry} />,
+  github: (props) => <GitHubTabs {...props} />,
 };
 const isTab = (value: string | null, tabs: readonly Tab[] = TABS): value is Tab =>
   (tabs as readonly string[]).includes(value ?? '');
@@ -88,7 +98,7 @@ const isTab = (value: string | null, tabs: readonly Tab[] = TABS): value is Tab 
 /**
  * `/admin/connectors/:id`: one page per connector. The app's own connectors come first: Google
  * Calendar has Overview (what it does, the Google account, your data), Settings (per AI agent),
- * Activity and Bookings tabs (`?tab=`, `&agent=`); Google Sheets and Google Drive the same without Bookings;
+ * Activity and Bookings tabs (`?tab=`, `&agent=`); Google Sheets, Google Drive and GitHub (Lite only) the same without Bookings;
  * SQL Account has Overview, Connection, Settings, Customers and Activity; the custom connector needs Enterprise. Every
  * other page is built from the connector's entry in the connector list. A connector an extension
  * provides opens the extension's page.
@@ -107,16 +117,30 @@ function AppConnectorPage({ c }: { c: CatalogConnector }) {
   const sheets = useGoogleSheets(c.id === 'google-sheets');
   const sql = useSqlAccount(c.id === 'sql-account');
   const drive = useGoogleDrive(c.id === 'google-drive');
+  // GitHub is offered in Lite only for now (owner 2026-11-10).
+  const edition = useEdition();
+  const github = useGitHub(c.id === 'github' && edition === 'lite');
   // The connector list may mark the app's own connector Beta and add a notice (e.g. Google review).
   const entry = useBuiltinEntry(c.id);
   const link = links[c.id];
   if (link) return <Navigate to={link} replace />;
+  if (c.id === 'github' && edition !== 'lite')
+    return edition === null ? (
+      <ListSkeleton rows={3} />
+    ) : (
+      <Navigate to="/admin/connectors" replace />
+    );
   const states: Partial<Record<string, { state: ConnectorState } | undefined>> = {
     'google-sheets': sheets.data,
     'google-drive': drive.data,
     'sql-account': sql.data,
+    github: github.data,
   };
-  const status = connectorStatus(c, (states[c.id] ?? google.data)?.state, undefined);
+  const status = connectorStatus(
+    c,
+    (c.id in states ? states[c.id] : google.data)?.state,
+    undefined,
+  );
   const name = t(`connectors.items.${c.id}.name`);
 
   return (
@@ -303,6 +327,32 @@ function GoogleDriveTabs({
   );
 }
 
+/** GitHub: the shared connector tabs with its own account card; its privacy card has three lines. */
+function GitHubTabs({ c, entry }: Readonly<{ c: CatalogConnector; entry: ConnectorEntry | null }>) {
+  const { t } = useTranslation('admin');
+  return (
+    <GoogleConnectorTabs
+      c={c}
+      entry={entry}
+      AccountCard={GitHubAccountCard}
+      privacy={
+        <Card className="gap-3">
+          <CardHeader>
+            <CardTitle>{t('connectors.privacyTitle')}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <p>{t('connectors.items.github.privacy')}</p>
+            <p>{t('connectors.items.github.privacy2')}</p>
+            <p>{t('connectors.items.github.privacy3')}</p>
+          </CardContent>
+        </Card>
+      }
+      Settings={GitHubSettingsTab}
+      activity={<GitHubActivityList />}
+    />
+  );
+}
+
 /** What the connector does and what the AI may do with it (look-ups and actions). */
 function About({ c }: { c: CatalogConnector }) {
   const { t } = useTranslation('admin');
@@ -330,7 +380,9 @@ function About({ c }: { c: CatalogConnector }) {
               </li>
             ))}
           </ul>
-          <p className="text-sm text-muted-foreground">{t('connectors.switchNote')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t(c.id === 'github' ? 'connectors.github.neverChanges' : 'connectors.switchNote')}
+          </p>
         </CardContent>
       )}
     </Card>
@@ -472,6 +524,57 @@ function DriveActivityList() {
         <ul className="flex flex-col divide-y" data-testid="drive-activity">
           {rows.map((r) => {
             const Icon = DRIVE_ICON[r.kind];
+            return (
+              <li key={r.id} className="flex items-start gap-3 py-3 first:pt-0">
+                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm break-words">{line(r)}</span>
+                  <span className="text-xs text-muted-foreground">{formatRelative(r.at)}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+const GITHUB_ICON = {
+  searched: Search,
+  read: GitPullRequest,
+  refused: ShieldAlert,
+  failed: TriangleAlert,
+} as const;
+
+/** GitHub Activity tab: who looked something up, and when (never repo names, titles or text). */
+function GitHubActivityList() {
+  const { t } = useTranslation('admin');
+  const query = useGitHubActivity();
+  if (query.isPending) return <ListSkeleton rows={3} />;
+  if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  const rows = query.data.activity;
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title={t('connectors.activityEmpty')}
+        description={t('connectors.github.act.emptyHint')}
+      />
+    );
+  const line = (r: GitHubActivity) => {
+    const text = t(`connectors.github.act.${r.kind}`, { agent: r.agentName, customer: r.customer });
+    return r.group ? t('connectors.driveAct.inGroup', { line: text, group: r.group }) : text;
+  };
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle>{t('connectors.activityTitle')}</CardTitle>
+        <CardDescription>{t('connectors.github.act.hint')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-col divide-y" data-testid="github-activity">
+          {rows.map((r) => {
+            const Icon = GITHUB_ICON[r.kind];
             return (
               <li key={r.id} className="flex items-start gap-3 py-3 first:pt-0">
                 <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />

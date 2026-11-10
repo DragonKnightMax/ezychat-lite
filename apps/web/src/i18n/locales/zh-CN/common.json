@@ -227,6 +227,15 @@
       "step1": "会发送：随机安装代码、应用版本、Windows 或 Mac，以及完成的步骤。",
       "step2": "从不发送：姓名、电话号码、聊天、消息、电子邮件、IP 地址或密钥。",
       "step3": "数据发送到 EzyChat 许可证服务器，由它在 Google Analytics 中统计。你可以随时在这里关闭。"
+    },
+    "githubApp": {
+      "title": "为什么要安装应用？",
+      "body": "您在 GitHub 上选择 {{product}} 可读取的账户和仓库，且只读取 issues 和 pull requests。然后在这里为每个 AI 代理选择仓库。"
+    },
+    "githubToken": {
+      "title": "用哪种令牌？",
+      "body": "细粒度令牌（fine-grained），只限您选择的仓库，并把 Issues 和 Pull requests 设为 Read-only。经典令牌（ghp_…）可访问所有仓库，所以 {{product}} 不接受。",
+      "action": "在 GitHub 创建令牌"
     }
   }
 }

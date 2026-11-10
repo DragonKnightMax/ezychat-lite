@@ -432,6 +432,22 @@ amount owed comes only from `/customerinvoice` / `customer.outstanding`, said ex
 phone index reads each customer's `sdsbranch` in the background (one every 4 s). Logs and Activity: tool, ok, ms, ids only. `--fake-wa` swaps in
 `FakeSqlAccount` (`fake.ts`, checks SigV4 with `FAKE_SQL_ACCESS_KEY`/`FAKE_SQL_SECRET`; `/api/dev/fake-sql-account/*`).
 
+**GitHub** (design `docs/features/github/design.md`, beta, **Lite only** for now: outside Lite the service is not
+created, routes answer 404, no tools). Read only, issues and pull requests, never code. Sign-in (one per install, encrypted
+`github_auth`): Anchor Sprint's GitHub App "EzyChat by Anchor Sprint" through the device flow with only the public Client ID
+(`GITHUB_APP_CLIENT_ID` in `packages/shared/src/github.ts`; no client secret, no private key in the app), or a fine-grained
+token (`github_pat_` only, classic `gh[pousr]_` refused). Refresh needs no secret but revokes the old access token at once
+and the refresh token is single-use: one refresh at a time, save the new pair first, retry a 401 once.
+`connectors/github/` (`repo.ts` is its only SQL, migration 042, routes `/api/connectors/github/*`, admins): per agent ≤ 20
+repos + Issues / Pull requests switches. **Security invariant: a user token reads any public repo**, so `query.ts` is the
+boundary: every search query is rebuilt (every word with a colon, OR/AND/NOT, quotes and brackets dropped; `repo:` per
+allowed repo + `is:issue`/`is:pr` added), results from other repos are dropped, and every other call checks the repo
+against the agent's allowed and still-shared list. Tools `github_search_issues`, `github_list_issues`, `github_read_issue`
+(issues API, body ≤ 4,000, 5 latest comments ≤ 1,500 each), `github_search_pull_requests`; results ≤ 12,000 characters,
+data never instructions, ≤ 6 calls a turn, failures hand over (`lookup_failed`); allowed in Try it and groups. Logs never
+keep query words, titles, bodies, repo names or tokens. `--fake-wa` uses `FakeGitHub` (`/api/dev/fake-github*`) unless
+`EZYCHAT_GITHUB_REAL=1`.
+
 **Connector list** (design `docs/features/connector-list/design.md`). The gallery comes from a signed list published
 by the public repo `anchorsprint/ezychat-connectors` (one folder per connector: `connector.yaml`, `skill.md`,
 `icon.svg`; its CI validates, builds `list-v1.json`, signs it with Ed25519 and uploads it with the icons to

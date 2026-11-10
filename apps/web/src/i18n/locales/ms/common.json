@@ -227,6 +227,15 @@
       "step1": "Dihantar: kod pemasangan rawak, versi aplikasi, Windows atau Mac, dan langkah yang dicapai.",
       "step2": "Tidak sekali-kali dihantar: nama, nombor telefon, sembang, mesej, e-mel, alamat IP atau kunci.",
       "step3": "Ia dihantar ke pelayan lesen EzyChat, yang mengiranya dalam Google Analytics. Matikan di sini pada bila-bila masa."
+    },
+    "githubApp": {
+      "title": "Kenapa pasang aplikasi?",
+      "body": "Di GitHub anda pilih akaun dan repositori yang boleh dibaca oleh {{product}}, hanya isu dan pull request. Kemudian pilih repositori setiap ejen AI di sini."
+    },
+    "githubToken": {
+      "title": "Token yang mana?",
+      "body": "Token terperinci (fine-grained) yang terhad kepada repositori pilihan anda, dengan Issues dan Pull requests Read-only. Token klasik (ghp_…) mencapai semua repositori, jadi {{product}} menolaknya.",
+      "action": "Buat token di GitHub"
     }
   }
 }

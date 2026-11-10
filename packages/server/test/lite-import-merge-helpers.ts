@@ -337,6 +337,14 @@ export function seedLite(
   db.prepare(
     "INSERT INTO drive_activity (kind, agent_id, chat_jid, at) VALUES ('saved', ?, ?, ?)",
   ).run(agent, LITE_CHAT, NOW);
+  // GitHub per-agent settings, an activity line and a sign-in that must stay behind
+  db.prepare(
+    `INSERT INTO github_agent_settings (agent_id, settings, updated_at) VALUES (?, '{"repos":[{"id":9001,"fullName":"acme/helpdesk","private":true}]}', ?)`,
+  ).run(agent, NOW);
+  db.prepare(
+    "INSERT INTO github_activity (kind, agent_id, chat_jid, at) VALUES ('searched', ?, ?, ?)",
+  ).run(agent, LITE_CHAT, NOW);
+  db.prepare("INSERT INTO settings (key, value) VALUES ('github_auth', '\"sealed\"')").run();
   // Safety finding on M4, with a download record
   const item = Number(
     db

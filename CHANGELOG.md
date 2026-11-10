@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- GitHub connector (beta, Lite): AI agents can look up issues and pull requests in the GitHub repositories you choose for each agent. They can say an issue's status, labels and latest comments. Sign in with GitHub using a code you enter on GitHub (through the "EzyChat by Anchor Sprint" app), or paste a fine-grained token if your organisation doesn't allow apps. It is read only: EzyChat never changes anything on GitHub and never reads code.
+
 ## [0.1.83] - 2026-11-09
 
 ### Added

@@ -8,6 +8,13 @@ import {
   DrivePickerProgress,
   DrivePickerStart,
   type DrivePickerBody,
+  GitHubActivityList,
+  GitHubAgentView,
+  type GitHubAgentSettings,
+  GitHubDeviceProgress,
+  GitHubDeviceStart,
+  GitHubRepoList,
+  GitHubStatus,
   GoogleCalendarConnectProgress,
   GoogleCalendarConnectStart,
   GoogleCalendarStatus,
@@ -367,5 +374,133 @@ export function useDrivePickerProgress(requestId: string | null) {
     enabled: requestId !== null,
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 2000 : false),
     gcTime: 0,
+  });
+}
+
+/** Admin → Connectors → GitHub (admins only, Lite). Tokens never reach the browser. */
+export const githubKey = ['connectors', 'github'] as const;
+export const githubAgentKey = (agentId: number) => [...githubKey, 'agent', agentId] as const;
+export const githubReposKey = [...githubKey, 'repos'] as const;
+export const githubActivityKey = [...githubKey, 'activity'] as const;
+
+export function useGitHub(enabled = true) {
+  return useQuery({
+    queryKey: githubKey,
+    queryFn: ({ signal }) => api('/connectors/github', { signal, schema: GitHubStatus }),
+    enabled,
+  });
+}
+
+/** A request that answers the new sign-in status: it replaces the cached one. */
+function useGitHubStatusMutation<B = void>(
+  path: 'token' | 'check' | 'disconnect',
+  body?: (input: B) => unknown,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: B) =>
+      api(`/connectors/github/${path}`, {
+        method: 'POST',
+        body: body?.(input),
+        schema: GitHubStatus,
+      }),
+    onSuccess: (next) => {
+      qc.setQueryData(githubKey, next);
+      void qc.invalidateQueries({ queryKey: githubReposKey });
+    },
+  });
+}
+
+/** Starts the GitHub App sign-in (device flow): the page shows `userCode` and polls the request. */
+export function useGitHubDeviceStart() {
+  return useMutation({
+    mutationFn: () =>
+      api('/connectors/github/device', { method: 'POST', schema: GitHubDeviceStart }),
+  });
+}
+
+/** Polls a device sign-in every 3 s until the admin approved, cancelled or the code expired. */
+export function useGitHubDeviceProgress(requestId: string | null) {
+  return useQuery({
+    queryKey: [...githubKey, 'device', requestId] as const,
+    queryFn: ({ signal }) =>
+      api(`/connectors/github/device/${encodeURIComponent(requestId ?? '')}`, {
+        signal,
+        schema: GitHubDeviceProgress,
+      }),
+    enabled: requestId !== null,
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 3000 : false),
+    gcTime: 0,
+  });
+}
+
+/** Stops the server polling GitHub for a code nobody waits for any more. */
+export function cancelGitHubDevice(requestId: string) {
+  return api(`/connectors/github/device/${encodeURIComponent(requestId)}/cancel`, {
+    method: 'POST',
+  });
+}
+
+/** Signs in with a fine-grained token; 400 `classic` / `invalid` / `no_repos` when refused. */
+export function useGitHubToken() {
+  return useGitHubStatusMutation<string>('token', (token) => ({ token }));
+}
+
+/** "Check again" after installing the App on GitHub. */
+export function useGitHubCheck() {
+  return useGitHubStatusMutation('check');
+}
+
+export function useGitHubDisconnect() {
+  return useGitHubStatusMutation('disconnect');
+}
+
+/** The repositories GitHub lets EzyChat reach (the server caches them). */
+export function useGitHubRepos(enabled = true) {
+  return useQuery({
+    queryKey: githubReposKey,
+    queryFn: ({ signal }) => api('/connectors/github/repos', { signal, schema: GitHubRepoList }),
+    enabled,
+  });
+}
+
+/** Reads the list again from GitHub ("Refresh"). */
+export function useRefreshGitHubRepos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api('/connectors/github/repos?refresh=1', { schema: GitHubRepoList }),
+    onSuccess: (list) => qc.setQueryData(githubReposKey, list),
+  });
+}
+
+/** One AI agent's GitHub settings and which of its repos GitHub no longer shares. */
+export function useGitHubAgent(agentId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: githubAgentKey(agentId ?? 0),
+    queryFn: ({ signal }) =>
+      api(`/connectors/github/agents/${agentId}`, { signal, schema: GitHubAgentView }),
+    enabled: enabled && agentId !== null,
+  });
+}
+
+export function useSaveGitHubAgent(agentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GitHubAgentSettings) =>
+      api(`/connectors/github/agents/${agentId}`, {
+        method: 'PUT',
+        body,
+        schema: GitHubAgentView,
+      }),
+    onSuccess: (saved) => qc.setQueryData(githubAgentKey(agentId), saved),
+  });
+}
+
+export function useGitHubActivity(enabled = true) {
+  return useQuery({
+    queryKey: githubActivityKey,
+    queryFn: ({ signal }) =>
+      api('/connectors/github/activity', { signal, schema: GitHubActivityList }),
+    enabled,
   });
 }

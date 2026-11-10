@@ -39,6 +39,7 @@ import connectors from './connectors.js';
 import connectorGoogleSheets from './connector-google-sheets.js';
 import connectorSqlAccount from './connector-sql-account.js';
 import connectorGoogleDrive from './connector-google-drive.js';
+import connectorGitHub from './connector-github.js';
 import connectorList from './connector-list.js';
 import connectorMcp from './connector-mcp.js';
 import reports from './reports.js';
@@ -85,6 +86,7 @@ export const routeModules: RouteModule[] = [
   connectorGoogleSheets,
   connectorSqlAccount,
   connectorGoogleDrive,
+  connectorGitHub,
   connectorList,
   connectorMcp,
   reports,

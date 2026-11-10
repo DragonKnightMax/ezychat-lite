@@ -1,12 +1,13 @@
 import type { Logger } from 'pino';
 import type { AgentToolsInput, ExtensionToolCall } from '../ai/agent/extension-tools.js';
 import type { AppContext } from '../context.js';
+import { GitHubError } from './github/client.js';
 import { GoogleError } from './google-calendar/google.js';
 
 /**
- * One tool call of a core connector (Google Sheets, Google Drive): records the call for Try it and
+ * One tool call of a core connector (Google Sheets, Google Drive, GitHub): records the call for Try it and
  * the turn, logs tool/source/ok/ms only, emits `ai:tool_call`, and on a failure (not a cancelled
- * turn) logs the Google error kind, lets the connector record its Activity line, marks the turn
+ * turn) logs the Google or GitHub error kind, lets the connector record its Activity line, marks the turn
  * failed and calls `onFailure` (the caller hands over with `lookup_failed`). The error is thrown on.
  */
 export function connectorToolRunner(
@@ -71,8 +72,9 @@ export function connectorToolRunner(
         {
           event: options.failEvent,
           tool: name,
-          kind: error instanceof GoogleError ? error.kind : 'other',
-          status: error instanceof GoogleError ? error.status : null,
+          kind: error instanceof GoogleError || error instanceof GitHubError ? error.kind : 'other',
+          status:
+            error instanceof GoogleError || error instanceof GitHubError ? error.status : null,
         },
         `${options.sourceLabel} tool failed`,
       );

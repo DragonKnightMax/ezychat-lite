@@ -82,6 +82,11 @@ export const CORE_AGENT_TOOL_NAMES: readonly string[] = [
   'sql_my_payments',
   'sql_quotation_preview',
   'sql_create_quotation',
+  // GitHub connector (connectors/github/tools.ts)
+  'github_search_issues',
+  'github_list_issues',
+  'github_read_issue',
+  'github_search_pull_requests',
 ];
 /** An extension that has not handed over its tools by then is left out of the turn. */
 export const AGENT_TOOLS_SETUP_MS = 10_000;

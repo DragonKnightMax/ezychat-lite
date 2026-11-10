@@ -1719,7 +1719,15 @@
       "find": "Find a file",
       "findHint": "Finds the right file among the files you picked.",
       "read": "Read a file",
-      "readHint": "Reads a Google Doc, Sheet, PDF, Word or text file you picked and answers from it."
+      "readHint": "Reads a Google Doc, Sheet, PDF, Word or text file you picked and answers from it.",
+      "searchIssues": "Search issues",
+      "searchIssuesHint": "Finds issues by words, label or state in the agent’s repositories.",
+      "listIssues": "List issues",
+      "listIssuesHint": "Lists the open or closed issues of one of the agent’s repositories.",
+      "readIssue": "Read an issue or pull request",
+      "readIssueHint": "Reads one issue or pull request: status, labels and the 5 latest comments.",
+      "searchPulls": "Search pull requests",
+      "searchPullsHint": "Finds pull requests by words, author or state, without their code."
     },
     "items": {
       "google-calendar": {
@@ -1753,6 +1761,14 @@
         "short": "Stock, prices and your customers' own invoices and orders from SQL Account.",
         "long": "Your AI agent answers from SQL Account: stock and prices for everyone, and each customer's own invoices and orders.",
         "privacy": "{{product}} sends SQL Account only what one look-up needs (an item name, a customer code, a document number), never the chat text."
+      },
+      "github": {
+        "name": "GitHub",
+        "short": "Look up issues and pull requests in the repositories you choose.",
+        "long": "AI agents can look up the status, labels and latest comments of issues and pull requests in the repositories you choose for each of them. Each agent’s instructions say when to look something up.",
+        "privacy": "{{product}} can read only the repositories you allow on GitHub, and each AI agent only those you pick for it.",
+        "privacy2": "It sends GitHub only the search words and numbers a look-up needs, never the chat text. Issue and pull request text is treated as information, never as orders to the AI.",
+        "privacy3": "The sign-in is stored encrypted on this computer. Activity keeps who and when only."
       }
     },
     "gc": {
@@ -2454,6 +2470,150 @@
         "someone": "AI agent"
       },
       "agentCard": "{{on}} of {{total}} kinds of records on"
+    },
+    "github": {
+      "accountTitle": "GitHub account",
+      "accountDescription": "One GitHub sign-in for the whole team.",
+      "what1": "Let AI agents look up issues and pull requests",
+      "what2": "You choose the repositories, on GitHub and for each agent",
+      "what3": "Read only: nothing on GitHub is changed",
+      "signIn": "Sign in with GitHub",
+      "useToken": "Use a token instead",
+      "signInHint": "GitHub shows a code to confirm. Nothing to install on this computer.",
+      "signedIn": "Signed in to GitHub as {{login}}",
+      "viaApp": "Signed in with the GitHub App “EzyChat by Anchor Sprint”",
+      "viaToken": "Signed in with a token",
+      "tokenExpires": "Token expires {{date}}",
+      "tokenExpired": "Token expired {{date}}",
+      "state": {
+        "connected": "Working",
+        "expiring": "Token expires soon",
+        "expired": "Sign in again",
+        "unavailable": "Can’t reach GitHub",
+        "no_installation": "Install on GitHub"
+      },
+      "install": {
+        "title": "Install “EzyChat by Anchor Sprint” on GitHub",
+        "body": "You signed in, but the GitHub App “EzyChat by Anchor Sprint” isn’t installed on any of your accounts or organisations yet. Install it and choose the repositories it may read.",
+        "button": "Install on GitHub",
+        "check": "Check again",
+        "orgNote": "For an organisation, an owner installs it or approves your request."
+      },
+      "expiringTitle": "Your token expires {{date}}",
+      "expiringBody": "Make a new token on GitHub and paste it here, so the AI keeps answering.",
+      "newToken": "Paste a new token",
+      "expiredTitle": "Sign in to GitHub again",
+      "expiredTokenTitle": "Your token expired",
+      "expiredBody": "The AI stops looking things up on GitHub and hands those chats to your team.",
+      "signInAgain": "Sign in again",
+      "unavailableTitle": "GitHub can’t be reached",
+      "unavailableBody": "The AI hands GitHub questions to your team until GitHub answers again.",
+      "reposShared_one": "GitHub shares {{count}} repository with {{product}}.",
+      "reposShared_other": "GitHub shares {{count}} repositories with {{product}}.",
+      "changeOnGitHub": "Change on GitHub",
+      "perAgent": "Choose each AI agent’s repositories on the Settings tab.",
+      "disconnectTitle": "Disconnect GitHub?",
+      "disconnectApp": "The sign-in is deleted from this computer and the AI stops using GitHub. To remove the app from GitHub too, uninstall “EzyChat by Anchor Sprint” in your GitHub settings.",
+      "disconnectToken": "The token is deleted from this computer and the AI stops using GitHub. Delete the token on GitHub too if you no longer need it.",
+      "disconnected": "GitHub disconnected",
+      "neverChanges": "{{product}} never changes anything on GitHub and never reads code.",
+      "device": {
+        "title": "Sign in with GitHub",
+        "description": "Confirm this code on GitHub to let {{product}} read the repositories you allow.",
+        "step1": "1. Copy this code:",
+        "copy": "Copy code",
+        "copied": "Code copied",
+        "step2": "2. Open GitHub, paste the code and approve:",
+        "open": "Open GitHub",
+        "waiting": "Waiting for you on GitHub… The code works for 15 minutes.",
+        "deniedTitle": "You cancelled on GitHub",
+        "deniedBody": "Nothing was shared. Try again when you’re ready.",
+        "expiredTitle": "The code expired",
+        "expiredBody": "Codes work for 15 minutes. Get a new one.",
+        "again": "Get a new code",
+        "failedTitle": "Sign-in did not finish",
+        "failedBody": "GitHub didn't answer as expected. Get a new code to try again."
+      },
+      "token": {
+        "title": "Use a token",
+        "description": "For organisations that don’t allow GitHub apps.",
+        "step1": "Open GitHub → Fine-grained personal access tokens → Generate new token",
+        "step2": "Choose the account or organisation, then Only select repositories.",
+        "step3": "Repository permissions: Issues → Read-only, Pull requests → Read-only.",
+        "step4": "Set an expiry, generate the token and copy it.",
+        "label": "Fine-grained token",
+        "readOnly": "{{product}} only reads, even if the token could do more.",
+        "save": "Check and save",
+        "error": {
+          "classic": "This is a classic token. Use a fine-grained token (starts with github_pat_).",
+          "invalid": "GitHub didn’t accept this token. Check it was copied in full and hasn’t expired.",
+          "no_repos": "This token can’t see any repositories. Edit it on GitHub and add some."
+        }
+      },
+      "notConnected": "Sign in to GitHub first",
+      "notConnectedHint": "Then choose the repositories for each AI agent.",
+      "pausedTitle": "GitHub is paused",
+      "pausedExpired": "Sign in again on the Overview tab. Until then {{name}} hands GitHub questions to your team.",
+      "pausedDown": "GitHub can’t be reached. {{name}} hands GitHub questions to your team until it answers.",
+      "repos": {
+        "title": "Repositories",
+        "description": "Where {{name}} may look up issues and pull requests.",
+        "none": "No repositories yet. Choose the ones {{name}} may look in.",
+        "choose": "Choose repositories",
+        "remove": "Remove {{repo}}",
+        "private": "Private",
+        "public": "Public",
+        "gone": "No longer shared on GitHub. {{name}} skips it.",
+        "hint": "Up to {{max}}, from the repositories GitHub shares with {{product}}.",
+        "whoTitle": "Who can be told",
+        "whoBody": "Anyone who chats with {{name}} can be told what these issues and pull requests say, including in private repositories.",
+        "notAccessible": "A repository you chose is no longer shared on GitHub. Remove it, then save again."
+      },
+      "access": {
+        "title": "What {{name}} may look up",
+        "description": "Both are look-ups. Nothing on GitHub is changed.",
+        "issues": "Issues",
+        "issuesHint": "Search, list and read issues.",
+        "pulls": "Pull requests",
+        "pullsHint": "Search and read pull requests, never their code."
+      },
+      "needRepo": "Choose a repository first.",
+      "when": {
+        "note": "What {{name}} looks up, and when, comes from its instructions.",
+        "open": "Edit {{name}}’s instructions"
+      },
+      "picker": {
+        "title": "Choose repositories",
+        "description": "Repositories GitHub shares with {{product}}. {{name}} may look only in the ones you pick.",
+        "search": "Search repositories",
+        "refresh": "Refresh the list from GitHub",
+        "refreshed": "List refreshed from GitHub",
+        "add_one": "Add {{count}} repository",
+        "add_other": "Add {{count}} repositories",
+        "noMatch": "No repository matches.",
+        "allAdded": "Every shared repository is already added.",
+        "missing": "Don’t see a repository?",
+        "editApp": "Share it with “EzyChat by Anchor Sprint” on GitHub",
+        "editToken": "Add it to your token on GitHub"
+      },
+      "saved": "GitHub settings saved",
+      "agentCard": {
+        "noRepos": "No repositories chosen",
+        "both_one": "Issues and pull requests in {{count}} repository",
+        "both_other": "Issues and pull requests in {{count}} repositories",
+        "issues_one": "Issues in {{count}} repository",
+        "issues_other": "Issues in {{count}} repositories",
+        "pulls_one": "Pull requests in {{count}} repository",
+        "pulls_other": "Pull requests in {{count}} repositories"
+      },
+      "act": {
+        "searched": "{{agent}} searched GitHub for {{customer}}",
+        "read": "{{agent}} read an issue or pull request for {{customer}}",
+        "refused": "{{agent}} was refused a repository it wasn’t given, for {{customer}}",
+        "failed": "{{agent}} could not reach GitHub for {{customer}} and handed over",
+        "hint": "Who and when. Repository names, titles and text stay on GitHub.",
+        "emptyHint": "Look-ups show here."
+      }
     }
   },
   "reports": {

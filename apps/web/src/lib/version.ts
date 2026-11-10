@@ -6,6 +6,8 @@ export interface HealthInfo {
   app: string;
   version: string;
   mode: string;
+  /** 'lite', 'enterprise', …; older servers omit it (Lite). */
+  edition?: string;
 }
 
 export const healthQueryKey = ['health'] as const;
@@ -36,4 +38,10 @@ export function useAppVersion(): string | null {
 export function useServerMode(): string | null {
   const mode = useHealth()?.mode;
   return typeof mode === 'string' ? mode : null;
+}
+
+/** The product edition from GET /api/health ('lite' when the server omits it), or null while unknown. */
+export function useEdition(): string | null {
+  const data = useHealth();
+  return data ? (data.edition ?? 'lite') : null;
 }

@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
   DEFAULT_BOOKING_SETTINGS,
   DEFAULT_DRIVE_SETTINGS,
+  DEFAULT_GITHUB_SETTINGS,
   DEFAULT_SHEETS_SETTINGS,
   googleSheetUrl,
   spreadsheetIdFromLink,
@@ -15,6 +16,13 @@ import {
   type DrivePickerBody,
   type DrivePickerProgress,
   type GoogleDriveStatus,
+  type GitHubActivity,
+  type GitHubAgentSettings,
+  type GitHubAgentView,
+  type GitHubDeviceProgress,
+  type GitHubRepo,
+  type GitHubStatus,
+  type GitHubTokenError,
   type SheetsActivity,
   type SheetLayout,
   type SheetsAgentSettings,
@@ -82,6 +90,37 @@ const signInStatus = (state: GoogleSheetsStatus['state']): GoogleSheetsStatus =>
 export const sheetsStatus = signInStatus;
 export const driveStatus = (state: GoogleDriveStatus['state']): GoogleDriveStatus =>
   signInStatus(state);
+
+/** GitHub's sign-in status: signed in as `kopiapong-dev` unless not connected. */
+export const githubStatus = (
+  state: GitHubStatus['state'],
+  patch: Partial<GitHubStatus> = {},
+): GitHubStatus => ({
+  state,
+  method: state === 'not_connected' ? null : 'app',
+  login: state === 'not_connected' ? null : 'kopiapong-dev',
+  connectedAt: null,
+  tokenExpiresAt: null,
+  problemSince: null,
+  manageUrl:
+    state === 'not_connected'
+      ? null
+      : 'https://github.com/apps/ezychat-by-anchor-sprint/installations/new',
+  ...patch,
+});
+
+export const repo = (id: number, fullName: string, isPrivate = true): GitHubRepo => ({
+  id,
+  fullName,
+  private: isPrivate,
+});
+
+export const GITHUB_REPOS: GitHubRepo[] = [
+  repo(11, 'kopiapong/pos-app'),
+  repo(12, 'kopiapong/website', false),
+  repo(13, 'kopiapong/payroll'),
+  repo(21, 'kopiapong-dev/menu-board', false),
+];
 
 export const DRIVE_FOLDER = { id: 'folder-claims-0000000001', name: 'Customer claims' };
 
@@ -245,6 +284,21 @@ export interface World {
   drivePicker: DrivePickerProgress[];
   /** Bodies of `POST …/google-drive/picker`. */
   drivePickerBodies: DrivePickerBody[];
+  /** GitHub (Lite only): its sign-in, device-flow polls, token answers, repos and settings. */
+  github: GitHubStatus;
+  /** Answers to the device-code polls, in order (the last one repeats). */
+  githubDevice: GitHubDeviceProgress[];
+  /** What the next token sign-in answers: refused with this code, else connected with a token. */
+  githubTokenError?: GitHubTokenError;
+  /** Device sign-ins started (each gets request id `dev-<n>`). */
+  githubDeviceStarts?: number;
+  /** What "Check again" answers. */
+  githubCheck?: GitHubStatus;
+  githubRepos: GitHubRepo[];
+  githubAgents: Record<number, GitHubAgentView>;
+  githubActivity: GitHubActivity[];
+  /** `GET /api/health`'s edition; unset = no health answer (edition unknown). */
+  edition?: string;
   agents: AiAgentSummary[];
   bookings: Record<number, BookingSettings>;
   activity: CalendarActivity[];
@@ -289,6 +343,11 @@ export function world(patch: Partial<World> = {}): World {
     driveActivity: [],
     drivePicker: [{ status: 'done', folder: DRIVE_FOLDER, files: [] }],
     drivePickerBodies: [],
+    github: githubStatus('not_connected'),
+    githubDevice: [{ status: 'pending', github: null }],
+    githubRepos: GITHUB_REPOS,
+    githubAgents: {},
+    githubActivity: [],
     agents: [agent(1, 'Aina')],
     bookings: {},
     activity: [],
@@ -523,6 +582,65 @@ function driveRoute(w: World, method: string, path: string, init?: RequestInit):
   return null;
 }
 
+/** The GitHub routes of the fake server. */
+function githubRoute(w: World, method: string, path: string, init?: RequestInit): Response | null {
+  if (!path.startsWith('/connectors/github')) return null;
+  const rest = path.slice('/connectors/github'.length);
+  if (rest === '') return json(w.github);
+  if (rest === '/device' && method === 'POST')
+    return json({
+      requestId: `dev-${(w.githubDeviceStarts = (w.githubDeviceStarts ?? 0) + 1)}`,
+      userCode: 'WDJB-MJHT',
+      verificationUri: 'https://github.com/login/device',
+      expiresAt: Date.now() + 900_000,
+    });
+  if (/^\/device\/[^/]+\/cancel$/.test(rest)) return new Response(null, { status: 204 });
+  if (rest.startsWith('/device/')) {
+    const next = w.githubDevice.length > 1 ? w.githubDevice.shift()! : w.githubDevice[0]!;
+    if (next.status === 'done' && next.github) w.github = next.github;
+    return json(next);
+  }
+  if (rest === '/token' && method === 'POST') {
+    if (w.githubTokenError)
+      return json({ error: { code: w.githubTokenError, message: 'Token refused' } }, 400);
+    w.github = githubStatus('connected', {
+      method: 'token',
+      tokenExpiresAt: Date.now() + 60 * 86_400_000,
+      manageUrl: 'https://github.com/settings/personal-access-tokens',
+    });
+    return json(w.github);
+  }
+  if (rest === '/check' && method === 'POST') {
+    w.github = w.githubCheck ?? githubStatus('connected');
+    return json(w.github);
+  }
+  if (rest === '/disconnect' && method === 'POST') {
+    w.github = githubStatus('not_connected');
+    return json(w.github);
+  }
+  if (rest === '/repos') return json({ repos: w.githubRepos, checkedAt: Date.now() });
+  const agentMatch = /^\/agents\/(\d+)$/.exec(rest);
+  if (agentMatch) {
+    const id = Number(agentMatch[1]);
+    const view = w.githubAgents[id] ?? {
+      settings: DEFAULT_GITHUB_SETTINGS,
+      unavailableRepoIds: [],
+    };
+    if (method === 'PUT') {
+      const settings = JSON.parse(bodyText(init)) as GitHubAgentSettings;
+      w.githubAgents[id] = {
+        settings,
+        unavailableRepoIds: view.unavailableRepoIds.filter((x) =>
+          settings.repos.some((r) => r.id === x),
+        ),
+      };
+    }
+    return json(w.githubAgents[id] ?? view);
+  }
+  if (rest === '/activity') return json({ activity: w.githubActivity });
+  return null;
+}
+
 export function stubServer(w: World) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
@@ -542,6 +660,10 @@ export function stubServer(w: World) {
     if (sheets) return sheets;
     const drive = driveRoute(w, method, path, init);
     if (drive) return drive;
+    const github = githubRoute(w, method, path, init);
+    if (github) return github;
+    if (path === '/health' && w.edition)
+      return json({ app: 'wa-team-inbox', version: '0.1.83', mode: 'dev', edition: w.edition });
     if (path === '/connectors/google-calendar') return json(w.google);
     if (path === '/connectors/google-calendar/connect' && method === 'POST')
       return json({

@@ -1,3 +1,5 @@
+import { GITHUB_NEW_TOKEN_URL } from '@ezychat/shared';
+
 /**
  * The "?" tips (`InfoTip`) that explain a new concept in plain words. Copy lives in `common.json`
  * under `tips.<topic>` (`title`, `body`, `step1`…`stepN`, `action`); this file holds each tip's shape.
@@ -28,6 +30,8 @@ export const TIP_TOPICS = [
   'sqlKeys',
   'sqlCustomerCode',
   'usageStats',
+  'githubApp',
+  'githubToken',
 ] as const;
 export type TipTopic = (typeof TIP_TOPICS)[number];
 
@@ -79,6 +83,8 @@ export const TIPS: Readonly<Record<TipTopic, TipShape>> = {
   },
   sqlCustomerCode: { steps: 0 },
   usageStats: { steps: 3 },
+  githubApp: { steps: 0 },
+  githubToken: { steps: 0, action: GITHUB_NEW_TOKEN_URL },
 };
 
 const GUIDE_PREFIX: Partial<Record<string, string>> = { ms: '/ms', 'zh-CN': '/zh' };

@@ -1710,7 +1710,15 @@
       "find": "Cari fail",
       "findHint": "Mencari fail yang betul antara fail yang anda pilih.",
       "read": "Baca fail",
-      "readHint": "Membaca Google Doc, Sheet, PDF, Word atau fail teks yang anda pilih dan menjawab daripadanya."
+      "readHint": "Membaca Google Doc, Sheet, PDF, Word atau fail teks yang anda pilih dan menjawab daripadanya.",
+      "searchIssues": "Cari isu",
+      "searchIssuesHint": "Mencari isu mengikut perkataan, label atau status dalam repositori ejen.",
+      "listIssues": "Senarai isu",
+      "listIssuesHint": "Menyenaraikan isu terbuka atau tertutup bagi satu repositori ejen.",
+      "readIssue": "Baca isu atau permintaan tarik",
+      "readIssueHint": "Membaca satu isu atau permintaan tarik: status, label dan 5 komen terkini.",
+      "searchPulls": "Cari permintaan tarik",
+      "searchPullsHint": "Mencari permintaan tarik mengikut perkataan, pengarang atau status, tanpa kodnya."
     },
     "items": {
       "google-calendar": {
@@ -1744,6 +1752,14 @@
         "short": "Stok, harga serta invois dan pesanan milik pelanggan anda daripada SQL Account.",
         "long": "Ejen AI anda menjawab daripada SQL Account: stok dan harga untuk semua orang, serta invois dan pesanan milik setiap pelanggan.",
         "privacy": "{{product}} menghantar kepada SQL Account hanya apa yang diperlukan untuk satu semakan (nama barang, kod pelanggan, nombor dokumen), tidak pernah teks chat."
+      },
+      "github": {
+        "name": "GitHub",
+        "short": "Semak isu dan permintaan tarik dalam repositori yang anda pilih.",
+        "long": "Ejen AI boleh menyemak status, label dan komen terkini bagi isu dan permintaan tarik dalam repositori yang anda pilih untuk setiap ejen. Arahan setiap ejen menentukan bila perlu menyemak.",
+        "privacy": "{{product}} hanya boleh membaca repositori yang anda benarkan di GitHub, dan setiap ejen AI hanya repositori yang anda pilih untuknya.",
+        "privacy2": "Ia hanya menghantar kepada GitHub kata carian dan nombor yang diperlukan oleh satu semakan, tidak pernah teks sembang. Teks isu dan permintaan tarik dianggap sebagai maklumat, bukan arahan kepada AI.",
+        "privacy3": "Log masuk disimpan secara tersulit di komputer ini. Aktiviti hanya menyimpan siapa dan bila."
       }
     },
     "gc": {
@@ -2438,6 +2454,150 @@
         "someone": "Ejen AI"
       },
       "agentCard": "{{on}} daripada {{total}} jenis rekod dihidupkan"
+    },
+    "github": {
+      "accountTitle": "Akaun GitHub",
+      "accountDescription": "Satu log masuk GitHub untuk seluruh pasukan.",
+      "what1": "Benarkan ejen AI menyemak isu dan permintaan tarik",
+      "what2": "Anda pilih repositori, di GitHub dan bagi setiap ejen",
+      "what3": "Baca sahaja: tiada apa-apa di GitHub diubah",
+      "signIn": "Log masuk dengan GitHub",
+      "useToken": "Guna token",
+      "signInHint": "GitHub memaparkan kod untuk disahkan. Tiada apa-apa perlu dipasang di komputer ini.",
+      "signedIn": "Log masuk ke GitHub sebagai {{login}}",
+      "viaApp": "Log masuk dengan Aplikasi GitHub “EzyChat by Anchor Sprint”",
+      "viaToken": "Log masuk dengan token",
+      "tokenExpires": "Token tamat {{date}}",
+      "tokenExpired": "Token tamat pada {{date}}",
+      "state": {
+        "connected": "Berfungsi",
+        "expiring": "Token akan tamat",
+        "expired": "Log masuk semula",
+        "unavailable": "Tidak dapat mencapai GitHub",
+        "no_installation": "Pasang di GitHub"
+      },
+      "install": {
+        "title": "Pasang “EzyChat by Anchor Sprint” di GitHub",
+        "body": "Anda telah log masuk, tetapi Aplikasi GitHub “EzyChat by Anchor Sprint” belum dipasang pada mana-mana akaun atau organisasi anda. Pasangnya dan pilih repositori yang boleh dibacanya.",
+        "button": "Pasang di GitHub",
+        "check": "Semak semula",
+        "orgNote": "Bagi organisasi, pemilik memasangnya atau meluluskan permintaan anda."
+      },
+      "expiringTitle": "Token anda tamat {{date}}",
+      "expiringBody": "Buat token baharu di GitHub dan tampal di sini supaya AI terus menjawab.",
+      "newToken": "Tampal token baharu",
+      "expiredTitle": "Log masuk ke GitHub semula",
+      "expiredTokenTitle": "Token anda telah tamat",
+      "expiredBody": "AI berhenti menyemak GitHub dan menyerahkan sembang itu kepada pasukan anda.",
+      "signInAgain": "Log masuk semula",
+      "unavailableTitle": "GitHub tidak dapat dicapai",
+      "unavailableBody": "AI menyerahkan soalan GitHub kepada pasukan anda sehingga GitHub menjawab semula.",
+      "reposShared_one": "GitHub berkongsi {{count}} repositori dengan {{product}}.",
+      "reposShared_other": "GitHub berkongsi {{count}} repositori dengan {{product}}.",
+      "changeOnGitHub": "Ubah di GitHub",
+      "perAgent": "Pilih repositori setiap ejen AI di tab Tetapan.",
+      "disconnectTitle": "Putuskan GitHub?",
+      "disconnectApp": "Log masuk dipadam dari komputer ini dan AI berhenti menggunakan GitHub. Untuk membuang aplikasi dari GitHub juga, nyahpasang “EzyChat by Anchor Sprint” dalam tetapan GitHub anda.",
+      "disconnectToken": "Token dipadam dari komputer ini dan AI berhenti menggunakan GitHub. Padam token di GitHub juga jika tidak diperlukan lagi.",
+      "disconnected": "GitHub diputuskan",
+      "neverChanges": "{{product}} tidak pernah mengubah apa-apa di GitHub dan tidak pernah membaca kod.",
+      "device": {
+        "title": "Log masuk dengan GitHub",
+        "description": "Sahkan kod ini di GitHub untuk membenarkan {{product}} membaca repositori yang anda benarkan.",
+        "step1": "1. Salin kod ini:",
+        "copy": "Salin kod",
+        "copied": "Kod disalin",
+        "step2": "2. Buka GitHub, tampal kod dan luluskan:",
+        "open": "Buka GitHub",
+        "waiting": "Menunggu anda di GitHub… Kod sah selama 15 minit.",
+        "deniedTitle": "Anda membatalkan di GitHub",
+        "deniedBody": "Tiada apa-apa dikongsi. Cuba lagi apabila anda bersedia.",
+        "expiredTitle": "Kod telah tamat",
+        "expiredBody": "Kod sah selama 15 minit. Dapatkan kod baharu.",
+        "again": "Dapatkan kod baharu",
+        "failedTitle": "Log masuk tidak selesai",
+        "failedBody": "GitHub tidak menjawab seperti dijangka. Dapatkan kod baharu untuk cuba lagi."
+      },
+      "token": {
+        "title": "Guna token",
+        "description": "Untuk organisasi yang tidak membenarkan aplikasi GitHub.",
+        "step1": "Buka GitHub → Fine-grained personal access tokens → Generate new token",
+        "step2": "Pilih akaun atau organisasi, kemudian Only select repositories.",
+        "step3": "Repository permissions: Issues → Read-only, Pull requests → Read-only.",
+        "step4": "Tetapkan tarikh tamat, jana token dan salinnya.",
+        "label": "Token terperinci",
+        "readOnly": "{{product}} hanya membaca, walaupun token boleh membuat lebih.",
+        "save": "Semak dan simpan",
+        "error": {
+          "classic": "Ini token klasik. Guna token terperinci (bermula dengan github_pat_).",
+          "invalid": "GitHub tidak menerima token ini. Pastikan ia disalin sepenuhnya dan belum tamat.",
+          "no_repos": "Token ini tidak dapat melihat sebarang repositori. Edit di GitHub dan tambah beberapa."
+        }
+      },
+      "notConnected": "Log masuk ke GitHub dahulu",
+      "notConnectedHint": "Kemudian pilih repositori bagi setiap ejen AI.",
+      "pausedTitle": "GitHub dijeda",
+      "pausedExpired": "Log masuk semula di tab Gambaran keseluruhan. Sehingga itu {{name}} menyerahkan soalan GitHub kepada pasukan anda.",
+      "pausedDown": "GitHub tidak dapat dicapai. {{name}} menyerahkan soalan GitHub kepada pasukan anda sehingga ia menjawab.",
+      "repos": {
+        "title": "Repositori",
+        "description": "Tempat {{name}} boleh menyemak isu dan permintaan tarik.",
+        "none": "Belum ada repositori. Pilih yang boleh disemak oleh {{name}}.",
+        "choose": "Pilih repositori",
+        "remove": "Buang {{repo}}",
+        "private": "Peribadi",
+        "public": "Awam",
+        "gone": "Tidak lagi dikongsi di GitHub. {{name}} melangkaunya.",
+        "hint": "Sehingga {{max}}, daripada repositori yang dikongsi GitHub dengan {{product}}.",
+        "whoTitle": "Siapa yang boleh diberitahu",
+        "whoBody": "Sesiapa yang bersembang dengan {{name}} boleh diberitahu kandungan isu dan permintaan tarik ini, termasuk dalam repositori peribadi.",
+        "notAccessible": "Repositori yang anda pilih tidak lagi dikongsi di GitHub. Alih keluarnya, kemudian simpan semula."
+      },
+      "access": {
+        "title": "Apa yang boleh disemak oleh {{name}}",
+        "description": "Kedua-duanya semakan. Tiada apa-apa di GitHub diubah.",
+        "issues": "Isu",
+        "issuesHint": "Cari, senarai dan baca isu.",
+        "pulls": "Permintaan tarik",
+        "pullsHint": "Cari dan baca permintaan tarik, tidak pernah kodnya."
+      },
+      "needRepo": "Pilih repositori dahulu.",
+      "when": {
+        "note": "Apa yang disemak oleh {{name}}, dan bila, datang daripada arahannya.",
+        "open": "Edit arahan {{name}}"
+      },
+      "picker": {
+        "title": "Pilih repositori",
+        "description": "Repositori yang dikongsi GitHub dengan {{product}}. {{name}} hanya boleh menyemak yang anda pilih.",
+        "search": "Cari repositori",
+        "refresh": "Muat semula senarai dari GitHub",
+        "refreshed": "Senarai dimuat semula dari GitHub",
+        "add_one": "Tambah {{count}} repositori",
+        "add_other": "Tambah {{count}} repositori",
+        "noMatch": "Tiada repositori sepadan.",
+        "allAdded": "Semua repositori yang dikongsi sudah ditambah.",
+        "missing": "Tidak nampak repositori?",
+        "editApp": "Kongsikan dengan “EzyChat by Anchor Sprint” di GitHub",
+        "editToken": "Tambahkan pada token anda di GitHub"
+      },
+      "saved": "Tetapan GitHub disimpan",
+      "agentCard": {
+        "noRepos": "Tiada repositori dipilih",
+        "both_one": "Isu dan permintaan tarik dalam {{count}} repositori",
+        "both_other": "Isu dan permintaan tarik dalam {{count}} repositori",
+        "issues_one": "Isu dalam {{count}} repositori",
+        "issues_other": "Isu dalam {{count}} repositori",
+        "pulls_one": "Permintaan tarik dalam {{count}} repositori",
+        "pulls_other": "Permintaan tarik dalam {{count}} repositori"
+      },
+      "act": {
+        "searched": "{{agent}} mencari di GitHub untuk {{customer}}",
+        "read": "{{agent}} membaca isu atau permintaan tarik untuk {{customer}}",
+        "refused": "{{agent}} ditolak repositori yang tidak diberikan kepadanya, untuk {{customer}}",
+        "failed": "{{agent}} tidak dapat mencapai GitHub untuk {{customer}} dan menyerahkan",
+        "hint": "Siapa dan bila. Nama repositori, tajuk dan teks kekal di GitHub.",
+        "emptyHint": "Semakan dipaparkan di sini."
+      }
     }
   },
   "reports": {

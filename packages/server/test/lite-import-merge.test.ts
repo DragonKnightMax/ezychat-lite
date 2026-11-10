@@ -323,7 +323,15 @@ describe('mergeLiteInbox', () => {
         'drive_saved_files',
       ])
         expect(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get(), table).toEqual({ n: 0 });
-      for (const table of ['sheets_activity', 'drive_activity'])
+      // GitHub: the agent's repositories and its activity come across; the sign-in does not.
+      expect(db.prepare('SELECT agent_id, settings FROM github_agent_settings').get()).toEqual({
+        agent_id: agentId,
+        settings: '{"repos":[{"id":9001,"fullName":"acme/helpdesk","private":true}]}',
+      });
+      expect(
+        db.prepare("SELECT value FROM settings WHERE key = 'github_auth'").get(),
+      ).toBeUndefined();
+      for (const table of ['sheets_activity', 'drive_activity', 'github_activity'])
         expect(db.prepare(`SELECT agent_id, chat_jid FROM ${table}`).get(), table).toEqual({
           agent_id: agentId,
           chat_jid: `${LITE_CHAT}#3`,
@@ -872,6 +880,8 @@ describe('mergeLiteInbox refusals and rollback', () => {
       'DROP TABLE media_refs; ALTER TABLE messages DROP COLUMN media_width; ALTER TABLE messages DROP COLUMN media_height;',
     );
     db.exec('DROP TABLE media_thumbs; ALTER TABLE messages DROP COLUMN media_has_thumb;');
+    // and 042 (GitHub connector)
+    db.exec('DROP TABLE github_agent_settings; DROP TABLE github_activity;');
     db.pragma('user_version = 27');
     db.close();
     const { result } = await merge(t.dir, lite.dir);

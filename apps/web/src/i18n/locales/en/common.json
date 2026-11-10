@@ -227,6 +227,15 @@
       "step1": "Sent: a random install code, the app version, Windows or Mac, and the step reached.",
       "step2": "Never sent: names, phone numbers, chats, messages, emails, IP addresses or keys.",
       "step3": "It goes to the EzyChat licence server, which counts it in Google Analytics. Turn it off here at any time."
+    },
+    "githubApp": {
+      "title": "Why install an app?",
+      "body": "On GitHub you choose which accounts and repositories {{product}} may read, only issues and pull requests. Then you pick each AI agent's repositories here."
+    },
+    "githubToken": {
+      "title": "Which token?",
+      "body": "A fine-grained token limited to the repositories you choose, with Issues and Pull requests Read-only. Classic tokens (ghp_…) reach every repository, so {{product}} refuses them.",
+      "action": "Make a token on GitHub"
     }
   }
 }
