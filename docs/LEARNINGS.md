@@ -1616,6 +1616,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Desktop and web UI
 
+- The web app also runs over plain `http://` on the LAN, which is not a secure context: `crypto.randomUUID`,
+  `crypto.subtle`, clipboard writes and service workers are missing there. Make ids with `lib/random-id.ts#randomUuid`
+  (or `newClientId`), never `crypto.randomUUID()` directly or `Math.random`; feature-check any other secure-only API. One call in an always-mounted host (e.g. `FeedbackHost`) blanked every
+  LAN sign-in for six releases: a web change that adds a browser API gets one Dev Build check over `http://<LAN IP>`.
 - A web push `badge` must be a white shape on a transparent background (`public/badge-96.png`): Android draws it from
   the alpha only, so a full-colour app icon becomes a white square. `notification-badge.test.ts` checks it.
 - A list or panel component whose tests render it without an auth provider reads the signed-in user from the props it

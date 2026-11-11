@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatBytes } from '@/lib/file-transfer';
+import { randomUuid } from '@/lib/random-id';
 import { ApiError } from '../api/client';
 import { useForwardMessage } from '../api/forward';
 import { PRIMARY_INBOX_ID, useChats, useInboxes, useWaStatus } from '../api/queries';
@@ -108,7 +109,7 @@ export function ForwardDialog({
   const [picked, setPicked] = useState<Chat[]>([]);
   const [problem, setProblem] = useState<ForwardProblem | null>(null);
   // One per dialog opening: a retry after a lost answer sends nothing twice.
-  const [requestId] = useState(() => crypto.randomUUID());
+  const [requestId] = useState(randomUuid);
   const [sendAs, setSendAs] = useState<'original' | 'file'>('original');
 
   const { data: inboxData } = useInboxes();

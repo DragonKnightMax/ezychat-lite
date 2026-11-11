@@ -69,6 +69,7 @@ import {
 } from '@ezychat/shared';
 import { ApiError, api, apiUpload } from './client';
 import { setUploadProgress } from '@/lib/upload-progress';
+import { randomUuid } from '@/lib/random-id';
 import { unsubscribePush } from '../pwa/push';
 import { clearUserCaches } from '../auth/user-caches';
 
@@ -323,9 +324,9 @@ function currentUser(qc: QueryClient): User | null {
   return qc.getQueryData<User | null>(qk.me) ?? null;
 }
 
+/** A random UUID, also on a plain-http LAN page (see `randomUuid`). */
 export function newClientId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return randomUuid();
 }
 
 function optimisticMessage(
@@ -592,7 +593,7 @@ export interface SendTextInput {
   mentions?: string[];
   /** The text as the box showed it (`@Name`), for the pending bubble until the server answers. */
   shown?: string;
-  /** Generate with `newClientId()` (crypto.randomUUID). */
+  /** Generate with `newClientId()` (a random UUID). */
   clientId: string;
 }
 
