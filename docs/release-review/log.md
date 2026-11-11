@@ -389,3 +389,29 @@ Hard stops: 1. critical change without a real WhatsApp test; 3. security rule: p
 Migration: packages/server/src/db/migrations/038_message_forwarding.sql — adds-only
 
 Decision: **risk:human**
+
+## 2026-11-11 · PR #347 · `3ad49fd` · risk:human (25)
+
+**NOT READY: PR is a draft; checks pending (missing: SonarCloud Code Analysis, Test (ubuntu-latest), Test (windows-latest), Test (macos-latest)); score 25 < 70: the owner tests and approves · risk:human (25)**
+
+Tier **critical**, set by: packages/server/src/chats/merge.ts, packages/server/src/db/migrations/042_github.sql, packages/server/src/log-redaction.ts, packages/server/src/services.ts, packages/shared/src/index.ts
+
+| Item | Points | Proof |
+| --- | --- | --- |
+| Start | 50 | |
+| Tier: critical | -30 | ✓ |
+| Size: 4246 code lines | -35 | ✓ |
+| Changed-lines coverage pending (CI running) | 0 | ✗ missing |
+| e2e covers the change | +10 | ✓ |
+| Desktop link check | 0 | ✗ missing |
+| Dev Build check | +10 | ✓ |
+| Screen review | +5 | ✓ |
+| Real-part test | +15 | ✓ |
+| Review comments: 0 open of 0 | 0 | ✓ |
+| **Score** | **25** | |
+
+Hard stops: 4. checks pending (missing: SonarCloud Code Analysis, Test (ubuntu-latest), Test (windows-latest), Test (macos-latest))
+
+Migration: packages/server/src/db/migrations/042_github.sql — adds-only
+
+Decision: **risk:human**
