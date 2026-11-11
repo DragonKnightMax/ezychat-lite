@@ -44,6 +44,7 @@ import {
 import { ApiError, api } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { useAppLinks } from '@/lib/app-links';
+import { randomUuid } from '@/lib/random-id';
 import { Banner, ResponsiveDialog } from './index';
 import { SegmentedControl } from './SegmentedControl';
 
@@ -193,7 +194,7 @@ export function FeedbackDialog({
   const [showDetails, setShowDetails] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [screen, setScreen] = useState(pathname);
-  const [clientReportId, setClientReportId] = useState(() => crypto.randomUUID());
+  const [clientReportId, setClientReportId] = useState(randomUuid);
   const [touched, setTouched] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -233,7 +234,7 @@ export function FeedbackDialog({
     setSendError(null);
     setFileError(null);
     setSent(null);
-    setClientReportId(crypto.randomUUID());
+    setClientReportId(randomUuid());
   }
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());

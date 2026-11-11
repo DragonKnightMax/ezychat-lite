@@ -1616,6 +1616,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
 
 ## Desktop and web UI
 
+- The web app also runs over plain `http://` on the LAN, which is not a secure context: `crypto.randomUUID`,
+  `crypto.subtle`, clipboard writes and service workers are missing there. Make ids with `lib/random-id.ts#randomUuid`
+  (or `newClientId`), never `crypto.randomUUID()` directly or `Math.random`; feature-check any other secure-only API. One call in an always-mounted host (e.g. `FeedbackHost`) blanked every
+  LAN sign-in for six releases: a web change that adds a browser API gets one Dev Build check over `http://<LAN IP>`.
 - A web push `badge` must be a white shape on a transparent background (`public/badge-96.png`): Android draws it from
   the alpha only, so a full-colour app icon becomes a white square. `notification-badge.test.ts` checks it.
 - A list or panel component whose tests render it without an auth provider reads the signed-in user from the props it
@@ -1759,9 +1763,10 @@ dirty`): GitHub creates no `pull_request` run until the base is merged in. Check
   API or tool that returns it must say so, and tests must find the row by `client_id`.
 - A socket event that arrives while its list is still loading is lost: the load's older answer replaces the
   patched cache, and React Query reuses a running first load instead of restarting it on
-  `invalidateQueries`. Wait for the running load to end, then reload (`reloadAfterRunningLoad`). An e2e
-  test that fails only in the full run is usually such a race: read its failure screenshot, never just
-  rerun it.
+  `invalidateQueries`. Wait for the running load to end, then reload (`reloadAfterRunningLoad`). This holds
+  for every event that patches a cached list (new message, update, reaction), not only for new rows: a
+  badge that shows and then vanishes in an e2e run is this race. An e2e test that fails only in the full
+  run is usually such a race: read its failure screenshot, never just rerun it.
 
 - Electron fires `will-frame-navigate` before `will-navigate`; `preventDefault()` in the first cancels the
   second, so a link handler only in `will-navigate` never runs (every `mailto:` button did nothing). Handle
@@ -1938,6 +1943,11 @@ htmlFor>`, `min-h-11 min-w-11`). Desktop-only text (`window.watiNotifications`) 
 - A feature that sends anything out of the app builds what it sends on the server (app details, log) and shows the
   user exactly that text before Send (`GET …/defaults`); never trust the browser for diagnostics, and strip ids and
   numbers from a screen path before it leaves.
+
+- A click-to-close backdrop (lightbox) puts one `onClick` on the dialog component and closes when `e.target` is the
+  backdrop (a ref), not handlers on plain `<div>`/`<img>` with `stopPropagation`: SonarCloud counts each click handler
+  on a non-interactive element as a bug (S1082), and `role="presentation"` only swaps it for S6819. Esc and the Close
+  button already serve keyboard users.
 
 ## Internationalization
 

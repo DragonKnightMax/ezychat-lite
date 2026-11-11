@@ -655,10 +655,11 @@ describe('Settings → AI connection: Claude API key', () => {
   });
 
   it('points a Claude key in the OpenAI field to the Claude option', async () => {
-    setup({ ...status(), hasApiKey: false });
+    const { fetchMock } = setup({ ...status(), hasApiKey: false });
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText('OpenAI API key'), 'sk-ant-claude-key');
     await user.click(screen.getByRole('button', { name: 'Test key' }));
-    await screen.findByText(/This is a Claude \(Anthropic\) key/);
+    expect(await screen.findByText(/This is a Claude \(Anthropic\) key/)).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/ai/connection/test')).toBe(false);
   });
 });

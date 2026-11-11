@@ -153,17 +153,23 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (m.fromMe && qc.getQueryData<AiGroupChat>(groupChatAiKey(m.chatJid))?.paused)
         void qc.invalidateQueries({ queryKey: groupChatAiKey(m.chatJid) });
     });
-    // A transcript arrived for a voice note: update it in place (no chat list refresh needed).
-    socket.on('message:updated', (m) => upsertMessageInCache(qc, m));
-    // Someone reacted, changed or removed a reaction: replace the message's reaction list.
-    socket.on('message:reactions', (p) =>
+    // A transcript, an edit or a delete: update it in place (no chat list refresh needed). A load
+    // of the chat already running would answer with the old copy, so load again after it.
+    socket.on('message:updated', (m) => {
+      upsertMessageInCache(qc, m);
+      reloadAfterRunningLoad(qc, qk.messages(m.chatJid));
+    });
+    // Someone reacted, changed or removed a reaction: replace the message's reaction list (and
+    // load again after a running load, which would bring back the old list).
+    socket.on('message:reactions', (p) => {
       patchMessageInCache(
         qc,
         p.chatJid,
         { id: p.messageId, clientId: null },
         { reactions: p.reactions },
-      ),
-    );
+      );
+      reloadAfterRunningLoad(qc, qk.messages(p.chatJid));
+    });
     socket.on('voice:status', (s) => qc.setQueryData(voiceStatusKey, s));
     socket.on('message:status', (p) => {
       const patch: { status: typeof p.status; error: string | null; id?: string } = {
